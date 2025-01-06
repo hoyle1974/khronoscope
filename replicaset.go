@@ -13,6 +13,9 @@ import (
 type ReplicaSetWatchMe struct {
 }
 
+func (n ReplicaSetWatchMe) Tick() {
+}
+
 func (n ReplicaSetWatchMe) Kind() string {
 	return "ReplicaSet"
 }

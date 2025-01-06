@@ -13,6 +13,9 @@ import (
 type NamespaceWatchMe struct {
 }
 
+func (n NamespaceWatchMe) Tick() {
+}
+
 func (n NamespaceWatchMe) Kind() string {
 	return "Namespace"
 }

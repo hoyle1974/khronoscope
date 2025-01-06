@@ -13,6 +13,9 @@ import (
 type DeploymentWatchMe struct {
 }
 
+func (n DeploymentWatchMe) Tick() {
+}
+
 func (n DeploymentWatchMe) Kind() string {
 	return "Deployment"
 }

@@ -12,7 +12,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
-	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -83,9 +82,9 @@ func main() {
 	// 	fmt.Println("-------------")
 	// 	r := watcher.GetStateAtTime(time.Now(), "Pod", "kube-system")
 	// 	for _, rr := range r {
-	// 		fmt.Println(rr.Key())
+	// 		fmt.Println(rr.Key(), rr.GetExtra())
 	// 	}
-	// 	time.Sleep(time.Second)
+	// 	time.Sleep(time.Second * 5)
 	// }
 
 	p := tea.NewProgram(
@@ -165,29 +164,30 @@ func (s simplePage) View() string {
 			for _, resources := range resources[namespace][kind] {
 				extra := ""
 				if kind == "Pod" {
-					e, ok := resources.Extra["PodMetrics"]
+					e, ok := resources.GetExtra()["Metrics"]
 					if ok {
 						extra += " - "
-						for _, m := range e.(*metricsv1beta1.PodMetrics).Containers {
-							extra += fmt.Sprintf("CPU:%v Memory:%v", m.Usage.Cpu(), m.Usage.Memory())
-						}
+						extra += fmt.Sprintf("%v", e)
 					}
-					phase, ok := resources.Extra["Phase"]
+					phase, ok := resources.GetExtra()["Phase"]
 					if ok {
 						extra += fmt.Sprintf(" [%v]", phase)
+					}
+					node, ok := resources.GetExtra()["Node"]
+					if ok {
+						extra += fmt.Sprintf(" Node:%s", node)
 					}
 
 				}
 				if kind == "Node" {
-					e, ok := resources.Extra["NodeMetrics"]
+					e, ok := resources.GetExtra()["Metrics"]
 					if ok {
 						extra += " - "
-						usage := e.(*metricsv1beta1.NodeMetrics).Usage
-						extra += fmt.Sprintf("CPU:%v Memory:%v", usage.Cpu(), usage.Memory())
+						extra += fmt.Sprintf("%v", e)
 					}
 				}
 				if kind == "ReplicaSet" {
-					e, ok := resources.Extra["Status"]
+					e, ok := resources.GetExtra()["Status"]
 					if ok {
 						s := e.(appsv1.ReplicaSetStatus)
 						extra += fmt.Sprintf(" - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)

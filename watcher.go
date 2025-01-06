@@ -15,41 +15,7 @@ type WatchMe interface {
 	Add(obj runtime.Object) Resource
 	Modified(obj runtime.Object) Resource
 	Del(obj runtime.Object) Resource
-}
-
-type Resource struct {
-	Timestamp time.Time
-	Kind      string
-	Namespace string
-	Name      string
-	Object    any
-	Extra     map[string]any
-	Update    func() *Resource
-}
-
-func NewResource(timestmap time.Time, kind string, namespace string, name string, obj any) Resource {
-	return Resource{
-		Timestamp: timestmap,
-		Kind:      kind,
-		Namespace: namespace,
-		Name:      name,
-		Object:    obj,
-		Extra:     map[string]any{},
-	}
-}
-
-func (r Resource) SetExtra(e map[string]any) Resource {
-	r.Extra = e
-	return r
-}
-
-func (r Resource) SetUpdate(u func() *Resource) Resource {
-	r.Update = u
-	return r
-}
-
-func (r Resource) Key() string {
-	return r.Kind + "/" + r.Name + "/" + r.Name
+	Tick()
 }
 
 type Watcher struct {
@@ -99,30 +65,6 @@ func (w Watcher) GetStateAtTime(timestamp time.Time, kind string, namespace stri
 	return values
 }
 
-func (w *Watcher) startTick() {
-	go func() {
-		subpool := w.pool.NewSubpool(32)
-		for _, r := range w.GetStateAtTime(time.Now(), "", "") {
-
-			if r.Update != nil {
-				subpool.Go(func() {
-					nr := r.Update()
-					if nr != nil {
-						w.timedMap.Update(nr.Timestamp, nr.Key(), *nr)
-					}
-				})
-			}
-		}
-		subpool.StopAndWait()
-		w.dirty()
-
-		time.Sleep(time.Second / 30)
-
-		w.startTick()
-
-	}()
-}
-
 func (w *Watcher) dirty() {
 	w.lastChange = time.Now()
 	if w.onChange != nil {
@@ -136,39 +78,62 @@ func NewWatcher() *Watcher {
 		timedMap:   NewTimedMap(),
 		pool:       pond.NewPool(64),
 	}
-	w.startTick()
 	return w
 }
 
+func (w *Watcher) Add(r Resource) {
+	w.timedMap.Add(r.Timestamp, r.Key(), r)
+	w.dirty()
+}
+
+func (w *Watcher) Update(r Resource) {
+	w.timedMap.Update(r.Timestamp, r.Key(), r)
+	w.dirty()
+}
+
+func (w *Watcher) Delete(r Resource) {
+	w.timedMap.Remove(r.Timestamp, r.Key())
+	w.dirty()
+}
+
 func (w *Watcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered in goroutine: %v\n", r)
+			panic(r) // Re-panic to crash
+		}
+	}()
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		if event, ok := <-watcher; ok {
-			switch event.Type {
-			case watch.Added:
-				w.pool.Go(func() {
-					r := watchMe.Add(event.Object)
-					w.timedMap.Add(r.Timestamp, r.Key(), r)
-					w.dirty()
-				})
-			case watch.Modified:
-				w.pool.Go(func() {
-					r := watchMe.Modified(event.Object)
-					w.timedMap.Update(r.Timestamp, r.Key(), r)
-					w.dirty()
-				})
-			case watch.Deleted:
-				w.pool.Go(func() {
-					r := watchMe.Del(event.Object)
-					w.timedMap.Remove(r.Timestamp, r.Key())
-					w.dirty()
-				})
-			case watch.Error:
-				fmt.Printf("Unknown error watching pods: %v\n", event.Object)
+		select {
+		case event, ok := <-watcher:
+			if !ok {
+				fmt.Println("Channel closed")
+				return
 			}
 
-		} else {
-			fmt.Println("Channel closed")
-			return
+			switch event.Type {
+			case watch.Added:
+				// w.pool.Go(func() {
+				w.Add(watchMe.Add(event.Object))
+				// })
+			case watch.Modified:
+				// w.pool.Go(func() {
+				w.Update(watchMe.Modified(event.Object))
+				// })
+			case watch.Deleted:
+				// w.pool.Go(func() {
+				w.Delete(watchMe.Del(event.Object))
+				// })
+			case watch.Error:
+				fmt.Printf("Unknown error watching: %v\n", event.Object)
+			}
+		case <-ticker.C:
+			watchMe.Tick()
 		}
 	}
+
 }

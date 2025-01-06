@@ -13,6 +13,9 @@ import (
 type ServiceWatchMe struct {
 }
 
+func (n ServiceWatchMe) Tick() {
+}
+
 func (n ServiceWatchMe) Kind() string {
 	return "Service"
 }

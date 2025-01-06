@@ -14,6 +14,9 @@ import (
 type DaemonSetWatchMe struct {
 }
 
+func (n DaemonSetWatchMe) Tick() {
+}
+
 func (n DaemonSetWatchMe) Kind() string {
 	return "DeamonSet"
 }

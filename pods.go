@@ -47,7 +47,7 @@ func (n *PodWatchMe) getMetricsForPod(pod *corev1.Pod) map[string]string {
 						cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuLimit.MilliValue())
 						memoryPercentage := calculatePercentage(memoryUsage.Value(), memoryLimit.Value())
 
-						metricsExtra[container.Name] = fmt.Sprintf("CPU: %.2f%% | Memory: %.2f%%", cpuPercentage, memoryPercentage)
+						metricsExtra[container.Name] = fmt.Sprintf("CPU: %s | Memory: %s", renderProgressBar(cpuPercentage), renderProgressBar(memoryPercentage))
 					}
 				}
 			}
@@ -69,6 +69,7 @@ func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
 }
 
 func (n *PodWatchMe) Tick() {
+	n.w.Log(fmt.Sprintf("Tick: %v", time.Now()))
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	m, err := n.k.mc.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})

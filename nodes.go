@@ -38,7 +38,8 @@ func (n *NodeWatchMe) getMetricsForNode(node *corev1.Node) map[string]string {
 			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuCapacity.MilliValue())
 			memPercentage := calculatePercentage(memUsage.Value(), memCapacity.Value())
 
-			metricsExtra[node.Name] = fmt.Sprintf("CPU: %.2f%% | Memory: %.2f%%", cpuPercentage, memPercentage)
+			metricsExtra[node.Name] = fmt.Sprintf("CPU: %s | Memory: %s", renderProgressBar(cpuPercentage), renderProgressBar(memPercentage))
+
 			return metricsExtra
 		}
 	}
@@ -57,7 +58,6 @@ func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
 }
 
 func (n *NodeWatchMe) Tick() {
-	n.w.Log(fmt.Sprintf("Tick: %v", time.Now()))
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	m, err := n.k.mc.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})

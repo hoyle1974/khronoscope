@@ -1,6 +1,8 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 type Resource struct {
 	Timestamp time.Time
@@ -24,20 +26,25 @@ func NewResource(timestmap time.Time, kind string, namespace string, name string
 
 func (r Resource) SetExtra(e map[string]any) Resource {
 	if e == nil {
-		panic("Can not set extra to a nil map")
+		return r
 	}
+
 	r._extra = e
 	return r
 }
+
 func (r Resource) SetExtraKV(k string, v any) Resource {
-	if r._extra == nil {
-		r._extra = map[string]any{}
-	}
+	r._extra = r.GetExtra()
 	r._extra[k] = v
 	return r
 }
 func (r Resource) GetExtra() map[string]any {
-	return r._extra
+	newMap := make(map[string]any)
+	for key, value := range r._extra {
+		newMap[key] = value
+	}
+
+	return newMap
 }
 
 func (r Resource) Key() string {

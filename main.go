@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -77,6 +78,15 @@ func main() {
 	watchForService(watcher, client)
 	watchForPods(watcher, client)
 	watchForNamespaces(watcher, client)
+
+	// for {
+	// 	fmt.Println("-------------")
+	// 	r := watcher.GetStateAtTime(time.Now(), "Pod", "kube-system")
+	// 	for _, rr := range r {
+	// 		fmt.Println(rr.Key())
+	// 	}
+	// 	time.Sleep(time.Second)
+	// }
 
 	p := tea.NewProgram(
 		newSimplePage("This app is under construction"),
@@ -157,7 +167,7 @@ func (s simplePage) View() string {
 				if kind == "Pod" {
 					e, ok := resources.Extra["PodMetrics"]
 					if ok {
-						extra = " - "
+						extra += " - "
 						for _, m := range e.(*metricsv1beta1.PodMetrics).Containers {
 							extra += fmt.Sprintf("CPU:%v Memory:%v", m.Usage.Cpu(), m.Usage.Memory())
 						}
@@ -171,9 +181,16 @@ func (s simplePage) View() string {
 				if kind == "Node" {
 					e, ok := resources.Extra["NodeMetrics"]
 					if ok {
-						extra = " - "
+						extra += " - "
 						usage := e.(*metricsv1beta1.NodeMetrics).Usage
 						extra += fmt.Sprintf("CPU:%v Memory:%v", usage.Cpu(), usage.Memory())
+					}
+				}
+				if kind == "ReplicaSet" {
+					e, ok := resources.Extra["Status"]
+					if ok {
+						s := e.(appsv1.ReplicaSetStatus)
+						extra += fmt.Sprintf(" - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)
 					}
 				}
 

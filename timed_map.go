@@ -1,28 +1,10 @@
 package main
 
 import (
+	"sort"
 	"sync"
 	"time"
 )
-
-// The TemporalValue effectively stores a single value in it.  But tracks the values changes
-// over time.  The value may be nil.  You may request the value at a specific time and it
-// will return what that value was.  For example if you ask for the value at a timestamp
-// before you ever insert it, then it will return nil.  If you set the value at noon, and then
-// Ask what the value is at 12:05 it tells you the original value.  If you set a new value at 12:10
-// And ask for the value at 12:05 it gives you the original value.  If you ask what the value was at
-// 12:11 it give you the updated value.
-// type TemporalValue struct {
-// }
-
-// // Set the value at the specific time
-// func (i *TemporalValue) Set(timestamp time.Time, value any) {
-// }
-
-// // Get the value at a specific time.
-// func (i *TemporalValue) Get(timestamp time.Time) any {
-// 	return nil
-// }
 
 type TemporalValue struct {
 	history []ValuePair
@@ -33,12 +15,24 @@ type ValuePair struct {
 	Value     any
 }
 
-// Set the value at the specific time
+// // Set the value at the specific time
+//
+//	func (i *TemporalValue) Set(timestamp time.Time, value any) {
+//		i.history = append(i.history, ValuePair{
+//			Timestamp: timestamp,
+//			Value:     value,
+//		})
+//	}
+//
+// Set the value at the specific time, maintaining chronological order.
 func (i *TemporalValue) Set(timestamp time.Time, value any) {
-	i.history = append(i.history, ValuePair{
-		Timestamp: timestamp,
-		Value:     value,
+	// Find the insertion point to maintain chronological order.
+	index := sort.Search(len(i.history), func(j int) bool {
+		return i.history[j].Timestamp.After(timestamp)
 	})
+
+	// Insert the new value at the correct position.
+	i.history = append(i.history[:index], append([]ValuePair{{Timestamp: timestamp, Value: value}}, i.history[index:]...)...)
 }
 
 // Get the value at a specific time.
@@ -86,8 +80,10 @@ func (tm *TimedMap) Update(timestamp time.Time, key string, value interface{}) {
 	if !ok {
 		v = &TemporalValue{}
 	}
-	v.Set(timestamp, value)
-	tm.items[key] = v
+	if v.Get(timestamp) != nil {
+		v.Set(timestamp, value)
+		tm.items[key] = v
+	}
 }
 
 // Remove removes the item with the given timestamp and key.

@@ -32,7 +32,7 @@ func (n NodeWatchMe) Valid(obj runtime.Object) bool {
 	return n.convert(obj) != nil
 }
 
-func (n NodeWatchMe) getNodeExtra(node *corev1.Node) map[string]any {
+func (n NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
 	extra := map[string]any{}
 
 	m, err := n.k.mc.MetricsV1beta1().NodeMetricses().Get(context.Background(), node.Name, metav1.GetOptions{})
@@ -45,21 +45,22 @@ func (n NodeWatchMe) getNodeExtra(node *corev1.Node) map[string]any {
 	return extra
 }
 
-func (n NodeWatchMe) update(obj runtime.Object) Resource {
-	return n.Modified(obj)
+func (n NodeWatchMe) update(obj runtime.Object) *Resource {
+	r := n.Modified(obj)
+	return &r
 }
 
 func (n NodeWatchMe) Add(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getNodeExtra(node)).SetUpdate(func() Resource { return n.update(obj) })
+	return NewResource(node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getExtra(node)).SetUpdate(func() *Resource { return n.update(obj) })
 }
 func (n NodeWatchMe) Modified(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getNodeExtra(node)).SetUpdate(func() Resource { return n.update(obj) })
+	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getExtra(node)).SetUpdate(func() *Resource { return n.update(obj) })
 }
 func (n NodeWatchMe) Del(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(node.ObjectMeta.DeletionTimestamp.Time, n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getNodeExtra(node))
+	return NewResource(node.ObjectMeta.DeletionTimestamp.Time, n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getExtra(node))
 
 }
 

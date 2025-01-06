@@ -31,10 +31,11 @@ func (n PodWatchMe) Valid(obj runtime.Object) bool {
 	return n.convert(obj) != nil
 }
 
-func (n PodWatchMe) getPodExtra(pod *corev1.Pod) map[string]any {
+func (n PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	extra := map[string]any{}
 
-	m, err := n.k.mc.MetricsV1beta1().PodMetricses(pod.Namespace).Get(context.Background(), pod.Name, metav1.GetOptions{})
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+	m, err := n.k.mc.MetricsV1beta1().PodMetricses(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err == nil {
 		extra["PodMetrics"] = m
 	}
@@ -43,21 +44,30 @@ func (n PodWatchMe) getPodExtra(pod *corev1.Pod) map[string]any {
 	return extra
 }
 
-func (n PodWatchMe) update(obj runtime.Object) Resource {
-	return n.Modified(obj)
+func (n PodWatchMe) update(obj runtime.Object) *Resource {
+	pod := n.convert(obj)
+
+	o, err := n.k.client.CoreV1().Pods(pod.Namespace).Get(context.Background(), pod.Name, v1.GetOptions{})
+	if err != nil {
+		return nil
+	}
+
+	r := n.Modified(o)
+	return &r
 }
 
 func (n PodWatchMe) Add(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getPodExtra(pod)).SetUpdate(func() Resource { return n.update(obj) })
+	return NewResource(pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getExtra(pod)).SetUpdate(func() *Resource { return n.update(obj) })
 }
 func (n PodWatchMe) Modified(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getPodExtra(pod)).SetUpdate(func() Resource { return n.update(obj) })
+	return NewResource(time.Now(), n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getExtra(pod)).SetUpdate(func() *Resource { return n.update(obj) })
 }
 func (n PodWatchMe) Del(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(pod.DeletionTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getPodExtra(pod))
+	r := NewResource(time.Now() /*pod.DeletionTimestamp.Time*/, n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getExtra(pod))
+	return r
 }
 
 func watchForPods(watcher *Watcher, k KhronosConn) {

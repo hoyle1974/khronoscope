@@ -29,19 +29,27 @@ func (n ReplicaSetWatchMe) Valid(obj runtime.Object) bool {
 	return n.convert(obj) != nil
 }
 
+func (n ReplicaSetWatchMe) getExtra(rs *appsv1.ReplicaSet) map[string]any {
+	extra := map[string]any{}
+
+	extra["Status"] = rs.Status
+
+	return extra
+}
+
 func (n ReplicaSetWatchMe) Add(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(rs.ObjectMeta.CreationTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs)
+	return NewResource(rs.ObjectMeta.CreationTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs).SetExtra(n.getExtra(rs))
 
 }
 func (n ReplicaSetWatchMe) Modified(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), rs.Namespace, rs.Name, rs)
+	return NewResource(time.Now(), n.Kind(), rs.Namespace, rs.Name, rs).SetExtra(n.getExtra(rs))
 
 }
 func (n ReplicaSetWatchMe) Del(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(rs.ObjectMeta.DeletionTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs)
+	return NewResource(rs.ObjectMeta.DeletionTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs).SetExtra(n.getExtra(rs))
 
 }
 

@@ -24,7 +24,7 @@ type Resource struct {
 	Name      string
 	Object    any
 	Extra     map[string]any
-	Update    func() Resource
+	Update    func() *Resource
 }
 
 func NewResource(timestmap time.Time, kind string, namespace string, name string, obj any) Resource {
@@ -43,7 +43,7 @@ func (r Resource) SetExtra(e map[string]any) Resource {
 	return r
 }
 
-func (r Resource) SetUpdate(u func() Resource) Resource {
+func (r Resource) SetUpdate(u func() *Resource) Resource {
 	r.Update = u
 	return r
 }
@@ -99,25 +99,24 @@ func (w Watcher) GetStateAtTime(timestamp time.Time, kind string, namespace stri
 	return values
 }
 
-var ccc = 0
-
 func (w *Watcher) startTick() {
 	go func() {
-		ccc++
-		w.Log(fmt.Sprintf("%v", ccc))
-
 		subpool := w.pool.NewSubpool(32)
 		for _, r := range w.GetStateAtTime(time.Now(), "", "") {
 
 			if r.Update != nil {
 				subpool.Go(func() {
-					r = r.Update()
-					w.timedMap.Update(r.Timestamp, r.Key(), r)
+					nr := r.Update()
+					if nr != nil {
+						w.timedMap.Update(nr.Timestamp, nr.Key(), *nr)
+					}
 				})
 			}
 		}
 		subpool.StopAndWait()
 		w.dirty()
+
+		time.Sleep(time.Second / 30)
 
 		w.startTick()
 
@@ -143,28 +142,28 @@ func NewWatcher() *Watcher {
 
 func (w *Watcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
 	for {
-		change := false
-
 		if event, ok := <-watcher; ok {
 			switch event.Type {
 			case watch.Added:
-				r := watchMe.Add(event.Object)
-				w.timedMap.Add(r.Timestamp, r.Key(), r)
-				change = true
+				w.pool.Go(func() {
+					r := watchMe.Add(event.Object)
+					w.timedMap.Add(r.Timestamp, r.Key(), r)
+					w.dirty()
+				})
 			case watch.Modified:
-				r := watchMe.Modified(event.Object)
-				w.timedMap.Update(r.Timestamp, r.Key(), r)
-				change = true
+				w.pool.Go(func() {
+					r := watchMe.Modified(event.Object)
+					w.timedMap.Update(r.Timestamp, r.Key(), r)
+					w.dirty()
+				})
 			case watch.Deleted:
-				r := watchMe.Del(event.Object)
-				w.timedMap.Remove(r.Timestamp, r.Key())
-				change = true
+				w.pool.Go(func() {
+					r := watchMe.Del(event.Object)
+					w.timedMap.Remove(r.Timestamp, r.Key())
+					w.dirty()
+				})
 			case watch.Error:
 				fmt.Printf("Unknown error watching pods: %v\n", event.Object)
-			}
-
-			if change {
-				w.dirty()
 			}
 
 		} else {

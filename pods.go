@@ -13,6 +13,28 @@ import (
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
+type PodRenderer struct {
+	n *PodWatchMe
+}
+
+func (r PodRenderer) Render(resource Resource) string {
+	extra := ""
+	e, ok := resource.GetExtra()["Metrics"]
+	if ok {
+		extra += " - "
+		extra += fmt.Sprintf("%v", e)
+	}
+	phase, ok := resource.GetExtra()["Phase"]
+	if ok {
+		extra += fmt.Sprintf(" [%v]", phase)
+	}
+	node, ok := resource.GetExtra()["Node"]
+	if ok {
+		extra += fmt.Sprintf(" Node:%s", node)
+	}
+	return extra
+}
+
 type PodWatchMe struct {
 	k KhronosConn
 	w *Watcher
@@ -89,6 +111,10 @@ func (n *PodWatchMe) Kind() string {
 	return "Pod"
 }
 
+func (n *PodWatchMe) Renderer() ResourceRenderer {
+	return PodRenderer{n}
+}
+
 func (n *PodWatchMe) convert(obj runtime.Object) *corev1.Pod {
 	ret, ok := obj.(*corev1.Pod)
 	if !ok {
@@ -111,15 +137,15 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 
 func (n *PodWatchMe) Add(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getExtra(pod))
+	return NewResource(pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
 }
 func (n *PodWatchMe) Modified(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getExtra(pod))
+	return NewResource(time.Now(), n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
 }
 func (n *PodWatchMe) Del(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	r := NewResource(time.Now() /*pod.DeletionTimestamp.Time*/, n.Kind(), pod.Namespace, pod.Name, pod).SetExtra(n.getExtra(pod))
+	r := NewResource(time.Now() /*pod.DeletionTimestamp.Time*/, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
 	return r
 }
 

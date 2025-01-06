@@ -20,6 +20,10 @@ func (n ServiceWatchMe) Kind() string {
 	return "Service"
 }
 
+func (n *ServiceWatchMe) Renderer() ResourceRenderer {
+	return nil
+}
+
 func (n ServiceWatchMe) convert(obj runtime.Object) *corev1.Service {
 	ret, ok := obj.(*corev1.Service)
 	if !ok {
@@ -34,17 +38,17 @@ func (n ServiceWatchMe) Valid(obj runtime.Object) bool {
 
 func (n ServiceWatchMe) Add(obj runtime.Object) Resource {
 	service := n.convert(obj)
-	return NewResource(service.ObjectMeta.CreationTimestamp.Time, n.Kind(), service.Namespace, service.Name, service)
+	return NewResource(service.ObjectMeta.CreationTimestamp.Time, n.Kind(), service.Namespace, service.Name, service, nil)
 
 }
 func (n ServiceWatchMe) Modified(obj runtime.Object) Resource {
 	service := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), service.Namespace, service.Name, service)
+	return NewResource(time.Now(), n.Kind(), service.Namespace, service.Name, service, nil)
 
 }
 func (n ServiceWatchMe) Del(obj runtime.Object) Resource {
 	service := n.convert(obj)
-	return NewResource(service.ObjectMeta.DeletionTimestamp.Time, n.Kind(), service.Namespace, service.Name, service)
+	return NewResource(service.ObjectMeta.DeletionTimestamp.Time, n.Kind(), service.Namespace, service.Name, service, nil)
 
 }
 

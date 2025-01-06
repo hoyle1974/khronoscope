@@ -14,6 +14,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+type NodeRenderer struct {
+	n *NodeWatchMe
+}
+
+func (r NodeRenderer) Render(resource Resource) string {
+	extra := ""
+	e, ok := resource.GetExtra()["Metrics"]
+	if ok {
+		extra += " - "
+		extra += fmt.Sprintf("%v", e)
+	}
+	return extra
+}
+
 type NodeWatchMe struct {
 	k KhronosConn
 	w *Watcher
@@ -77,6 +91,10 @@ func (n *NodeWatchMe) Kind() string {
 	return "Node"
 }
 
+func (n *NodeWatchMe) Renderer() ResourceRenderer {
+	return NodeRenderer{n}
+}
+
 func (n *NodeWatchMe) convert(obj runtime.Object) *corev1.Node {
 	ret, ok := obj.(*corev1.Node)
 	if !ok {
@@ -102,15 +120,15 @@ func (n *NodeWatchMe) update(obj runtime.Object) *Resource {
 
 func (n *NodeWatchMe) Add(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getExtra(node))
+	return NewResource(node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 }
 func (n *NodeWatchMe) Modified(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getExtra(node))
+	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 }
 func (n *NodeWatchMe) Del(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(node.ObjectMeta.DeletionTimestamp.Time, n.Kind(), node.Namespace, node.Name, node).SetExtra(n.getExtra(node))
+	return NewResource(node.ObjectMeta.DeletionTimestamp.Time, n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 
 }
 

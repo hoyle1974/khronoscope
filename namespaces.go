@@ -20,6 +20,10 @@ func (n NamespaceWatchMe) Kind() string {
 	return "Namespace"
 }
 
+func (n *NamespaceWatchMe) Renderer() ResourceRenderer {
+	return nil
+}
+
 func (n NamespaceWatchMe) convert(obj runtime.Object) *corev1.Namespace {
 	ret, ok := obj.(*corev1.Namespace)
 	if !ok {
@@ -34,16 +38,16 @@ func (n NamespaceWatchMe) Valid(obj runtime.Object) bool {
 
 func (n NamespaceWatchMe) Add(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(namespace.ObjectMeta.CreationTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace)
+	return NewResource(namespace.ObjectMeta.CreationTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 }
 func (n NamespaceWatchMe) Modified(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace)
+	return NewResource(time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 
 }
 func (n NamespaceWatchMe) Del(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(namespace.ObjectMeta.DeletionTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace)
+	return NewResource(namespace.ObjectMeta.DeletionTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 }
 
 func watchForNamespaces(watcher *Watcher, k KhronosConn) {

@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+type ResourceRenderer interface {
+	Render(resource Resource) string
+}
+
 type Resource struct {
 	Timestamp time.Time
 	Kind      string
@@ -11,17 +15,26 @@ type Resource struct {
 	Name      string
 	Object    any
 	_extra    map[string]any
+	Renderer  ResourceRenderer
 }
 
-func NewResource(timestmap time.Time, kind string, namespace string, name string, obj any) Resource {
+func NewResource(timestmap time.Time, kind string, namespace string, name string, obj any, renderer ResourceRenderer) Resource {
 	return Resource{
 		Timestamp: timestmap,
 		Kind:      kind,
 		Namespace: namespace,
 		Name:      name,
 		Object:    obj,
+		Renderer:  renderer,
 		_extra:    map[string]any{},
 	}
+}
+
+func (r Resource) String() string {
+	if r.Renderer != nil {
+		return r.Renderer.Render(r)
+	}
+	return ""
 }
 
 func (r Resource) SetExtra(e map[string]any) Resource {

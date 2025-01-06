@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -161,41 +160,8 @@ func (s simplePage) View() string {
 			b.WriteString(" |--" + kind + "\n")
 
 			rs := []string{}
-			for _, resources := range resources[namespace][kind] {
-				extra := ""
-				if kind == "Pod" {
-					e, ok := resources.GetExtra()["Metrics"]
-					if ok {
-						extra += " - "
-						extra += fmt.Sprintf("%v", e)
-					}
-					phase, ok := resources.GetExtra()["Phase"]
-					if ok {
-						extra += fmt.Sprintf(" [%v]", phase)
-					}
-					node, ok := resources.GetExtra()["Node"]
-					if ok {
-						extra += fmt.Sprintf(" Node:%s", node)
-					}
-
-				}
-				if kind == "Node" {
-					e, ok := resources.GetExtra()["Metrics"]
-					if ok {
-						extra += " - "
-						extra += fmt.Sprintf("%v", e)
-					}
-				}
-				if kind == "ReplicaSet" {
-					e, ok := resources.GetExtra()["Status"]
-					if ok {
-						s := e.(appsv1.ReplicaSetStatus)
-						extra += fmt.Sprintf(" - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)
-					}
-				}
-
-				rs = append(rs, resources.Name+extra)
-
+			for _, resource := range resources[namespace][kind] {
+				rs = append(rs, resource.Name+resource.String())
 			}
 			sort.Strings(rs)
 			for _, r := range rs {

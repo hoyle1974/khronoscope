@@ -18,21 +18,27 @@ type PodRenderer struct {
 }
 
 func (r PodRenderer) Render(resource Resource) string {
-	extra := ""
-	e, ok := resource.GetExtra()["Metrics"]
+	extra := resource.GetExtra()
+
+	out := ""
+	e, ok := extra["Metrics"]
 	if ok {
-		extra += " - "
-		extra += fmt.Sprintf("%v", e)
+		out += " - "
+		out += fmt.Sprintf("%v", e)
 	}
-	phase, ok := resource.GetExtra()["Phase"]
+	phase, ok := extra["Phase"]
 	if ok {
-		extra += fmt.Sprintf(" [%v]", phase)
+		out += fmt.Sprintf(" [%v]", phase)
 	}
-	node, ok := resource.GetExtra()["Node"]
+	node, ok := extra["Node"]
 	if ok {
-		extra += fmt.Sprintf(" Node:%s", node)
+		out += fmt.Sprintf(" Node:%s", node)
 	}
-	return extra
+	rt, ok := extra["StartTime"]
+	if ok {
+		out += fmt.Sprintf(" Up For:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+	}
+	return out
 }
 
 type PodWatchMe struct {
@@ -132,6 +138,13 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	extra["Phase"] = pod.Status.Phase
 	extra["Node"] = pod.Spec.NodeName
 	extra["Metrics"] = n.getMetricsForPod(pod)
+
+	// Calculate the running time
+	startTime := pod.Status.StartTime
+	if startTime != nil {
+		extra["StartTime"] = pod.Status.StartTime.Time
+	}
+
 	return extra
 }
 

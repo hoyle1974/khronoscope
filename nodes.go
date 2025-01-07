@@ -19,13 +19,18 @@ type NodeRenderer struct {
 }
 
 func (r NodeRenderer) Render(resource Resource) string {
-	extra := ""
-	e, ok := resource.GetExtra()["Metrics"]
+	out := ""
+	extra := resource.GetExtra()
+	e, ok := extra["Metrics"]
 	if ok {
-		extra += " - "
-		extra += fmt.Sprintf("%v", e)
+		out += " - "
+		out += fmt.Sprintf("%v", e)
 	}
-	return extra
+	rt, ok := extra["StartTime"]
+	if ok {
+		out += fmt.Sprintf(" Up For:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+	}
+	return out
 }
 
 type NodeWatchMe struct {
@@ -110,6 +115,11 @@ func (n *NodeWatchMe) Valid(obj runtime.Object) bool {
 func (n *NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
 	extra := map[string]any{}
 	extra["Metrics"] = n.getMetricsForNode(node)
+
+	// Calculate the running time
+	startTime := node.ObjectMeta.CreationTimestamp
+	extra["StartTime"] = startTime.Time
+
 	return extra
 }
 

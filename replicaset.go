@@ -14,7 +14,7 @@ type ReplicaSetRenderer struct {
 	n *ReplicaSetWatchMe
 }
 
-func (r ReplicaSetRenderer) Render(resource Resource) []string {
+func (r ReplicaSetRenderer) Render(resource Resource, details bool) []string {
 	extra := ""
 	e, ok := resource.GetExtra()["Status"]
 	if ok {

@@ -5,7 +5,7 @@ import (
 )
 
 type ResourceRenderer interface {
-	Render(resource Resource) []string
+	Render(resource Resource, detailed bool) []string
 }
 
 type Resource struct {
@@ -32,7 +32,14 @@ func NewResource(timestmap time.Time, kind string, namespace string, name string
 
 func (r Resource) String() []string {
 	if r.Renderer != nil {
-		return r.Renderer.Render(r)
+		return r.Renderer.Render(r, false)
+	}
+	return []string{}
+}
+
+func (r Resource) Details() []string {
+	if r.Renderer != nil {
+		return r.Renderer.Render(r, true)
 	}
 	return []string{}
 }

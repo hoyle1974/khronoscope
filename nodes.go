@@ -18,7 +18,7 @@ type NodeRenderer struct {
 	n *NodeWatchMe
 }
 
-func (r NodeRenderer) Render(resource Resource) []string {
+func (r NodeRenderer) Render(resource Resource, details bool) []string {
 	out := ""
 	extra := resource.GetExtra()
 	e, ok := extra["Metrics"]

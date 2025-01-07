@@ -17,35 +17,60 @@ type PodRenderer struct {
 	n *PodWatchMe
 }
 
-func (r PodRenderer) Render(resource Resource) []string {
+func (r PodRenderer) Render(resource Resource, details bool) []string {
 	extra := resource.GetExtra()
-
 	out := []string{}
-
 	s := ""
-	phase, ok := extra["Phase"]
-	if ok {
-		s += fmt.Sprintf(" [%v]", phase)
-	}
-	node, ok := extra["Node"]
-	if ok {
-		s += fmt.Sprintf(" Node:%s", node)
-	}
-	rt, ok := extra["StartTime"]
-	if ok {
-		s += fmt.Sprintf(" Uptime:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
-	}
-	out = append(out, s)
 
-	e, ok := extra["Metrics"]
-	if ok {
-		m := e.(map[string]string)
-		if len(m) > 0 {
-			out = append(out, "containers:")
-			for k, v := range m {
-				out = append(out, fmt.Sprintf("   %v - %v", k, v))
+	if details {
+		phase, ok := extra["Phase"]
+		if ok {
+			s += fmt.Sprintf(" [%v]", phase)
+		}
+		node, ok := extra["Node"]
+		if ok {
+			s += fmt.Sprintf(" Node:%s", node)
+		}
+		rt, ok := extra["StartTime"]
+		if ok {
+			s += fmt.Sprintf(" Uptime:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+		}
+		out = append(out, s)
+
+		e, ok := extra["Metrics"]
+		if ok {
+			m := e.(map[string]string)
+			if len(m) > 0 {
+				out = append(out, "containers:")
+				for k, v := range m {
+					out = append(out, fmt.Sprintf("   %v - %v", k, v))
+				}
 			}
 		}
+	} else {
+		phase, ok := extra["Phase"]
+		if ok {
+			s += fmt.Sprintf(" %v", phase)
+		}
+		node, ok := extra["Node"]
+		if ok {
+			s += fmt.Sprintf(" %s", node)
+		}
+
+		e, ok := extra["Metrics"]
+		if ok {
+			m := e.(map[string]string)
+			if len(m) > 0 {
+				for k, v := range m {
+					s += fmt.Sprintf(" %v {%v}", k, v)
+				}
+			}
+		}
+		rt, ok := extra["StartTime"]
+		if ok {
+			s += fmt.Sprintf(" %s", time.Since(rt.(time.Time)).Truncate(time.Second))
+		}
+		out = append(out, s)
 	}
 
 	return out

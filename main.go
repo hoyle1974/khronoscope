@@ -101,14 +101,17 @@ func main() {
 	watchForNamespaces(watcher, client)
 
 	// Start profiling
-	f, err := os.Create("khronoscope.prof")
-	if err != nil {
-		fmt.Println(err)
-		return
+	profile := false
+	if profile {
+		f, err := os.Create("khronoscope.prof")
+		if err != nil {
+			fmt.Println(err)
+			return
 
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
 
 	p := tea.NewProgram(
 		newSimplePage(),
@@ -125,12 +128,10 @@ func main() {
 }
 
 // MODEL DATA
-var count = 0
 var adjust = time.Duration(0)
 
 type simplePage struct {
 	ready    bool
-	content  string
 	viewport viewport.Model
 }
 
@@ -197,6 +198,9 @@ func (s *simplePage) View() string {
 		resources[r.Namespace] = temp
 	}
 
+	mark := "[ ] "
+	unmark := "    "
+
 	// Nodes & Namespaces
 	b.WriteString("\n")
 	for _, namespace := range namespaces {
@@ -221,13 +225,13 @@ func (s *simplePage) View() string {
 			for idx, r := range rs {
 				render := r.String()
 				if len(render) == 0 {
-					b.WriteString(" " + grommet(idx == len(rs)-1) + "──" + r.Name + "\n")
+					b.WriteString(mark + " " + grommet(idx == len(rs)-1) + "──" + r.Name + "\n")
 				} else {
 					for idx2, s := range render {
 						if idx2 == 0 {
-							b.WriteString(" " + grommet(idx == len(rs)-1) + "──" + r.Name + s + "\n")
+							b.WriteString(mark + " " + grommet(idx == len(rs)-1) + "──" + r.Name + s + "\n")
 						} else {
-							b.WriteString(" │  " + s + "\n")
+							b.WriteString(unmark + " │  " + s + "\n")
 						}
 					}
 				}
@@ -250,7 +254,7 @@ func (s *simplePage) View() string {
 		sort.Strings(kinds)
 
 		for idx, kind := range kinds {
-			b.WriteString(" " + grommet(idx == len(kinds)-1) + "──" + bold.Render(kind) + "\n")
+			b.WriteString(unmark + " " + grommet(idx == len(kinds)-1) + "──" + bold.Render(kind) + "\n")
 
 			rs := []Resource{}
 			rs = append(rs, resources[namespace][kind]...)
@@ -261,13 +265,13 @@ func (s *simplePage) View() string {
 			for idx2, r := range rs {
 				render := r.String()
 				if len(render) == 0 {
-					b.WriteString(" │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + "\n")
+					b.WriteString(mark + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + "\n")
 				} else {
 					for idx3, s := range render {
 						if idx3 == 0 {
-							b.WriteString(" │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + s + "\n")
+							b.WriteString(mark + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + s + "\n")
 						} else {
-							b.WriteString(" │   " + grommet2(idx2 == len(rs)-1) + "  " + s + "\n")
+							b.WriteString(unmark + " │   " + grommet2(idx2 == len(rs)-1) + "  " + s + "\n")
 						}
 					}
 				}
@@ -275,13 +279,16 @@ func (s *simplePage) View() string {
 		}
 	}
 
-	s.content = b.String()
-	s.viewport.SetContent(s.content)
+	s.viewport.SetContent(b.String()) //s.content)
 
 	if !s.ready {
 		return "\n  Initializing..."
 	}
-	return fmt.Sprintf("%s\n%s\n%s", s.headerView(), s.viewport.View(), s.footerView())
+
+	values := "a\nb\nc\n"
+	temp := lipgloss.JoinHorizontal(0, s.viewport.View(), values)
+
+	return fmt.Sprintf("%s\n%s\n%s", s.headerView(), temp, s.footerView())
 }
 
 // UPDATE
@@ -324,7 +331,6 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
 			s.viewport.YPosition = headerHeight
 			s.viewport.HighPerformanceRendering = useHighPerformanceRenderer
-			s.viewport.SetContent(s.content)
 			s.ready = true
 
 			// This is only necessary for high performance rendering, which in

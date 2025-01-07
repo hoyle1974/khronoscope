@@ -19,7 +19,11 @@ func renderProgressBar(label string, percent float64) string {
 	// Calculate filled segments (10 total)
 	filledSegments := int(math.Round(percent / 10))
 
-	cc := lipgloss.Color("#00CC00")
+	r := 0
+	g := 204
+	b := 0
+	s := fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, 255)
+	cc := lipgloss.Color(s)
 	if percent > 90 {
 		pp := (((percent - 90.0) * 10.0) / 100.0)
 		r := int(255 * pp)
@@ -34,7 +38,7 @@ func renderProgressBar(label string, percent float64) string {
 	emptyStyle := lipgloss.NewStyle().Background(lipgloss.Color("240")).Foreground(lipgloss.Color("#FFFFFF")) // Gray
 
 	// Format percentage to fit within 3 characters
-	percentText := fmt.Sprintf("%s  %3.2f%%", label, percent)
+	percentText := fmt.Sprintf("     %3.2f%%", percent)
 
 	// Build the bar
 	bar := ""
@@ -48,5 +52,5 @@ func renderProgressBar(label string, percent float64) string {
 	// bar += "]"
 
 	// Overlay percentage text
-	return bar
+	return label + " " + bar
 }

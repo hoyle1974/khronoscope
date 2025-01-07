@@ -169,7 +169,6 @@ func grommet2(is bool) string {
 }
 
 var curPosition = 0
-var lastTick = time.Now()
 
 func (s *simplePage) View() string {
 
@@ -204,11 +203,6 @@ func (s *simplePage) View() string {
 	pos := -1
 	selected := false
 	details := ""
-
-	if time.Since(lastTick) > time.Second/5 {
-		lastTick = time.Now()
-		curPosition++
-	}
 
 	mark := func() string {
 		pos++
@@ -316,8 +310,10 @@ func (s *simplePage) View() string {
 
 	content := b.String()
 
-	if curPosition > strings.Count(content, "\n") {
+	if curPosition < 0 {
 		curPosition = 0
+	} else if curPosition > pos {
+		curPosition = pos
 	}
 
 	s.viewport.SetContent(content)
@@ -326,7 +322,9 @@ func (s *simplePage) View() string {
 		return "\n  Initializing..."
 	}
 
-	temp := lipgloss.JoinHorizontal(0, s.viewport.View(), details)
+	ds := lipgloss.NewStyle().Width(60).Height(s.viewport.Height)
+
+	temp := lipgloss.JoinHorizontal(0, s.viewport.View(), ds.Render(details))
 
 	return fmt.Sprintf("%s\n%s\n%s", s.headerView(), temp, s.footerView())
 }
@@ -355,6 +353,17 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return s, nil
 		case "enter":
 			adjust = 0
+			return s, nil
+		case "up":
+			curPosition--
+			s.viewport.LineUp(1)
+			//begin := s.viewport.YOffset
+			//end := s.viewport.YOffset + s.viewport.Height
+
+			return s, nil
+		case "down":
+			curPosition++
+			s.viewport.LineDown(1)
 			return s, nil
 		}
 	case tea.WindowSizeMsg:
@@ -399,8 +408,9 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle keyboard and mouse events in the viewport
-	s.viewport, cmd = s.viewport.Update(msg)
-	cmds = append(cmds, cmd)
+	// s.viewport, cmd = s.viewport.Update(msg)
+	// cmds = append(cmds, cmd)
 
-	return s, tea.Batch(cmds...)
+	// return s, tea.Batch(cmds...)
+	return s, nil
 }

@@ -25,15 +25,15 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 	if details {
 		phase, ok := extra["Phase"]
 		if ok {
-			s += fmt.Sprintf(" [%v]", phase)
+			s += fmt.Sprintf("Phase: %v\n", phase)
 		}
 		node, ok := extra["Node"]
 		if ok {
-			s += fmt.Sprintf(" Node:%s", node)
+			s += fmt.Sprintf("Node: %s\n", node)
 		}
 		rt, ok := extra["StartTime"]
 		if ok {
-			s += fmt.Sprintf(" Uptime:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+			s += fmt.Sprintf("Uptime: %s\n", time.Since(rt.(time.Time)).Truncate(time.Second))
 		}
 		out = append(out, s)
 

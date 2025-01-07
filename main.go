@@ -32,6 +32,8 @@ var (
 		b.Left = "┤"
 		return titleStyle.BorderStyle(b)
 	}()
+
+	bold = lipgloss.NewStyle().Bold(true)
 )
 
 const useHighPerformanceRenderer = false
@@ -96,15 +98,6 @@ func main() {
 	watchForPods(watcher, client)
 	watchForNamespaces(watcher, client)
 
-	// for {
-	// 	fmt.Println("-------------")
-	// 	r := watcher.GetStateAtTime(time.Now(), "Pod", "kube-system")
-	// 	for _, rr := range r {
-	// 		fmt.Println(rr.Key(), rr.GetExtra())
-	// 	}
-	// 	time.Sleep(time.Second * 5)
-	// }
-
 	p := tea.NewProgram(
 		newSimplePage(),
 	)
@@ -168,19 +161,9 @@ func (s *simplePage) View() string {
 	namespaces = append(namespaces, "")
 	sort.Strings(namespaces)
 
-	b.WriteString("Namespaces\n")
-	for _, namespace := range namespaces {
-		if len(namespace) > 0 {
-			b.WriteString(" |--" + namespace + "\n")
-		}
-	}
-
 	// Map of resources by namespace/kind
 	resources := map[string]map[string][]Resource{}
 	for _, r := range snapshot {
-		if r.Kind == "Namespace" {
-			continue
-		}
 		temp, ok := resources[r.Namespace]
 		if !ok {
 			temp = map[string][]Resource{}
@@ -202,7 +185,7 @@ func (s *simplePage) View() string {
 		sort.Strings(kinds)
 
 		for _, kind := range kinds {
-			b.WriteString(kind + "\n")
+			b.WriteString(bold.Render(kind) + "\n")
 
 			rs := []string{}
 			for _, resource := range resources[namespace][kind] {
@@ -210,7 +193,7 @@ func (s *simplePage) View() string {
 			}
 			sort.Strings(rs)
 			for _, r := range rs {
-				b.WriteString(" |--" + r + "\n")
+				b.WriteString(" ├──" + r + "\n")
 			}
 		}
 	}
@@ -221,7 +204,7 @@ func (s *simplePage) View() string {
 		if len(namespace) == 0 {
 			continue // skip nodes
 		}
-		b.WriteString(namespace + "\n")
+		b.WriteString(bold.Render(namespace) + "\n")
 
 		kinds := []string{}
 		for kind, _ := range resources[namespace] {
@@ -230,7 +213,7 @@ func (s *simplePage) View() string {
 		sort.Strings(kinds)
 
 		for _, kind := range kinds {
-			b.WriteString(" |--" + kind + "\n")
+			b.WriteString(" ├──" + bold.Render(kind) + "\n")
 
 			rs := []string{}
 			for _, resource := range resources[namespace][kind] {
@@ -238,7 +221,7 @@ func (s *simplePage) View() string {
 			}
 			sort.Strings(rs)
 			for _, r := range rs {
-				b.WriteString(" |   |--" + r + "\n")
+				b.WriteString(" │   ├──" + r + "\n")
 			}
 		}
 	}

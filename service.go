@@ -48,7 +48,7 @@ func (n ServiceWatchMe) Modified(obj runtime.Object) Resource {
 }
 func (n ServiceWatchMe) Del(obj runtime.Object) Resource {
 	service := n.convert(obj)
-	return NewResource(service.ObjectMeta.DeletionTimestamp.Time, n.Kind(), service.Namespace, service.Name, service, nil)
+	return NewResource(time.Now(), n.Kind(), service.Namespace, service.Name, service, nil)
 
 }
 

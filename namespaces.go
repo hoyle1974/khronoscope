@@ -47,7 +47,7 @@ func (n NamespaceWatchMe) Modified(obj runtime.Object) Resource {
 }
 func (n NamespaceWatchMe) Del(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(namespace.ObjectMeta.DeletionTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
+	return NewResource(time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 }
 
 func watchForNamespaces(watcher *Watcher, k KhronosConn) {

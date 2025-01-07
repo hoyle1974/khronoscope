@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -12,8 +15,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
+
+func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
+	podLogOpts := corev1.PodLogOptions{}
+	req := client.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
+	podLogs, err := req.Stream(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("error opening stream: %w", err)
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		return "", fmt.Errorf("error copying logs: %w", err)
+	}
+
+	return buf.String(), nil
+}
 
 type PodRenderer struct {
 	n *PodWatchMe
@@ -39,7 +61,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		}
 		rt, ok := extra["StartTime"]
 		if ok {
-			s += fmt.Sprintf("Uptime: %s\n", time.Since(rt.(time.Time)).Truncate(time.Second))
+			s += fmt.Sprintf("Uptime: %v\n", rt)
 		}
 		out = append(out, s)
 
@@ -91,6 +113,18 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 			out = append(out, fmt.Sprintf("   %v : %v", k, labels[k]))
 		}
 
+		out = append(out, "---------------------")
+
+		logs, err := getPodLogs(r.n.k.client, pod.Namespace, pod.Name)
+		if err == nil {
+			lines := strings.Split(logs, "\n")
+			if len(lines) > 10 {
+				lines = lines[len(lines)-10:]
+			}
+			out = append(out, lines...)
+		} else {
+			out = append(out, fmt.Sprintf("%v", err))
+		}
 	} else {
 		phase, ok := extra["Phase"]
 		if ok {
@@ -112,7 +146,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		}
 		rt, ok := extra["StartTime"]
 		if ok {
-			s += fmt.Sprintf(" %s", time.Since(rt.(time.Time)).Truncate(time.Second))
+			s += fmt.Sprintf(" %v", rt)
 		}
 		out = append(out, s)
 	}
@@ -170,6 +204,10 @@ func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
 	metricsExtra := n.getMetricsForPod(pod)
 	if len(metricsExtra) > 0 {
 		resource = resource.SetExtraKV("Metrics", metricsExtra)
+		if pod.Status.StartTime != nil {
+			resource = resource.SetExtraKV("StartTime", time.Since(pod.Status.StartTime.Time).Truncate(time.Second))
+		}
+
 		resource.Timestamp = time.Now()
 		n.w.Update(resource)
 	}
@@ -221,7 +259,7 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	// Calculate the running time
 	startTime := pod.Status.StartTime
 	if startTime != nil {
-		extra["StartTime"] = pod.Status.StartTime.Time
+		extra["StartTime"] = time.Since(pod.Status.StartTime.Time).Truncate(time.Second)
 	}
 
 	return extra

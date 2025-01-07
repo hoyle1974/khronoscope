@@ -104,7 +104,7 @@ func (w *Watcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second / 2)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {

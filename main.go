@@ -169,15 +169,17 @@ func grommet2(is bool) string {
 }
 
 var curPosition = 0
+var count = 0
 
 func (s *simplePage) View() string {
 
 	b := strings.Builder{}
 
-	// count++
-	// b.WriteString(fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog()))
+	count++
+	b.WriteString(fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog()))
 
-	snapshot := watcher.GetStateAtTime(time.Now().Add(adjust), "", "")
+	now := time.Now()
+	snapshot := watcher.GetStateAtTime(now.Add(adjust), "", "")
 
 	// Namespaces
 	namespaces := []string{}

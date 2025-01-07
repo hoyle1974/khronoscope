@@ -29,7 +29,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 	}
 	rt, ok := extra["StartTime"]
 	if ok {
-		out += fmt.Sprintf(" Uptime:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+		out += fmt.Sprintf(" Uptime:%v", rt)
 	}
 	return []string{out}
 }
@@ -72,6 +72,7 @@ func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
 	metricsExtra := n.getMetricsForNode(node)
 	if len(metricsExtra) > 0 {
 		resource = resource.SetExtraKV("Metrics", metricsExtra)
+		resource = resource.SetExtraKV("StartTime", time.Since(node.ObjectMeta.CreationTimestamp.Time).Truncate(time.Second))
 		resource.Timestamp = time.Now()
 		n.w.Update(resource)
 	}
@@ -119,8 +120,7 @@ func (n *NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
 
 	// Calculate the running time
 	startTime := node.ObjectMeta.CreationTimestamp
-	extra["StartTime"] = startTime.Time
-
+	extra["StartTime"] = time.Since(startTime.Time).Truncate(time.Second)
 	return extra
 }
 
@@ -139,7 +139,7 @@ func (n *NodeWatchMe) Modified(obj runtime.Object) Resource {
 }
 func (n *NodeWatchMe) Del(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(node.ObjectMeta.DeletionTimestamp.Time, n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
+	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 
 }
 

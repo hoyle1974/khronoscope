@@ -47,7 +47,7 @@ func (n DeploymentWatchMe) Modified(obj runtime.Object) Resource {
 }
 func (n DeploymentWatchMe) Del(obj runtime.Object) Resource {
 	d := n.convert(obj)
-	return NewResource(d.ObjectMeta.DeletionTimestamp.Time, n.Kind(), d.Namespace, d.Name, d, nil)
+	return NewResource(time.Now(), n.Kind(), d.Namespace, d.Name, d, nil)
 }
 
 func watchForDeployments(watcher *Watcher, k KhronosConn) {

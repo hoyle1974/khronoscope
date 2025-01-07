@@ -49,7 +49,7 @@ func (n DaemonSetWatchMe) Modified(obj runtime.Object) Resource {
 }
 func (n DaemonSetWatchMe) Del(obj runtime.Object) Resource {
 	ds := n.convert(obj)
-	return NewResource(ds.ObjectMeta.DeletionTimestamp.Time, n.Kind(), ds.Namespace, ds.Name, ds, nil)
+	return NewResource(time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, nil)
 }
 
 func watchForDaemonSet(watcher *Watcher, k KhronosConn) {

@@ -70,7 +70,7 @@ func (n ReplicaSetWatchMe) Modified(obj runtime.Object) Resource {
 }
 func (n ReplicaSetWatchMe) Del(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(rs.ObjectMeta.DeletionTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
+	return NewResource(time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
 
 }
 

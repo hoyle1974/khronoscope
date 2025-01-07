@@ -168,6 +168,9 @@ func grommet2(is bool) string {
 	return " "
 }
 
+var curPosition = 0
+var lastTick = time.Now()
+
 func (s *simplePage) View() string {
 
 	b := strings.Builder{}
@@ -198,8 +201,28 @@ func (s *simplePage) View() string {
 		resources[r.Namespace] = temp
 	}
 
-	mark := "[ ] "
-	unmark := "    "
+	pos := -1
+	selected := false
+	details := ""
+
+	if time.Since(lastTick) > time.Second/5 {
+		lastTick = time.Now()
+		curPosition++
+	}
+
+	mark := func() string {
+		pos++
+		if curPosition == pos {
+			selected = true
+			return "[*] "
+		}
+		selected = false
+		return "[ ] "
+	}
+
+	unmark := func() string {
+		return "    "
+	}
 
 	// Nodes & Namespaces
 	b.WriteString("\n")
@@ -225,13 +248,19 @@ func (s *simplePage) View() string {
 			for idx, r := range rs {
 				render := r.String()
 				if len(render) == 0 {
-					b.WriteString(mark + " " + grommet(idx == len(rs)-1) + "──" + r.Name + "\n")
+					b.WriteString(mark() + " " + grommet(idx == len(rs)-1) + "──" + r.Name + "\n")
+					if selected {
+						details = strings.Join(r.Details(), "\n")
+					}
 				} else {
 					for idx2, s := range render {
 						if idx2 == 0 {
-							b.WriteString(mark + " " + grommet(idx == len(rs)-1) + "──" + r.Name + s + "\n")
+							b.WriteString(mark() + " " + grommet(idx == len(rs)-1) + "──" + r.Name + s + "\n")
+							if selected {
+								details = strings.Join(r.Details(), "\n")
+							}
 						} else {
-							b.WriteString(unmark + " │  " + s + "\n")
+							b.WriteString(unmark() + " │  " + s + "\n")
 						}
 					}
 				}
@@ -254,7 +283,7 @@ func (s *simplePage) View() string {
 		sort.Strings(kinds)
 
 		for idx, kind := range kinds {
-			b.WriteString(unmark + " " + grommet(idx == len(kinds)-1) + "──" + bold.Render(kind) + "\n")
+			b.WriteString(unmark() + " " + grommet(idx == len(kinds)-1) + "──" + bold.Render(kind) + "\n")
 
 			rs := []Resource{}
 			rs = append(rs, resources[namespace][kind]...)
@@ -265,13 +294,19 @@ func (s *simplePage) View() string {
 			for idx2, r := range rs {
 				render := r.String()
 				if len(render) == 0 {
-					b.WriteString(mark + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + "\n")
+					b.WriteString(mark() + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + "\n")
+					if selected {
+						details = strings.Join(r.Details(), "\n")
+					}
 				} else {
 					for idx3, s := range render {
 						if idx3 == 0 {
-							b.WriteString(mark + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + s + "\n")
+							b.WriteString(mark() + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + s + "\n")
+							if selected {
+								details = strings.Join(r.Details(), "\n")
+							}
 						} else {
-							b.WriteString(unmark + " │   " + grommet2(idx2 == len(rs)-1) + "  " + s + "\n")
+							b.WriteString(unmark() + " │   " + grommet2(idx2 == len(rs)-1) + "  " + s + "\n")
 						}
 					}
 				}
@@ -279,14 +314,19 @@ func (s *simplePage) View() string {
 		}
 	}
 
-	s.viewport.SetContent(b.String()) //s.content)
+	content := b.String()
+
+	if curPosition > strings.Count(content, "\n") {
+		curPosition = 0
+	}
+
+	s.viewport.SetContent(content)
 
 	if !s.ready {
 		return "\n  Initializing..."
 	}
 
-	values := "a\nb\nc\n"
-	temp := lipgloss.JoinHorizontal(0, s.viewport.View(), values)
+	temp := lipgloss.JoinHorizontal(0, s.viewport.View(), details)
 
 	return fmt.Sprintf("%s\n%s\n%s", s.headerView(), temp, s.footerView())
 }

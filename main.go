@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"runtime/pprof"
 	"sort"
 	"strings"
 	"time"
@@ -98,6 +100,16 @@ func main() {
 	watchForPods(watcher, client)
 	watchForNamespaces(watcher, client)
 
+	// Start profiling
+	f, err := os.Create("khronoscope.prof")
+	if err != nil {
+		fmt.Println(err)
+		return
+
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	p := tea.NewProgram(
 		newSimplePage(),
 	)
@@ -142,12 +154,25 @@ func (s *simplePage) Init() tea.Cmd { return nil }
 
 // VIEW
 
+func grommet(is bool) string {
+	if !is {
+		return "├"
+	}
+	return "└"
+}
+func grommet2(is bool) string {
+	if !is {
+		return "│"
+	}
+	return " "
+}
+
 func (s *simplePage) View() string {
 
 	b := strings.Builder{}
 
-	count++
-	b.WriteString(fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog()))
+	// count++
+	// b.WriteString(fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog()))
 
 	snapshot := watcher.GetStateAtTime(time.Now().Add(adjust), "", "")
 
@@ -172,7 +197,7 @@ func (s *simplePage) View() string {
 		resources[r.Namespace] = temp
 	}
 
-	// Nodes
+	// Nodes & Namespaces
 	b.WriteString("\n")
 	for _, namespace := range namespaces {
 		if len(namespace) != 0 {
@@ -187,13 +212,25 @@ func (s *simplePage) View() string {
 		for _, kind := range kinds {
 			b.WriteString(bold.Render(kind) + "\n")
 
-			rs := []string{}
-			for _, resource := range resources[namespace][kind] {
-				rs = append(rs, resource.Name+resource.String())
-			}
-			sort.Strings(rs)
-			for _, r := range rs {
-				b.WriteString(" ├──" + r + "\n")
+			rs := []Resource{}
+			rs = append(rs, resources[namespace][kind]...)
+			sort.Slice(rs, func(i, j int) bool {
+				return rs[i].Name < rs[j].Name
+			})
+
+			for idx, r := range rs {
+				render := r.String()
+				if len(render) == 0 {
+					b.WriteString(" " + grommet(idx == len(rs)-1) + "──" + r.Name + "\n")
+				} else {
+					for idx2, s := range render {
+						if idx2 == 0 {
+							b.WriteString(" " + grommet(idx == len(rs)-1) + "──" + r.Name + s + "\n")
+						} else {
+							b.WriteString(" │  " + s + "\n")
+						}
+					}
+				}
 			}
 		}
 	}
@@ -212,16 +249,28 @@ func (s *simplePage) View() string {
 		}
 		sort.Strings(kinds)
 
-		for _, kind := range kinds {
-			b.WriteString(" ├──" + bold.Render(kind) + "\n")
+		for idx, kind := range kinds {
+			b.WriteString(" " + grommet(idx == len(kinds)-1) + "──" + bold.Render(kind) + "\n")
 
-			rs := []string{}
-			for _, resource := range resources[namespace][kind] {
-				rs = append(rs, resource.Name+resource.String())
-			}
-			sort.Strings(rs)
-			for _, r := range rs {
-				b.WriteString(" │   ├──" + r + "\n")
+			rs := []Resource{}
+			rs = append(rs, resources[namespace][kind]...)
+			sort.Slice(rs, func(i, j int) bool {
+				return rs[i].Name < rs[j].Name
+			})
+
+			for idx2, r := range rs {
+				render := r.String()
+				if len(render) == 0 {
+					b.WriteString(" │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + "\n")
+				} else {
+					for idx3, s := range render {
+						if idx3 == 0 {
+							b.WriteString(" │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + s + "\n")
+						} else {
+							b.WriteString(" │   " + grommet2(idx2 == len(rs)-1) + "  " + s + "\n")
+						}
+					}
+				}
 			}
 		}
 	}

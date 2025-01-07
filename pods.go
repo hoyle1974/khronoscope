@@ -17,27 +17,37 @@ type PodRenderer struct {
 	n *PodWatchMe
 }
 
-func (r PodRenderer) Render(resource Resource) string {
+func (r PodRenderer) Render(resource Resource) []string {
 	extra := resource.GetExtra()
 
-	out := ""
-	e, ok := extra["Metrics"]
-	if ok {
-		out += " - "
-		out += fmt.Sprintf("%v", e)
-	}
+	out := []string{}
+
+	s := ""
 	phase, ok := extra["Phase"]
 	if ok {
-		out += fmt.Sprintf(" [%v]", phase)
+		s += fmt.Sprintf(" [%v]", phase)
 	}
 	node, ok := extra["Node"]
 	if ok {
-		out += fmt.Sprintf(" Node:%s", node)
+		s += fmt.Sprintf(" Node:%s", node)
 	}
 	rt, ok := extra["StartTime"]
 	if ok {
-		out += fmt.Sprintf(" Up For:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+		s += fmt.Sprintf(" Uptime:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
 	}
+	out = append(out, s)
+
+	e, ok := extra["Metrics"]
+	if ok {
+		m := e.(map[string]string)
+		if len(m) > 0 {
+			out = append(out, "containers:")
+			for k, v := range m {
+				out = append(out, fmt.Sprintf("   %v - %v", k, v))
+			}
+		}
+	}
+
 	return out
 }
 
@@ -75,7 +85,7 @@ func (n *PodWatchMe) getMetricsForPod(pod *corev1.Pod) map[string]string {
 						cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuLimit.MilliValue())
 						memoryPercentage := calculatePercentage(memoryUsage.Value(), memoryLimit.Value())
 
-						metricsExtra[container.Name] = fmt.Sprintf("CPU: %s | Memory: %s", renderProgressBar(cpuPercentage), renderProgressBar(memoryPercentage))
+						metricsExtra[container.Name] = fmt.Sprintf("%s %s", renderProgressBar("CPU", cpuPercentage), renderProgressBar("Mem", memoryPercentage))
 					}
 				}
 			}

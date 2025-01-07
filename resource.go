@@ -5,7 +5,7 @@ import (
 )
 
 type ResourceRenderer interface {
-	Render(resource Resource) string
+	Render(resource Resource) []string
 }
 
 type Resource struct {
@@ -30,11 +30,11 @@ func NewResource(timestmap time.Time, kind string, namespace string, name string
 	}
 }
 
-func (r Resource) String() string {
+func (r Resource) String() []string {
 	if r.Renderer != nil {
 		return r.Renderer.Render(r)
 	}
-	return ""
+	return []string{}
 }
 
 func (r Resource) SetExtra(e map[string]any) Resource {

@@ -14,14 +14,14 @@ type ReplicaSetRenderer struct {
 	n *ReplicaSetWatchMe
 }
 
-func (r ReplicaSetRenderer) Render(resource Resource) string {
+func (r ReplicaSetRenderer) Render(resource Resource) []string {
 	extra := ""
 	e, ok := resource.GetExtra()["Status"]
 	if ok {
 		s := e.(appsv1.ReplicaSetStatus)
 		extra += fmt.Sprintf(" - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)
 	}
-	return extra
+	return []string{extra}
 }
 
 type ReplicaSetWatchMe struct {

@@ -18,19 +18,20 @@ type NodeRenderer struct {
 	n *NodeWatchMe
 }
 
-func (r NodeRenderer) Render(resource Resource) string {
+func (r NodeRenderer) Render(resource Resource) []string {
 	out := ""
 	extra := resource.GetExtra()
 	e, ok := extra["Metrics"]
 	if ok {
+		m := e.(map[string]string)
 		out += " - "
-		out += fmt.Sprintf("%v", e)
+		out += fmt.Sprintf("%v", m[resource.Name])
 	}
 	rt, ok := extra["StartTime"]
 	if ok {
-		out += fmt.Sprintf(" Up For:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
+		out += fmt.Sprintf(" Uptime:%s", time.Since(rt.(time.Time)).Truncate(time.Second))
 	}
-	return out
+	return []string{out}
 }
 
 type NodeWatchMe struct {
@@ -57,7 +58,7 @@ func (n *NodeWatchMe) getMetricsForNode(node *corev1.Node) map[string]string {
 			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuCapacity.MilliValue())
 			memPercentage := calculatePercentage(memUsage.Value(), memCapacity.Value())
 
-			metricsExtra[node.Name] = fmt.Sprintf("CPU: %s | Memory: %s", renderProgressBar(cpuPercentage), renderProgressBar(memPercentage))
+			metricsExtra[node.Name] = fmt.Sprintf("%s %s", renderProgressBar("CPU", cpuPercentage), renderProgressBar("Mem", memPercentage))
 
 			return metricsExtra
 		}

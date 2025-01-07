@@ -377,7 +377,7 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// we can initialize the viewport. The initial dimensions come in
 			// quickly, though asynchronously, which is why we wait for them
 			// here.
-			s.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
+			s.viewport = viewport.New(msg.Width-20, msg.Height-verticalMarginHeight)
 			s.viewport.YPosition = headerHeight
 			s.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 			s.ready = true
@@ -388,7 +388,7 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Render the viewport one line below the header.
 			s.viewport.YPosition = headerHeight + 1
 		} else {
-			s.viewport.Width = msg.Width
+			s.viewport.Width = msg.Width - 20
 			s.viewport.Height = msg.Height - verticalMarginHeight
 		}
 

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -23,6 +25,10 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 	s := ""
 
 	if details {
+		pod := resource.Object.(*corev1.Pod)
+
+		out = append(out, fmt.Sprintf("UID: %v", pod.UID))
+
 		phase, ok := extra["Phase"]
 		if ok {
 			s += fmt.Sprintf("Phase: %v\n", phase)
@@ -47,6 +53,44 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 				}
 			}
 		}
+
+		out = append(out, fmt.Sprintf("Generation: %v", pod.GetGeneration()))
+
+		getContainerState := func(cname string) string {
+			for _, status := range pod.Status.ContainerStatuses {
+				if status.Name == cname {
+					if status.State.Waiting != nil {
+						return "Waiting: " + status.State.Waiting.Reason
+					}
+					if status.State.Running != nil {
+						return fmt.Sprintf("Running")
+					}
+					if status.State.Terminated != nil {
+						return "Terminated: " + status.State.Terminated.Reason
+					}
+					return "unknown"
+				}
+			}
+			return ""
+		}
+
+		// Print container information
+		out = append(out, fmt.Sprintf("Containers:"))
+		for _, container := range pod.Spec.Containers {
+			out = append(out, fmt.Sprintf("   %s - %s : %s", container.Name, container.Image, getContainerState(container.Name)))
+		}
+
+		out = append(out, fmt.Sprintf("Labels:"))
+
+		// Get sorted keys
+		labels := pod.GetLabels()
+		sortedKeys := slices.Sorted(maps.Keys(labels))
+
+		// Iterate over the map in sorted order
+		for _, k := range sortedKeys {
+			out = append(out, fmt.Sprintf("   %v : %v", k, labels[k]))
+		}
+
 	} else {
 		phase, ok := extra["Phase"]
 		if ok {

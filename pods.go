@@ -20,8 +20,10 @@ import (
 )
 
 func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
-	podLogOpts := corev1.PodLogOptions{}
-	req := client.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
+	lines := int64(15)
+	req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+		TailLines: &lines,
+	})
 	podLogs, err := req.Stream(context.Background())
 	if err != nil {
 		return "", fmt.Errorf("error opening stream: %w", err)

@@ -8,13 +8,13 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 - Connects to your current Kubernetes cluster
 - Supports the following resources: Namespaces, Nodes, Pods, ReplicaSets, DaemonSets, Deployments, and Services
 - Controls
-	Up/Down - Move the resource selection up and down the tree
-	Alt Up/Alt Down - Move by a larger step value
-	Shift Up/Shift Down - Move the detail window up and down 
-	Left/Right - Go backwards or forwards in time
-	Esc - Jump back to current time
-	Tap - Switch view orientation
-	Ctrl-C - Exit
+	- Up/Down - Move the resource selection up and down the tree
+	- Alt Up/Alt Down - Move by a larger step value
+	- Shift Up/Shift Down - Move the detail window up and down 
+	- Left/Right - Go backwards or forwards in time
+	- Esc - Jump back to current time
+	- Tab - Switch view orientation
+	- Ctrl-C - Exit
 
 Example:
 <img width="1452" alt="Screenshot 2025-01-10 at 2 07 26 PM" src="https://github.com/user-attachments/assets/d4eeac64-b203-40ff-a668-631055b06639" />

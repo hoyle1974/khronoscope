@@ -9,6 +9,7 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 - Supports the following resources: Namespaces, Nodes, Pods, ReplicaSets, DaemonSets, Deployments, and Services
 - Controls
 	- Up/Down - Move the resource selection up and down the tree
+   	- Enter - Toggle folding the tree node you have selected
 	- Alt Up/Alt Down - Move by a larger step value
 	- Shift Up/Shift Down - Move the detail window up and down 
 	- Left/Right - Go backwards or forwards in time

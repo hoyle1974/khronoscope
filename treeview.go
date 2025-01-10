@@ -17,6 +17,7 @@ type Node interface {
 	IsLeaf() bool
 	Toggle()
 	GetExpand() bool
+	GetUid() string
 }
 
 type TreeNode struct {
@@ -30,6 +31,7 @@ func (tn *TreeNode) GetParent() Node { return tn.Parent }
 func (tn *TreeNode) IsLeaf() bool    { return false }
 func (tn *TreeNode) Toggle()         { tn.Expand = !tn.Expand }
 func (tn *TreeNode) GetExpand() bool { return tn.Expand }
+func (tn *TreeNode) GetUid() string  { return "" }
 
 type TreeLeaf struct {
 	Parent   Node
@@ -41,6 +43,7 @@ func (tl *TreeLeaf) GetParent() Node { return tl.Parent }
 func (tl *TreeLeaf) IsLeaf() bool    { return true }
 func (tl *TreeLeaf) Toggle()         { tl.Expand = !tl.Expand }
 func (tl *TreeLeaf) GetExpand() bool { return tl.Expand }
+func (tl *TreeLeaf) GetUid() string  { return tl.Resource.Uid }
 
 type TreeView struct {
 	cursor     TreeViewCursor
@@ -71,11 +74,13 @@ func (t *TreeView) Up() {
 	if t.cursor.Pos == 0 {
 		return
 	}
+	t.cursor.Uid = ""
 	t.cursor.Pos--
 
 }
 func (t *TreeView) Down() {
 	t.cursor.Pos++
+	t.cursor.Uid = ""
 }
 func (t *TreeView) PageUp() {
 	for idx := 0; idx < 10; idx++ {
@@ -93,8 +98,60 @@ func (t *TreeView) Toggle() {
 	}
 }
 
+func (t *TreeView) findPositionOfResource(uid string) int {
+	idx := -1
+
+	idx++
+
+	if t.namespaces.Expand {
+		for _, n := range t.namespaces.Children {
+			idx++
+			if uid == n.GetUid() {
+				return idx
+			}
+		}
+	}
+
+	idx++
+
+	if t.nodes.Expand {
+
+		for _, n := range t.nodes.Children {
+			idx++
+			if uid == n.GetUid() {
+				return idx
+			}
+
+		}
+	}
+
+	idx++
+
+	if t.details.Expand {
+		for _, n1 := range t.details.Children {
+			idx++
+			if n1.GetExpand() {
+				for _, n2 := range n1.(*TreeNode).Children {
+					idx++
+					if n2.GetExpand() {
+						for _, n3 := range n2.(*TreeNode).Children {
+							idx++
+							if uid == n3.GetUid() {
+								return idx
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return -1
+}
+
 func (t *TreeView) findNodeAt(pos int) Node {
 	idx := -1
+	var retN Node
 
 	idx++
 	if idx == pos {
@@ -105,14 +162,14 @@ func (t *TreeView) findNodeAt(pos int) Node {
 		for _, n := range t.namespaces.Children {
 			idx++
 			if idx == pos {
-				return n
+				retN = n
 			}
 		}
 	}
 
 	idx++
 	if idx == pos {
-		return t.nodes
+		retN = t.nodes
 	}
 
 	if t.nodes.Expand {
@@ -120,33 +177,33 @@ func (t *TreeView) findNodeAt(pos int) Node {
 		for _, n := range t.nodes.Children {
 			idx++
 			if idx == pos {
-				return n
+				retN = n
 			}
 		}
 	}
 
 	idx++
 	if idx == pos {
-		return t.details
+		retN = t.details
 	}
 
 	if t.details.Expand {
 		for _, n1 := range t.details.Children {
 			idx++
 			if idx == pos {
-				return n1
+				retN = n1
 			}
 			if n1.GetExpand() {
 				for _, n2 := range n1.(*TreeNode).Children {
 					idx++
 					if idx == pos {
-						return n2
+						retN = n2
 					}
 					if n2.GetExpand() {
 						for _, n3 := range n2.(*TreeNode).Children {
 							idx++
 							if idx == pos {
-								return n3
+								retN = n3
 							}
 						}
 					}
@@ -155,13 +212,24 @@ func (t *TreeView) findNodeAt(pos int) Node {
 		}
 	}
 
-	return nil
+	if t.cursor.Pos > idx {
+		t.cursor.Pos = idx
+	}
+
+	return retN
 }
 
 func (t *TreeView) Render() (string, int, *Resource) {
 	b := strings.Builder{}
 
 	var retResource *Resource
+
+	if len(t.cursor.Uid) != 0 {
+		p := t.findPositionOfResource(t.cursor.Uid)
+		if p != -1 {
+			t.cursor.Pos = p
+		}
+	}
 
 	if node := t.findNodeAt(t.cursor.Pos); node != nil {
 		if node.IsLeaf() {

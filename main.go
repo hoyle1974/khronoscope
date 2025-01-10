@@ -197,7 +197,7 @@ func (m *simplePage) View() string {
 	if m.viewMode == 0 {
 		temp = lipgloss.JoinHorizontal(0, fixWidth(m.treeView.View(), m.width/2), " ", m.detailView.View())
 	} else {
-		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), m.detailView.View())
+		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), " ", m.detailView.View())
 	}
 
 	// log := fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog())
@@ -220,13 +220,13 @@ func (m *simplePage) windowResize(msg tea.WindowSizeMsg) {
 			m.treeView.Width = msg.Width / 2
 			m.treeView.Height = msg.Height - verticalMarginHeight
 
-			m.detailView.Width = msg.Width / 2
+			m.detailView.Width = (msg.Width / 2) - 1
 			m.detailView.Height = msg.Height - verticalMarginHeight
 		} else {
 			m.treeView.Width = msg.Width
 			m.treeView.Height = msg.Height/2 - verticalMarginHeight
 
-			m.detailView.Width = msg.Width
+			m.detailView.Width = msg.Width - 1
 			m.detailView.Height = msg.Height/2 - verticalMarginHeight
 		}
 	}

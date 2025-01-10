@@ -95,12 +95,13 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 	e, ok := extra["Metrics"]
 	if ok {
 		m := e.(map[string]string)
-		out += " - "
 		out += fmt.Sprintf("%v", m[resource.Name])
 	}
+	out += " " + resource.Name
+
 	rt, ok := extra["StartTime"]
 	if ok {
-		out += fmt.Sprintf(" Uptime:%v", rt)
+		out += fmt.Sprintf(" %v", rt)
 	}
 
 	return []string{out}

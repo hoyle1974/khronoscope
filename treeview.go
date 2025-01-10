@@ -266,11 +266,11 @@ func (t *TreeView) Render() (string, int, *Resource) {
 
 				render := leaf.Resource.String()
 				if len(render) == 0 {
-					b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "──" + leaf.Resource.Name + "\n")
+					b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "── " + leaf.Resource.Name + "\n")
 				} else {
 					for idx2, s := range render {
 						if idx2 == 0 {
-							b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "──" + leaf.Resource.Name + s + "\n")
+							b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "── " + s + "\n")
 						} else {
 							b.WriteString(line(leaf) + " │  " + s + "\n")
 						}
@@ -295,7 +295,7 @@ func (t *TreeView) Render() (string, int, *Resource) {
 					kindTreeNode := kindNode.(*TreeNode)
 
 					if kindTreeNode.Expand {
-						b.WriteString(line(kindTreeNode) + " " + grommet(idx2 == l-1) + "──" + kindTreeNode.Title + "\n")
+						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1) + "── " + kindTreeNode.Title + "\n")
 						l2 := len(kindTreeNode.Children)
 						for idx, resourceNode := range kindTreeNode.Children {
 							resourceLeafNode := resourceNode.(*TreeLeaf)
@@ -306,10 +306,10 @@ func (t *TreeView) Render() (string, int, *Resource) {
 							} else {
 								txt = strings.Join(render, " ")
 							}
-							b.WriteString(line(resourceLeafNode) + " " + grommet2(idx2 == l-1) + "  " + grommet(idx == l2-1) + "──" + txt + "\n")
+							b.WriteString(line(resourceLeafNode) + "  " + grommet2(idx2 == l-1) + "   " + grommet(idx == l2-1) + "──" + txt + "\n")
 						}
 					} else {
-						b.WriteString(line(kindTreeNode) + " " + grommet(idx2 == l-1) + "──" + kindTreeNode.Title + " { ... }\n")
+						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1) + "── " + kindTreeNode.Title + " { ... }\n")
 					}
 				}
 			} else {

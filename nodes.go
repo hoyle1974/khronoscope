@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,64 @@ import (
 
 type NodeRenderer struct {
 	n *NodeWatchMe
+}
+
+func describeNode(node *corev1.Node) []string {
+	out := []string{}
+
+	out = append(out, fmt.Sprintf("Roles: %s", getNodeRoles(node)))
+
+	out = append(out, RenderMapOfStrings("Labels:", node.GetLabels())...)
+	out = append(out, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
+
+	out = append(out, fmt.Sprintf("Capacity:"))
+	for resource, quantity := range NewMapRangeFunc(node.Status.Capacity) {
+		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
+	}
+	out = append(out, fmt.Sprintf("Allocatable:"))
+	for resource, quantity := range NewMapRangeFunc(node.Status.Allocatable) {
+		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
+	}
+
+	out = append(out, fmt.Sprintf("Conditions:"))
+	for _, condition := range node.Status.Conditions {
+		out = append(out, fmt.Sprintf("  Type: %s", condition.Type))
+		out = append(out, fmt.Sprintf("  Status: %s", condition.Status))
+		out = append(out, fmt.Sprintf("  LastHeartbeatTime: %s", condition.LastHeartbeatTime.Time.Format(time.RFC3339)))
+		out = append(out, fmt.Sprintf("  LastTransitionTime: %s", condition.LastTransitionTime.Time.Format(time.RFC3339)))
+		out = append(out, fmt.Sprintf("  Reason: %s", condition.Reason))
+		out = append(out, fmt.Sprintf("  Message: %s", condition.Message))
+		out = append(out, fmt.Sprintf(""))
+	}
+
+	out = append(out, fmt.Sprintf("Addresses:"))
+	for _, address := range node.Status.Addresses {
+		out = append(out, fmt.Sprintf("  %s: %s", address.Type, address.Address))
+	}
+
+	out = append(out, fmt.Sprintf("Images:"))
+	for _, image := range node.Status.Images {
+		out = append(out, fmt.Sprintf("  - Names: %s", strings.Join(image.Names, ", ")))
+		out = append(out, fmt.Sprintf("    Size: %d bytes", image.SizeBytes))
+	}
+
+	return out
+}
+
+// Helper function to get node roles
+func getNodeRoles(node *corev1.Node) string {
+	roles := []string{}
+	for label := range node.Labels {
+		if strings.HasPrefix(label, "kubernetes.io/role/") {
+			role := strings.TrimPrefix(label, "kubernetes.io/role/")
+			roles = append(roles, role)
+		}
+	}
+	if len(roles) == 0 {
+		return "<none>"
+	}
+	sort.Strings(roles)
+	return strings.Join(roles, ", ")
 }
 
 func getPodsOnNode(client kubernetes.Interface, nodeName string) ([]corev1.Pod, error) {
@@ -49,8 +108,8 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 			ret = append(ret, fmt.Sprintf("%v", m[resource.Name]))
 		}
 
-		ret = append(ret, RenderMapOfStrings("Labels:", node.GetLabels())...)
-		ret = append(ret, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
+		// ret = append(ret, RenderMapOfStrings("Labels:", node.GetLabels())...)
+		// ret = append(ret, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
 
 		if p, ok := extra["Pods"]; ok {
 			ret = append(ret, "")
@@ -91,6 +150,8 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 			}
 
 		}
+
+		ret = append(ret, describeNode(node)...)
 
 		return ret
 	}

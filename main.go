@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"runtime/pprof"
-	"sort"
 	"strings"
 	"time"
 
@@ -131,23 +130,31 @@ func main() {
 var adjust = time.Duration(0)
 
 type simplePage struct {
-	ready    bool
-	viewport viewport.Model
+	ready             bool
+	viewMode          int
+	width             int
+	height            int
+	treeView          viewport.Model
+	detailView        viewport.Model
+	lastWindowSizeMsg tea.WindowSizeMsg
+	tv                *TreeView
 }
 
 func newSimplePage() *simplePage {
-	return &simplePage{}
+	return &simplePage{
+		tv: NewTreeView(),
+	}
 }
 
 func (m *simplePage) headerView() string {
 	title := titleStyle.Render("Khronoscope")
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)))
+	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
 
 func (m *simplePage) footerView() string {
-	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(info)))
+	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.treeView.ScrollPercent()*100))
+	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(info)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
@@ -155,185 +162,104 @@ func (s *simplePage) Init() tea.Cmd { return nil }
 
 // VIEW
 
-func grommet(is bool) string {
-	if !is {
-		return "├"
-	}
-	return "└"
-}
-func grommet2(is bool) string {
-	if !is {
-		return "│"
-	}
-	return " "
-}
-
 var curPosition = 0
+var curRealPosition = 0
 var count = 0
 
-func (s *simplePage) View() string {
+func (m *simplePage) View() string {
+	m.tv.AddResources(watcher.GetStateAtTime(time.Now().Add(adjust), "", ""))
 
-	b := strings.Builder{}
-
-	count++
-	b.WriteString(fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog()))
-
-	now := time.Now()
-	snapshot := watcher.GetStateAtTime(now.Add(adjust), "", "")
-
-	// Namespaces
-	namespaces := []string{}
-	for _, r := range snapshot {
-		if r.Kind == "Namespace" {
-			namespaces = append(namespaces, r.Name)
-		}
-	}
-	namespaces = append(namespaces, "")
-	sort.Strings(namespaces)
-
-	// Map of resources by namespace/kind
-	resources := map[string]map[string][]Resource{}
-	for _, r := range snapshot {
-		temp, ok := resources[r.Namespace]
-		if !ok {
-			temp = map[string][]Resource{}
-		}
-		temp[r.Kind] = append(temp[r.Kind], r)
-		resources[r.Namespace] = temp
+	treeContent, focusLine, resource := m.tv.Render()
+	m.treeView.SetContent(treeContent)
+	m.treeView.YOffset = focusLine - (m.treeView.Height / 2)
+	if m.treeView.YOffset < 0 {
+		m.treeView.YOffset = 0
 	}
 
-	pos := -1
-	selected := false
-	details := ""
-
-	mark := func() string {
-		pos++
-		if curPosition == pos {
-			selected = true
-			return "[*] "
-		}
-		selected = false
-		return "[ ] "
+	if resource != nil {
+		m.detailView.SetContent(fmt.Sprintf("UID: %s\n", resource.Uid) + strings.Join(resource.Details(), "\n"))
 	}
 
-	unmark := func() string {
-		return "    "
-	}
-
-	// Nodes & Namespaces
-	b.WriteString("\n")
-	for _, namespace := range namespaces {
-		if len(namespace) != 0 {
-			continue // skip things that are not nodes
-		}
-		kinds := []string{}
-		for kind, _ := range resources[namespace] {
-			kinds = append(kinds, kind)
-		}
-		sort.Strings(kinds)
-
-		for _, kind := range kinds {
-			b.WriteString(bold.Render(kind) + "\n")
-
-			rs := []Resource{}
-			rs = append(rs, resources[namespace][kind]...)
-			sort.Slice(rs, func(i, j int) bool {
-				return rs[i].Name < rs[j].Name
-			})
-
-			for idx, r := range rs {
-				render := r.String()
-				if len(render) == 0 {
-					b.WriteString(mark() + " " + grommet(idx == len(rs)-1) + "──" + r.Name + "\n")
-					if selected {
-						details = strings.Join(r.Details(), "\n")
-					}
-				} else {
-					for idx2, s := range render {
-						if idx2 == 0 {
-							b.WriteString(mark() + " " + grommet(idx == len(rs)-1) + "──" + r.Name + s + "\n")
-							if selected {
-								details = strings.Join(r.Details(), "\n")
-							}
-						} else {
-							b.WriteString(unmark() + " │  " + s + "\n")
-						}
-					}
-				}
+	fixWidth := func(s string, width int) string {
+		ss := strings.Split(s, "\n")
+		if len(ss) > 0 {
+			// Calculate the number of spaces needed
+			padding := width - len(ss[0])
+			if padding > 0 {
+				// Append spaces to the string
+				ss[0] = ss[0] + strings.Repeat(" ", padding)
 			}
 		}
+		return strings.Join(ss, "\n")
 	}
 
-	// All namespaced resources
-	b.WriteString("\n")
-	for _, namespace := range namespaces {
-		if len(namespace) == 0 {
-			continue // skip nodes
-		}
-		b.WriteString(bold.Render(namespace) + "\n")
-
-		kinds := []string{}
-		for kind, _ := range resources[namespace] {
-			kinds = append(kinds, kind)
-		}
-		sort.Strings(kinds)
-
-		for idx, kind := range kinds {
-			b.WriteString(unmark() + " " + grommet(idx == len(kinds)-1) + "──" + bold.Render(kind) + "\n")
-
-			rs := []Resource{}
-			rs = append(rs, resources[namespace][kind]...)
-			sort.Slice(rs, func(i, j int) bool {
-				return rs[i].Name < rs[j].Name
-			})
-
-			for idx2, r := range rs {
-				render := r.String()
-				if len(render) == 0 {
-					b.WriteString(mark() + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + "\n")
-					if selected {
-						details = strings.Join(r.Details(), "\n")
-					}
-				} else {
-					for idx3, s := range render {
-						if idx3 == 0 {
-							b.WriteString(mark() + " │   " + grommet(idx2 == len(rs)-1) + "──" + r.Name + s + "\n")
-							if selected {
-								details = strings.Join(r.Details(), "\n")
-							}
-						} else {
-							b.WriteString(unmark() + " │   " + grommet2(idx2 == len(rs)-1) + "  " + s + "\n")
-						}
-					}
-				}
-			}
-		}
+	temp := ""
+	if m.viewMode == 0 {
+		temp = lipgloss.JoinHorizontal(0, fixWidth(m.treeView.View(), m.width/2), " ", m.detailView.View())
+	} else {
+		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), m.detailView.View())
 	}
 
-	content := b.String()
+	// log := fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog())
 
-	if curPosition < 0 {
-		curPosition = 0
-	} else if curPosition > pos {
-		curPosition = pos
-	}
-
-	s.viewport.SetContent(content)
-
-	if !s.ready {
-		return "\n  Initializing..."
-	}
-
-	ds := lipgloss.NewStyle().Width(60).Height(s.viewport.Height)
-
-	temp := lipgloss.JoinHorizontal(0, s.viewport.View(), ds.Render(details))
-
-	return fmt.Sprintf("%s\n%s\n%s", s.headerView(), temp, s.footerView())
+	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), temp, m.footerView())
 }
 
 // UPDATE
+func (m *simplePage) windowResize(msg tea.WindowSizeMsg) {
+	m.width = msg.Width
+	m.height = msg.Height
 
-func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.lastWindowSizeMsg = msg
+	headerHeight := lipgloss.Height(m.headerView())
+	footerHeight := lipgloss.Height(m.footerView())
+	verticalMarginHeight := headerHeight + footerHeight
+
+	updateViews := func() {
+		if m.viewMode == 0 {
+			m.treeView.Width = msg.Width / 2
+			m.treeView.Height = msg.Height - verticalMarginHeight
+
+			m.detailView.Width = msg.Width / 2
+			m.detailView.Height = msg.Height - verticalMarginHeight
+		} else {
+			m.treeView.Width = msg.Width
+			m.treeView.Height = msg.Height/2 - verticalMarginHeight
+
+			m.detailView.Width = msg.Width
+			m.detailView.Height = msg.Height/2 - verticalMarginHeight
+		}
+	}
+
+	if !m.ready {
+		// Since this program is using the full size of the viewport we
+		// need to wait until we've received the window dimensions before
+		// we can initialize the viewport. The initial dimensions come in
+		// quickly, though asynchronously, which is why we wait for them
+		// here.
+		m.treeView = viewport.New(msg.Width/2, msg.Height-verticalMarginHeight)
+		m.treeView.YPosition = headerHeight
+		m.treeView.HighPerformanceRendering = useHighPerformanceRenderer
+
+		m.detailView = viewport.New(msg.Width/2, msg.Height-verticalMarginHeight)
+		m.detailView.YPosition = headerHeight
+		m.detailView.HighPerformanceRendering = useHighPerformanceRenderer
+
+		m.ready = true
+
+		updateViews()
+
+		// This is only necessary for high performance rendering, which in
+		// most cases you won't need.
+		//
+		// Render the viewport one line below the header.
+		m.treeView.YPosition = headerHeight + 1
+	} else {
+		updateViews()
+	}
+}
+
+func (m *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -342,71 +268,55 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "tab":
+			m.viewMode++
+			m.viewMode %= 2
+			m.windowResize(m.lastWindowSizeMsg)
+			return m, nil
 		case "ctrl+c":
-			return s, tea.Quit
+			return m, tea.Quit
 		case "left":
 			adjust -= time.Second
-			return s, nil
+			return m, nil
 		case "right":
 			adjust += time.Second
 			if adjust > 0 {
 				adjust = 0
 			}
-			return s, nil
+			return m, nil
 		case "enter":
 			adjust = 0
-			return s, nil
+			m.tv.Toggle()
+			return m, nil
 		case "up":
-			curPosition--
-			s.viewport.LineUp(1)
-			//begin := s.viewport.YOffset
-			//end := s.viewport.YOffset + s.viewport.Height
-
-			return s, nil
+			m.tv.Up()
+			return m, nil
 		case "down":
-			curPosition++
-			s.viewport.LineDown(1)
-			return s, nil
+			m.tv.Down()
+			return m, nil
+		case "alt+up":
+			m.tv.PageUp()
+			return m, nil
+		case "alt+down":
+			m.tv.PageDown()
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
-		headerHeight := lipgloss.Height(s.headerView())
-		footerHeight := lipgloss.Height(s.footerView())
-		verticalMarginHeight := headerHeight + footerHeight
-
-		if !s.ready {
-			// Since this program is using the full size of the viewport we
-			// need to wait until we've received the window dimensions before
-			// we can initialize the viewport. The initial dimensions come in
-			// quickly, though asynchronously, which is why we wait for them
-			// here.
-			s.viewport = viewport.New(msg.Width-20, msg.Height-verticalMarginHeight)
-			s.viewport.YPosition = headerHeight
-			s.viewport.HighPerformanceRendering = useHighPerformanceRenderer
-			s.ready = true
-
-			// This is only necessary for high performance rendering, which in
-			// most cases you won't need.
-			//
-			// Render the viewport one line below the header.
-			s.viewport.YPosition = headerHeight + 1
-		} else {
-			s.viewport.Width = msg.Width - 20
-			s.viewport.Height = msg.Height - verticalMarginHeight
-		}
+		m.windowResize(msg)
 
 		if useHighPerformanceRenderer {
 			// Render (or re-render) the whole viewport. Necessary both to
 			// initialize the viewport and when the window is resized.
 			//
 			// This is needed for high-performance rendering only.
-			cmds = append(cmds, viewport.Sync(s.viewport))
+			cmds = append(cmds, viewport.Sync(m.treeView))
 		}
 
 	case int:
-		s.viewport, cmd = s.viewport.Update(msg)
+		m.treeView, cmd = m.treeView.Update(msg)
 		cmds = append(cmds, cmd)
 
-		return s, tea.Batch(cmds...)
+		return m, tea.Batch(cmds...)
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -414,5 +324,5 @@ func (s *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// cmds = append(cmds, cmd)
 
 	// return s, tea.Batch(cmds...)
-	return s, nil
+	return m, nil
 }

@@ -1,6 +1,6 @@
 module github.com/hoyle1974/khronoscope
 
-go 1.23.1
+go 1.23.4
 
 require (
 	github.com/charmbracelet/bubbletea v1.2.4
@@ -9,7 +9,7 @@ require (
 	k8s.io/client-go v0.32.0
 )
 
-require github.com/charmbracelet/bubbles v0.16.1 // indirect
+require github.com/charmbracelet/bubbles v0.16.1
 
 require (
 	github.com/alitto/pond/v2 v2.1.6
@@ -46,7 +46,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/savannahostrowski/tree-bubble v0.0.0-20230724043728-d7bb06a8a67e
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/net v0.30.0 // indirect

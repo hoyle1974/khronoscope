@@ -19,7 +19,22 @@ import (
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
+func grommet(is bool) string {
+	if !is {
+		return "├"
+	}
+	return "└"
+}
+func grommet2(is bool) string {
+	if !is {
+		return "│"
+	}
+	return " "
+}
+
 func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
+	return "", nil
+
 	lines := int64(15)
 	req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
 		TailLines: &lines,
@@ -51,7 +66,8 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 	if details {
 		pod := resource.Object.(*corev1.Pod)
 
-		out = append(out, fmt.Sprintf("UID: %v", pod.UID))
+		out = append(out, fmt.Sprintf("Name: %s", pod.Name))
+		out = append(out, fmt.Sprintf("Namespace: %s", pod.Namespace))
 
 		phase, ok := extra["Phase"]
 		if ok {
@@ -72,8 +88,9 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 			m := e.(map[string]string)
 			if len(m) > 0 {
 				out = append(out, "containers:")
-				for k, v := range m {
-					out = append(out, fmt.Sprintf("   %v - %v", k, v))
+				sortedKeys := slices.Sorted(maps.Keys(m))
+				for _, k := range sortedKeys {
+					out = append(out, fmt.Sprintf("   %v - %v", k, m[k]))
 				}
 			}
 		}
@@ -141,8 +158,9 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		if ok {
 			m := e.(map[string]string)
 			if len(m) > 0 {
-				for k, v := range m {
-					s += fmt.Sprintf(" %v {%v}", k, v)
+				sortedKeys := slices.Sorted(maps.Keys(m))
+				for _, k := range sortedKeys {
+					s += fmt.Sprintf(" %v {%v}", k, m[k])
 				}
 			}
 		}
@@ -269,15 +287,15 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 
 func (n *PodWatchMe) Add(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
+	return NewResource(string(pod.ObjectMeta.GetUID()), pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
 }
 func (n *PodWatchMe) Modified(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
+	return NewResource(string(pod.ObjectMeta.GetUID()), time.Now(), n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
 }
 func (n *PodWatchMe) Del(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	r := NewResource(time.Now() /*pod.DeletionTimestamp.Time*/, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
+	r := NewResource(string(pod.ObjectMeta.GetUID()), time.Now() /*pod.DeletionTimestamp.Time*/, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
 	return r
 }
 

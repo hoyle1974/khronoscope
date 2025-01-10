@@ -7,6 +7,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,9 +19,47 @@ type NodeRenderer struct {
 	n *NodeWatchMe
 }
 
+func getPodsOnNode(client kubernetes.Interface, nodeName string) ([]corev1.Pod, error) {
+	listOptions := metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + nodeName,
+	}
+	pods, err := client.CoreV1().Pods("").List(context.TODO(), listOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods: %w", err)
+	}
+	return pods.Items, nil
+}
+
 func (r NodeRenderer) Render(resource Resource, details bool) []string {
-	out := ""
 	extra := resource.GetExtra()
+
+	if details {
+		ret := []string{}
+		ret = append(ret, "Name: "+resource.Name)
+
+		if rt, ok := extra["StartTime"]; ok {
+			ret = append(ret, fmt.Sprintf(" Uptime:%v", rt))
+		}
+		if e, ok := extra["Metrics"]; ok {
+			ret = append(ret, "")
+			ret = append(ret, "Metrics: ")
+			m := e.(map[string]string)
+			ret = append(ret, fmt.Sprintf("%v", m[resource.Name]))
+		}
+
+		if p, ok := extra["Pods"]; ok {
+			ret = append(ret, "")
+			ret = append(ret, "Pods: ")
+			pods := p.([]corev1.Pod)
+			for _, pod := range pods {
+				ret = append(ret, "   "+pod.Namespace+"/"+pod.Name)
+			}
+		}
+
+		return ret
+	}
+
+	out := ""
 	e, ok := extra["Metrics"]
 	if ok {
 		m := e.(map[string]string)
@@ -31,6 +70,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 	if ok {
 		out += fmt.Sprintf(" Uptime:%v", rt)
 	}
+
 	return []string{out}
 }
 
@@ -74,8 +114,15 @@ func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
 		resource = resource.SetExtraKV("Metrics", metricsExtra)
 		resource = resource.SetExtraKV("StartTime", time.Since(node.ObjectMeta.CreationTimestamp.Time).Truncate(time.Second))
 		resource.Timestamp = time.Now()
-		n.w.Update(resource)
 	}
+
+	pods, err := getPodsOnNode(n.k.client, node.Name)
+	if err == nil {
+		resource = resource.SetExtraKV("Pods", pods)
+	}
+
+	n.w.Update(resource)
+
 }
 
 func (n *NodeWatchMe) Tick() {
@@ -131,15 +178,15 @@ func (n *NodeWatchMe) update(obj runtime.Object) *Resource {
 
 func (n *NodeWatchMe) Add(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
+	return NewResource(string(node.ObjectMeta.GetUID()), node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 }
 func (n *NodeWatchMe) Modified(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
+	return NewResource(string(node.ObjectMeta.GetUID()), time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 }
 func (n *NodeWatchMe) Del(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
+	return NewResource(string(node.ObjectMeta.GetUID()), time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
 
 }
 

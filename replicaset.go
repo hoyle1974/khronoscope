@@ -60,17 +60,17 @@ func (n ReplicaSetWatchMe) getExtra(rs *appsv1.ReplicaSet) map[string]any {
 
 func (n ReplicaSetWatchMe) Add(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(rs.ObjectMeta.CreationTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
+	return NewResource(string(rs.ObjectMeta.GetUID()), rs.ObjectMeta.CreationTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
 
 }
 func (n ReplicaSetWatchMe) Modified(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
+	return NewResource(string(rs.ObjectMeta.GetUID()), time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
 
 }
 func (n ReplicaSetWatchMe) Del(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
+	return NewResource(string(rs.ObjectMeta.GetUID()), time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
 
 }
 

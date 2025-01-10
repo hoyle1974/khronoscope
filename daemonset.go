@@ -39,17 +39,17 @@ func (n DaemonSetWatchMe) Valid(obj runtime.Object) bool {
 
 func (n DaemonSetWatchMe) Add(obj runtime.Object) Resource {
 	ds := n.convert(obj)
-	return NewResource(ds.ObjectMeta.CreationTimestamp.Time, n.Kind(), ds.Namespace, ds.Name, ds, nil)
+	return NewResource(string(ds.ObjectMeta.GetUID()), ds.ObjectMeta.CreationTimestamp.Time, n.Kind(), ds.Namespace, ds.Name, ds, nil)
 
 }
 func (n DaemonSetWatchMe) Modified(obj runtime.Object) Resource {
 	ds := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, nil)
+	return NewResource(string(ds.ObjectMeta.GetUID()), time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, nil)
 
 }
 func (n DaemonSetWatchMe) Del(obj runtime.Object) Resource {
 	ds := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, nil)
+	return NewResource(string(ds.ObjectMeta.GetUID()), time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, nil)
 }
 
 func watchForDaemonSet(watcher *Watcher, k KhronosConn) {

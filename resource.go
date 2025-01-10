@@ -9,6 +9,7 @@ type ResourceRenderer interface {
 }
 
 type Resource struct {
+	Uid       string
 	Timestamp time.Time
 	Kind      string
 	Namespace string
@@ -18,8 +19,9 @@ type Resource struct {
 	Renderer  ResourceRenderer
 }
 
-func NewResource(timestmap time.Time, kind string, namespace string, name string, obj any, renderer ResourceRenderer) Resource {
+func NewResource(uuid string, timestmap time.Time, kind string, namespace string, name string, obj any, renderer ResourceRenderer) Resource {
 	return Resource{
+		Uid:       uuid,
 		Timestamp: timestmap,
 		Kind:      kind,
 		Namespace: namespace,

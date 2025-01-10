@@ -38,16 +38,16 @@ func (n DeploymentWatchMe) Valid(obj runtime.Object) bool {
 
 func (n DeploymentWatchMe) Add(obj runtime.Object) Resource {
 	d := n.convert(obj)
-	return NewResource(d.ObjectMeta.CreationTimestamp.Time, n.Kind(), d.Namespace, d.Name, d, nil)
+	return NewResource(string(d.ObjectMeta.GetUID()), d.ObjectMeta.CreationTimestamp.Time, n.Kind(), d.Namespace, d.Name, d, nil)
 }
 func (n DeploymentWatchMe) Modified(obj runtime.Object) Resource {
 	d := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), d.Namespace, d.Name, d, nil)
+	return NewResource(string(d.ObjectMeta.GetUID()), time.Now(), n.Kind(), d.Namespace, d.Name, d, nil)
 
 }
 func (n DeploymentWatchMe) Del(obj runtime.Object) Resource {
 	d := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), d.Namespace, d.Name, d, nil)
+	return NewResource(string(d.ObjectMeta.GetUID()), time.Now(), n.Kind(), d.Namespace, d.Name, d, nil)
 }
 
 func watchForDeployments(watcher *Watcher, k KhronosConn) {

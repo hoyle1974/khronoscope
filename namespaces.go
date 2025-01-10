@@ -38,16 +38,16 @@ func (n NamespaceWatchMe) Valid(obj runtime.Object) bool {
 
 func (n NamespaceWatchMe) Add(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(namespace.ObjectMeta.CreationTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
+	return NewResource(string(namespace.ObjectMeta.GetUID()), namespace.ObjectMeta.CreationTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 }
 func (n NamespaceWatchMe) Modified(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
+	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 
 }
 func (n NamespaceWatchMe) Del(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
-	return NewResource(time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
+	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, nil)
 }
 
 func watchForNamespaces(watcher *Watcher, k KhronosConn) {

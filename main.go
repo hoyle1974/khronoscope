@@ -301,6 +301,12 @@ func (m *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			adjust = 0
 			m.tv.Toggle()
 			return m, nil
+		case "shift+up":
+			m.detailView.LineUp(10)
+			return m, nil
+		case "shift+down":
+			m.detailView.LineDown(10)
+			return m, nil
 		case "up":
 			m.tv.Up()
 			return m, nil

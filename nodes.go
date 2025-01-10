@@ -38,16 +38,18 @@ func describeNode(node *corev1.Node) []string {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
 
-	out = append(out, fmt.Sprintf("Conditions:"))
-	for _, condition := range node.Status.Conditions {
-		out = append(out, fmt.Sprintf("  Type: %s", condition.Type))
-		out = append(out, fmt.Sprintf("  Status: %s", condition.Status))
-		out = append(out, fmt.Sprintf("  LastHeartbeatTime: %s", condition.LastHeartbeatTime.Time.Format(time.RFC3339)))
-		out = append(out, fmt.Sprintf("  LastTransitionTime: %s", condition.LastTransitionTime.Time.Format(time.RFC3339)))
-		out = append(out, fmt.Sprintf("  Reason: %s", condition.Reason))
-		out = append(out, fmt.Sprintf("  Message: %s", condition.Message))
-		out = append(out, fmt.Sprintf(""))
-	}
+	// print the relevant system information
+	out = append(out, fmt.Sprintf("Node Name: %s", node.Name))
+	out = append(out, fmt.Sprintf("Machine ID: %s", node.Status.NodeInfo.MachineID))
+	out = append(out, fmt.Sprintf("System UUID: %s", node.Status.NodeInfo.SystemUUID))
+	out = append(out, fmt.Sprintf("Boot ID: %s", node.Status.NodeInfo.BootID))
+	out = append(out, fmt.Sprintf("Kernel Version: %s", node.Status.NodeInfo.KernelVersion))
+	out = append(out, fmt.Sprintf("OS Image: %s", node.Status.NodeInfo.OSImage))
+	out = append(out, fmt.Sprintf("Container Runtime Version: %s", node.Status.NodeInfo.ContainerRuntimeVersion))
+	out = append(out, fmt.Sprintf("Kubelet Version: %s", node.Status.NodeInfo.KubeletVersion))
+	out = append(out, fmt.Sprintf("Kube-Proxy Version: %s", node.Status.NodeInfo.KubeProxyVersion))
+	out = append(out, fmt.Sprintf("Operating System: %s", node.Status.NodeInfo.OperatingSystem))
+	out = append(out, fmt.Sprintf("Architecture: %s", node.Status.NodeInfo.Architecture))
 
 	out = append(out, fmt.Sprintf("Addresses:"))
 	for _, address := range node.Status.Addresses {
@@ -60,6 +62,17 @@ func describeNode(node *corev1.Node) []string {
 		out = append(out, fmt.Sprintf("    Size: %d bytes", image.SizeBytes))
 	}
 
+	out = append(out, fmt.Sprintf("Conditions:"))
+	for _, condition := range node.Status.Conditions {
+		out = append(out, fmt.Sprintf("  Type: %s", condition.Type))
+		out = append(out, fmt.Sprintf("  Status: %s", condition.Status))
+		out = append(out, fmt.Sprintf("  LastHeartbeatTime: %s", condition.LastHeartbeatTime.Time.Format(time.RFC3339)))
+		out = append(out, fmt.Sprintf("  LastTransitionTime: %s", condition.LastTransitionTime.Time.Format(time.RFC3339)))
+		out = append(out, fmt.Sprintf("  Reason: %s", condition.Reason))
+		out = append(out, fmt.Sprintf("  Message: %s", condition.Message))
+		out = append(out, fmt.Sprintf(""))
+	}
+
 	return out
 }
 
@@ -69,6 +82,12 @@ func getNodeRoles(node *corev1.Node) string {
 	for label := range node.Labels {
 		if strings.HasPrefix(label, "kubernetes.io/role/") {
 			role := strings.TrimPrefix(label, "kubernetes.io/role/")
+			roles = append(roles, role)
+		}
+	}
+	for label := range node.Labels {
+		if strings.HasPrefix(label, "node-role.kubernetes.io/") {
+			role := strings.TrimPrefix(label, "node-role.kubernetes.io/")
 			roles = append(roles, role)
 		}
 	}

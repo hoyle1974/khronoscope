@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 
@@ -44,10 +47,17 @@ type KhronosConn struct {
 	mc     *metrics.Clientset
 }
 
-func createClient(kubeconfigPath string) (KhronosConn, error) {
+func createClient() (KhronosConn, error) {
 	var kubeconfig *rest.Config
 
 	klog.SetLogger(logr.Logger{})
+
+	// Use default kubeconfig path or load the KUBECONFIG environment variable
+	kubeconfigPath := ""
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfigPath = filepath.Join(home, ".kube", "config")
+	}
+	flag.Parse()
 
 	if kubeconfigPath != "" {
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
@@ -85,7 +95,7 @@ var watcher = NewWatcher()
 
 func main() {
 	fmt.Println("starting")
-	client, err := createClient("/Users/jstrohm/.kube/config")
+	client, err := createClient()
 	if err != nil {
 		panic(err)
 	}

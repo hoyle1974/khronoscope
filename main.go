@@ -140,7 +140,8 @@ func main() {
 }
 
 // MODEL DATA
-var adjust = time.Duration(0)
+var useAdjustment = false
+var adjust = time.Now()
 
 type simplePage struct {
 	ready             bool
@@ -160,7 +161,7 @@ func newSimplePage() *simplePage {
 }
 
 func (m *simplePage) headerView() string {
-	title := titleStyle.Render("Khronoscope")
+	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s", GetTimeToUse().Format("2006-01-02 15:04:05")))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
@@ -179,8 +180,16 @@ var curPosition = 0
 var curRealPosition = 0
 var count = 0
 
+func GetTimeToUse() time.Time {
+	if useAdjustment {
+		return adjust
+	}
+	return time.Now()
+}
+
 func (m *simplePage) View() string {
-	m.tv.AddResources(watcher.GetStateAtTime(time.Now().Add(adjust), "", ""))
+	timeToUse := GetTimeToUse()
+	m.tv.AddResources(watcher.GetStateAtTime(timeToUse, "", ""))
 
 	treeContent, focusLine, resource := m.tv.Render()
 	m.treeView.SetContent(treeContent)
@@ -289,16 +298,27 @@ func (m *simplePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "left":
-			adjust -= time.Second
-			return m, nil
-		case "right":
-			adjust += time.Second
-			if adjust > 0 {
-				adjust = 0
+			if !useAdjustment {
+				useAdjustment = true
+				adjust = time.Now()
+			} else {
+				adjust = adjust.Add(-time.Second)
 			}
 			return m, nil
+		case "right":
+			if !useAdjustment {
+				useAdjustment = true
+				adjust = time.Now()
+			} else {
+				adjust = adjust.Add(time.Second)
+				if adjust.After(time.Now()) {
+					useAdjustment = false
+				}
+			}
+			return m, nil
+		case "esc":
+			useAdjustment = false
 		case "enter":
-			adjust = 0
 			m.tv.Toggle()
 			return m, nil
 		case "shift+up":

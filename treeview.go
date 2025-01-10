@@ -54,7 +54,7 @@ type TreeView struct {
 }
 
 func NewTreeView() *TreeView {
-	root := &TreeNode{Title: "Root"}
+	root := &TreeNode{Title: "Root", Expand: true}
 	namespaces := &TreeNode{Parent: root, Expand: true, Title: "Namespaces"}
 	nodes := &TreeNode{Parent: root, Expand: true, Title: "Nodes"}
 	details := &TreeNode{Parent: root, Expand: true, Title: "Details"}
@@ -367,7 +367,7 @@ func (t *TreeView) AddResources(resources []Resource) {
 	ok := false
 	for _, namespaceName := range slices.Sorted(maps.Keys(other)) {
 		if enabled, ok = ndEnabled[namespaceName]; !ok {
-			enabled = false
+			enabled = true
 		}
 		namespace := &TreeNode{
 			Parent: t.details,

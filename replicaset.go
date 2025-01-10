@@ -14,7 +14,83 @@ type ReplicaSetRenderer struct {
 	n *ReplicaSetWatchMe
 }
 
+func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
+	var result []string
+
+	// Basic details
+	result = append(result, fmt.Sprintf("Name:           %s", rs.Name))
+	result = append(result, fmt.Sprintf("Namespace:      %s", rs.Namespace))
+	result = append(result, fmt.Sprintf("Selector:       %s", rs.Spec.Selector))
+
+	result = append(result, RenderMapOfStrings("Labels:", rs.Labels)...)
+	result = append(result, RenderMapOfStrings("Annotations:", rs.Annotations)...)
+
+	// Controlled By
+	if rs.OwnerReferences != nil && len(rs.OwnerReferences) > 0 {
+		result = append(result, fmt.Sprintf("Controlled By:  %s", rs.OwnerReferences[0].Kind+"/"+rs.OwnerReferences[0].Name))
+	}
+
+	// Replicas
+	result = append(result, fmt.Sprintf("Replicas:       %d current / %d desired", rs.Status.Replicas, rs.Spec.Replicas))
+
+	// Pod status
+	podStatus := "0 Running / 0 Waiting / 0 Succeeded / 0 Failed" // Placeholder, needs actual pod status logic
+	result = append(result, fmt.Sprintf("Pods Status:    %s", podStatus))
+
+	// Pod template details
+	result = append(result, "Pod Template:")
+	result = append(result, RenderMapOfStrings("  Labels:", rs.Spec.Template.Labels)...)
+	result = append(result, RenderMapOfStrings("  Annotations:", rs.Spec.Template.Annotations)...)
+	// result = append(result, fmt.Sprintf("  Service Account:  %s", rs.Spec.Template.ServiceAccountName)) // Corrected here
+
+	// Containers info
+	if len(rs.Spec.Template.Spec.Containers) > 0 {
+		result = append(result, "  Containers:")
+		for _, container := range rs.Spec.Template.Spec.Containers {
+			result = append(result, fmt.Sprintf("    %s:", container.Name))
+			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
+			result = append(result, fmt.Sprintf("      Ports:       %s", formatPorts(container.Ports)))
+			result = append(result, fmt.Sprintf("      Args:        %s", formatArgs(container.Args)))
+			result = append(result, fmt.Sprintf("      Limits:      %s", formatLimits(container.Resources.Limits)))
+			result = append(result, fmt.Sprintf("      Requests:    %s", formatLimits(container.Resources.Requests)))
+			result = append(result, fmt.Sprintf("      Liveness:    %s", formatLiveness(container.LivenessProbe)))
+			result = append(result, fmt.Sprintf("      Readiness:   %s", formatLiveness(container.ReadinessProbe)))
+			result = append(result, fmt.Sprintf("      Environment: %s", formatEnvironment(container.Env)))
+			result = append(result, fmt.Sprintf("      Mounts:      %s", formatVolumeMounts(container.VolumeMounts)))
+		}
+	}
+
+	// Volumes
+	if len(rs.Spec.Template.Spec.Volumes) > 0 {
+		result = append(result, "  Volumes:")
+		for _, volume := range rs.Spec.Template.Spec.Volumes {
+			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, "")) //volume.VolumeSource.ConfigMap.Name))
+		}
+	}
+
+	// Priority Class Name
+	result = append(result, fmt.Sprintf("  Priority Class Name:  %s", rs.Spec.Template.Spec.PriorityClassName))
+
+	// Node Selectors
+	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", formatNodeSelectors(rs.Spec.Template.Spec.NodeSelector)))
+
+	// Tolerations
+	result = append(result, fmt.Sprintf("  Tolerations:          %s", formatTolerations(rs.Spec.Template.Spec.Tolerations)))
+
+	// Events
+	result = append(result, "Events:                 <none>")
+
+	return result
+}
+
 func (r ReplicaSetRenderer) Render(resource Resource, details bool) []string {
+
+	if details {
+		rs := resource.Object.(*appsv1.ReplicaSet)
+
+		return formatReplicaSetDetails(rs)
+	}
+
 	extra := ""
 	e, ok := resource.GetExtra()["Status"]
 	if ok {

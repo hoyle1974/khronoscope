@@ -65,8 +65,6 @@ func describePod(pod *corev1.Pod) []string {
 	var details []string
 
 	// Add pod basic information
-	details = append(details, fmt.Sprintf("Name:\t\t\t%s", pod.Name))
-	details = append(details, fmt.Sprintf("Namespace:\t\t%s", pod.Namespace))
 	details = append(details, fmt.Sprintf("Priority:\t\t%d", pod.Spec.Priority))
 	details = append(details, fmt.Sprintf("Priority Class Name:\t%s", pod.Spec.PriorityClassName))
 	details = append(details, fmt.Sprintf("Service Account:\t%s", pod.Spec.ServiceAccountName))

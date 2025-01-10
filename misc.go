@@ -5,8 +5,12 @@ import (
 	"math"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // renderProgressBar generates a 12-character progress bar with percentage display
@@ -127,4 +131,63 @@ func compareKeys[K comparable](a, b K) int {
 		}
 		return 0
 	}
+}
+
+func formatPorts(ports []corev1.ContainerPort) string {
+	var portStrings []string
+	for _, port := range ports {
+		portStrings = append(portStrings, fmt.Sprintf("%d/%s", port.ContainerPort, port.Protocol))
+	}
+	return strings.Join(portStrings, ", ")
+}
+
+func formatArgs(args []string) string {
+	return strings.Join(args, " ")
+}
+
+func formatLimits(limits map[corev1.ResourceName]resource.Quantity) string {
+	var limitStrings []string
+	for resource, quantity := range NewMapRangeFunc(limits) {
+		limitStrings = append(limitStrings, fmt.Sprintf("%s: %s", resource, quantity.String()))
+	}
+	return strings.Join(limitStrings, " ")
+}
+
+func formatLiveness(probe *corev1.Probe) string {
+	if probe == nil {
+		return "<none>"
+	}
+	return fmt.Sprintf("http-get %s delay=%s timeout=%s period=%s #success=%d #failure=%d", probe.HTTPGet.Path, probe.InitialDelaySeconds, probe.TimeoutSeconds, probe.PeriodSeconds, probe.SuccessThreshold, probe.FailureThreshold)
+}
+
+func formatEnvironment(envVars []corev1.EnvVar) string {
+	var envStrings []string
+	for _, env := range envVars {
+		envStrings = append(envStrings, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+	return strings.Join(envStrings, ", ")
+}
+
+func formatVolumeMounts(mounts []corev1.VolumeMount) string {
+	var mountStrings []string
+	for _, mount := range mounts {
+		mountStrings = append(mountStrings, fmt.Sprintf("%s from %s (%s)", mount.MountPath, mount.Name, mount.ReadOnly))
+	}
+	return strings.Join(mountStrings, ", ")
+}
+
+func formatNodeSelectors(nodeSelectors map[string]string) string {
+	var selectorStrings []string
+	for key, value := range NewMapRangeFunc(nodeSelectors) {
+		selectorStrings = append(selectorStrings, fmt.Sprintf("%s=%s", key, value))
+	}
+	return strings.Join(selectorStrings, " ")
+}
+
+func formatTolerations(tolerations []corev1.Toleration) string {
+	var tolerationStrings []string
+	for _, tol := range tolerations {
+		tolerationStrings = append(tolerationStrings, fmt.Sprintf("%s %s=%s:%s", tol.Operator, tol.Key, tol.Value, tol.Effect))
+	}
+	return strings.Join(tolerationStrings, " ")
 }

@@ -1,5 +1,5 @@
 # khronoscope
-WARNING: You probably don't want to point this to a prod Kubernetes cluster yet.  I'm made adjustments to make sure it doesn't overload the control plane but haven't tested it's load yet.
+WARNING: You probably don't want to point this to a prod Kubernetes cluster yet.  I have made adjustments to make sure it doesn't overload the control plane but haven't tested it's load yet.
 
 Imagine a tool like k9s that also lets you to inspect the state of your Kubernetes cluster BUT also let's you go back in time to see the state as it was at any point in time since you started the app.
 

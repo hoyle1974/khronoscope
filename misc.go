@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -53,4 +55,15 @@ func renderProgressBar(label string, percent float64) string {
 
 	// Overlay percentage text
 	return label + " " + bar
+}
+
+func RenderMapOfStrings(name string, t map[string]string) []string {
+	out := []string{}
+
+	out = append(out, name)
+
+	for _, k := range slices.Sorted(maps.Keys(t)) {
+		out = append(out, fmt.Sprintf("   %v : %v", k, t[k]))
+	}
+	return out
 }

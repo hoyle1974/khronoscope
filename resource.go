@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 )
 
@@ -32,11 +33,11 @@ func NewResource(uuid string, timestmap time.Time, kind string, namespace string
 	}
 }
 
-func (r Resource) String() []string {
+func (r Resource) String() string {
 	if r.Renderer != nil {
-		return r.Renderer.Render(r, false)
+		return strings.Join(r.Renderer.Render(r, false), " ")
 	}
-	return []string{}
+	return r.Key()
 }
 
 func (r Resource) Details() []string {

@@ -55,8 +55,8 @@ type TreeView struct {
 
 func NewTreeView() *TreeView {
 	root := &TreeNode{Title: "Root"}
-	namespaces := &TreeNode{Parent: root, Expand: false, Title: "Namespaces"}
-	nodes := &TreeNode{Parent: root, Expand: false, Title: "Nodes"}
+	namespaces := &TreeNode{Parent: root, Expand: true, Title: "Namespaces"}
+	nodes := &TreeNode{Parent: root, Expand: true, Title: "Nodes"}
 	details := &TreeNode{Parent: root, Expand: true, Title: "Details"}
 	root.Children = []Node{
 		namespaces,
@@ -257,25 +257,12 @@ func (t *TreeView) Render() (string, int, *Resource) {
 	}
 
 	for _, n := range []*TreeNode{t.namespaces, t.nodes} {
-
 		b.WriteString(line(n) + n.Title + "\n")
 		if n.Expand {
 			l := len(n.Children)
 			for idx, child := range n.Children {
 				leaf := child.(*TreeLeaf)
-
-				render := leaf.Resource.String()
-				if len(render) == 0 {
-					b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "── " + leaf.Resource.Name + "\n")
-				} else {
-					for idx2, s := range render {
-						if idx2 == 0 {
-							b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "── " + s + "\n")
-						} else {
-							b.WriteString(line(leaf) + " │  " + s + "\n")
-						}
-					}
-				}
+				b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "── " + leaf.Resource.String() + "\n")
 			}
 		} else {
 			b.WriteString(line(nil) + "   ...\n")
@@ -299,14 +286,7 @@ func (t *TreeView) Render() (string, int, *Resource) {
 						l2 := len(kindTreeNode.Children)
 						for idx, resourceNode := range kindTreeNode.Children {
 							resourceLeafNode := resourceNode.(*TreeLeaf)
-							render := resourceLeafNode.Resource.String()
-							txt := ""
-							if len(render) == 0 {
-								txt = resourceLeafNode.Resource.Name
-							} else {
-								txt = strings.Join(render, " ")
-							}
-							b.WriteString(line(resourceLeafNode) + "  " + grommet2(idx2 == l-1) + "   " + grommet(idx == l2-1) + "──" + txt + "\n")
+							b.WriteString(line(resourceLeafNode) + "  " + grommet2(idx2 == l-1) + "   " + grommet(idx == l2-1) + "──" + resourceLeafNode.Resource.String() + "\n")
 						}
 					} else {
 						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1) + "── " + kindTreeNode.Title + " { ... }\n")

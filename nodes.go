@@ -35,6 +35,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 	extra := resource.GetExtra()
 
 	if details {
+		node := resource.Object.(*corev1.Node)
 		ret := []string{}
 		ret = append(ret, "Name: "+resource.Name)
 
@@ -47,6 +48,9 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 			m := e.(map[string]string)
 			ret = append(ret, fmt.Sprintf("%v", m[resource.Name]))
 		}
+
+		ret = append(ret, RenderMapOfStrings("Labels:", node.GetLabels())...)
+		ret = append(ret, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
 
 		if p, ok := extra["Pods"]; ok {
 			ret = append(ret, "")

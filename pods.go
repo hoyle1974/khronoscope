@@ -123,18 +123,8 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 			out = append(out, fmt.Sprintf("   %s - %s : %s", container.Name, container.Image, getContainerState(container.Name)))
 		}
 
-		out = append(out, fmt.Sprintf("Labels:"))
-
-		// Get sorted keys
-		labels := pod.GetLabels()
-		sortedKeys := slices.Sorted(maps.Keys(labels))
-
-		// Iterate over the map in sorted order
-		for _, k := range sortedKeys {
-			out = append(out, fmt.Sprintf("   %v : %v", k, labels[k]))
-		}
-
-		out = append(out, "---------------------")
+		out = append(out, RenderMapOfStrings("Labels:", pod.GetLabels())...)
+		out = append(out, RenderMapOfStrings("Annotations:", pod.GetAnnotations())...)
 
 		logs, err := getPodLogs(r.n.k.client, pod.Namespace, pod.Name)
 		if err == nil {

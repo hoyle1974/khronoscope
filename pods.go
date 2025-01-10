@@ -59,6 +59,92 @@ type PodRenderer struct {
 	n *PodWatchMe
 }
 
+// describePod returns a list of formatted strings describing the pod's details.
+func describePod(pod *corev1.Pod) []string {
+	// Prepare the list of strings
+	var details []string
+
+	// Add pod basic information
+	details = append(details, fmt.Sprintf("Name:\t\t\t%s", pod.Name))
+	details = append(details, fmt.Sprintf("Namespace:\t\t%s", pod.Namespace))
+	details = append(details, fmt.Sprintf("Priority:\t\t%d", pod.Spec.Priority))
+	details = append(details, fmt.Sprintf("Priority Class Name:\t%s", pod.Spec.PriorityClassName))
+	details = append(details, fmt.Sprintf("Service Account:\t%s", pod.Spec.ServiceAccountName))
+	details = append(details, fmt.Sprintf("Node:\t\t\t%s/%s", pod.Spec.NodeName, pod.Status.PodIP))
+
+	// Start time
+	startTime := "N/A"
+	if pod.Status.StartTime != nil {
+		startTime = pod.Status.StartTime.Format(time.RFC1123Z)
+	}
+	details = append(details, fmt.Sprintf("Start Time:\t\t%s", startTime))
+
+	// Status
+	details = append(details, fmt.Sprintf("Status:\t\t\t%s", pod.Status.Phase))
+
+	// IPs
+	details = append(details, fmt.Sprintf("IP:\t\t\t%s", pod.Status.PodIP))
+	details = append(details, fmt.Sprintf("IPs:"))
+	for _, ip := range pod.Status.PodIPs {
+		details = append(details, fmt.Sprintf("\tIP:\t\t%s", ip.IP))
+	}
+
+	// Controlled By
+	if pod.OwnerReferences != nil {
+		for _, owner := range pod.OwnerReferences {
+			details = append(details, fmt.Sprintf("Controlled By:\t%s/%s", owner.Kind, owner.Name))
+		}
+	}
+
+	// Container details
+	details = append(details, fmt.Sprintf("Containers:"))
+	for _, container := range pod.Spec.Containers {
+		details = append(details, fmt.Sprintf("\t%s:", container.Name))
+		details = append(details, fmt.Sprintf("\t\tContainer ID:\t%s", "N/A")) // Need to query container ID if required
+		details = append(details, fmt.Sprintf("\t\tImage:\t\t%s", container.Image))
+		details = append(details, fmt.Sprintf("\t\tImage ID:\t%s", "N/A")) // Image ID can be retrieved via containerd or docker client
+		details = append(details, fmt.Sprintf("\t\tPorts:\t\t%s", container.Ports))
+		details = append(details, fmt.Sprintf("\t\tHost Ports:\t%s", container.Ports)) // For host ports
+		details = append(details, fmt.Sprintf("\t\tArgs:\t\t%s", container.Args))
+		// details = append(details, fmt.Sprintf("\t\tState:\t\t%s", container.State))
+		// details = append(details, fmt.Sprintf("\t\tStarted:\t%s", container.Started))
+		// details = append(details, fmt.Sprintf("\t\tReady:\t\t%s", container.Ready))
+		// details = append(details, fmt.Sprintf("\t\tRestart Count:\t%d", container.RestartCount))
+		details = append(details, fmt.Sprintf("\t\tLimits:\t%s", container.Resources.Limits))
+		details = append(details, fmt.Sprintf("\t\tRequests:\t%s", container.Resources.Requests))
+		details = append(details, fmt.Sprintf("\t\tLiveness:\t%s", container.LivenessProbe))
+		details = append(details, fmt.Sprintf("\t\tReadiness:\t%s", container.ReadinessProbe))
+		details = append(details, fmt.Sprintf("\t\tEnvironment:\t%s", container.Env))
+		details = append(details, fmt.Sprintf("\t\tMounts:\t%s", container.VolumeMounts))
+
+	}
+
+	// Conditions
+	details = append(details, fmt.Sprintf("Conditions:"))
+	for _, condition := range pod.Status.Conditions {
+		details = append(details, fmt.Sprintf("\tType: %s, Status: %s", condition.Type, condition.Status))
+	}
+
+	// Volumes
+	details = append(details, fmt.Sprintf("Volumes:"))
+	for _, volume := range pod.Spec.Volumes {
+		details = append(details, fmt.Sprintf("\t%s:", volume.Name))
+		details = append(details, fmt.Sprintf("\t\tType:\t%s", volume.VolumeSource))
+	}
+
+	// QoS class, Node selectors, and Tolerations
+	details = append(details, fmt.Sprintf("QoS Class:\t\t%s", pod.Status.QOSClass))
+	details = append(details, fmt.Sprintf("Node-Selectors:\t%s", pod.Spec.NodeSelector))
+	details = append(details, fmt.Sprintf("Tolerations:"))
+	for _, toleration := range pod.Spec.Tolerations {
+		details = append(details, fmt.Sprintf("\t%s", toleration.Key))
+	}
+
+	// Events (Optional: You may want to fetch and append events related to this pod)
+
+	return details
+}
+
 func (r PodRenderer) Render(resource Resource, details bool) []string {
 	extra := resource.GetExtra()
 	out := []string{}
@@ -136,6 +222,8 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		} else {
 			out = append(out, fmt.Sprintf("%v", err))
 		}
+		out = append(out, describePod(pod)...)
+
 	} else {
 		phase, ok := extra["Phase"]
 		if ok {

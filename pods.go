@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,12 +86,13 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 
 		e, ok := extra["Metrics"]
 		if ok {
-			m := e.(map[string]string)
+			m := e.(map[string]PodMetric)
 			if len(m) > 0 {
 				out = append(out, "containers:")
 				sortedKeys := slices.Sorted(maps.Keys(m))
 				for _, k := range sortedKeys {
-					out = append(out, fmt.Sprintf("   %v - %v", k, m[k]))
+					bar := fmt.Sprintf("%s %s", renderProgressBar("CPU", m[k].cpuPercentage), renderProgressBar("Mem", m[k].memoryPercentage))
+					out = append(out, fmt.Sprintf("   %v - %v", bar, k))
 				}
 			}
 		}
@@ -147,22 +149,51 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 	} else {
 		phase, ok := extra["Phase"]
 		if ok {
-			s += fmt.Sprintf(" %v", phase)
+			p := fmt.Sprintf("%v", phase)
+
+			switch p {
+			case "Pending":
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#AAAAAA"))
+				s += fmt.Sprintf(" [%s]", style.Render(p))
+			case "Failed":
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+				s += fmt.Sprintf(" [%s]", style.Render(p))
+			case "Unknown":
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF"))
+				s += fmt.Sprintf(" [%s]", style.Render(p))
+			case "Running":
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00"))
+				s += fmt.Sprintf(" [%s]", style.Render(p))
+			case "Succeeded":
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF"))
+				s += fmt.Sprintf(" [%s]", style.Render(p))
+			default:
+				style := lipgloss.NewStyle()
+				s += fmt.Sprintf(" [%s]", style.Render(p))
+			}
 		}
-		node, ok := extra["Node"]
-		if ok {
-			s += fmt.Sprintf(" %s", node)
-		}
+		s += " " + resource.Name
 
 		e, ok := extra["Metrics"]
 		if ok {
-			m := e.(map[string]string)
-			if len(m) > 0 {
-				sortedKeys := slices.Sorted(maps.Keys(m))
-				for _, k := range sortedKeys {
-					s += fmt.Sprintf(" %v {%v}", k, m[k])
-				}
+			podMetric := e.(map[string]PodMetric)
+			var cpu float64
+			var mem float64
+			bar := ""
+
+			for _, v := range podMetric {
+				cpu += v.cpuPercentage
+				mem += v.memoryPercentage
 			}
+			if len(podMetric) > 0 {
+				cpu /= float64(len(podMetric))
+				mem /= float64(len(podMetric))
+				bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
+			} else {
+				bar = strings.Repeat(" ", 29) + " : "
+			}
+
+			s = bar + s
 		}
 		rt, ok := extra["StartTime"]
 		if ok {
@@ -188,6 +219,45 @@ func calculatePercentage(usage int64, limit int64) float64 {
 	return (float64(usage) / float64(limit)) * 100
 }
 
+type PodMetric struct {
+	cpuPercentage    float64
+	memoryPercentage float64
+}
+
+func (n *PodWatchMe) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
+	metricsExtra := map[string]PodMetric{}
+	lastPodMetrics := n.lastPodMetrics.Load()
+	if lastPodMetrics == nil {
+		return metricsExtra
+	}
+	for _, podMetrics := range lastPodMetrics.Items {
+		if podMetrics.Namespace == pod.Namespace && podMetrics.Name == pod.Name {
+			for _, container := range pod.Spec.Containers {
+				for _, containerMetric := range podMetrics.Containers {
+					if container.Name == containerMetric.Name {
+						cpuUsage := containerMetric.Usage[corev1.ResourceCPU]
+						memoryUsage := containerMetric.Usage[corev1.ResourceMemory]
+
+						cpuLimit := container.Resources.Limits[corev1.ResourceCPU]
+						memoryLimit := container.Resources.Limits[corev1.ResourceMemory]
+
+						cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuLimit.MilliValue())
+						memoryPercentage := calculatePercentage(memoryUsage.Value(), memoryLimit.Value())
+
+						metricsExtra[container.Name] = PodMetric{
+							cpuPercentage:    cpuPercentage,
+							memoryPercentage: memoryPercentage,
+						}
+					}
+				}
+			}
+			return metricsExtra
+		}
+	}
+	return metricsExtra
+}
+
+/*
 func (n *PodWatchMe) getMetricsForPod(pod *corev1.Pod) map[string]string {
 	metricsExtra := map[string]string{}
 	lastPodMetrics := n.lastPodMetrics.Load()
@@ -217,11 +287,12 @@ func (n *PodWatchMe) getMetricsForPod(pod *corev1.Pod) map[string]string {
 	}
 	return metricsExtra
 }
+*/
 
 func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
 	pod := resource.Object.(*corev1.Pod)
 
-	metricsExtra := n.getMetricsForPod(pod)
+	metricsExtra := n.getPodMetricsForPod(pod)
 	if len(metricsExtra) > 0 {
 		resource = resource.SetExtraKV("Metrics", metricsExtra)
 		if pod.Status.StartTime != nil {
@@ -274,7 +345,7 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	extra := map[string]any{}
 	extra["Phase"] = pod.Status.Phase
 	extra["Node"] = pod.Spec.NodeName
-	extra["Metrics"] = n.getMetricsForPod(pod)
+	extra["Metrics"] = n.getPodMetricsForPod(pod)
 
 	// Calculate the running time
 	startTime := pod.Status.StartTime
@@ -299,12 +370,15 @@ func (n *PodWatchMe) Del(obj runtime.Object) Resource {
 	return r
 }
 
-func watchForPods(watcher *Watcher, k KhronosConn) {
+func watchForPods(watcher *Watcher, k KhronosConn) *PodWatchMe {
 	fmt.Println("Watching pods . . .")
 	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), &PodWatchMe{k: k, w: watcher})
+	w := &PodWatchMe{k: k, w: watcher}
+	go watcher.watchEvents(watchChan.ResultChan(), w)
+
+	return w
 }

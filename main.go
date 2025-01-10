@@ -48,16 +48,19 @@ type KhronosConn struct {
 }
 
 func createClient() (KhronosConn, error) {
-	var kubeconfig *rest.Config
 
 	klog.SetLogger(logr.Logger{})
 
-	// Use default kubeconfig path or load the KUBECONFIG environment variable
-	kubeconfigPath := ""
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfigPath = filepath.Join(home, ".kube", "config")
+	kubeconfigPath := os.Getenv("KUBECONFIG")
+	if kubeconfigPath == "" {
+		if home := homedir.HomeDir(); home != "" {
+			kubeconfigPath = filepath.Join(home, ".kube", "config")
+		}
 	}
+
 	flag.Parse()
+
+	var kubeconfig *rest.Config
 
 	if kubeconfigPath != "" {
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
@@ -104,10 +107,10 @@ func main() {
 	watchForDeployments(watcher, client)
 	watchForDaemonSet(watcher, client)
 	watchForReplicaSet(watcher, client)
-	watchForNodes(watcher, client)
 	watchForService(watcher, client)
-	watchForPods(watcher, client)
 	watchForNamespaces(watcher, client)
+	podWatchMe := watchForPods(watcher, client)
+	watchForNodes(watcher, client, podWatchMe)
 
 	// Start profiling
 	profile := false

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -51,9 +52,40 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 			ret = append(ret, "")
 			ret = append(ret, "Pods: ")
 			pods := p.([]corev1.Pod)
-			for _, pod := range pods {
-				ret = append(ret, "   "+pod.Namespace+"/"+pod.Name)
+
+			if pm, ok := extra["PodMetrics"]; ok {
+				podMetrics := pm.(map[string]map[string]PodMetric)
+
+				for _, pod := range pods {
+					var cpu float64 = 0
+					var mem float64 = 0
+					bar := ""
+
+					if podMetric, ok := podMetrics[string(pod.UID)]; ok {
+						for _, v := range podMetric {
+							cpu += v.cpuPercentage
+							mem += v.memoryPercentage
+						}
+						if len(podMetric) > 0 {
+							cpu /= float64(len(podMetric))
+							mem /= float64(len(podMetric))
+							bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
+						} else {
+							bar = strings.Repeat(" ", 29) + " : "
+						}
+					}
+
+					nn := bar + pod.Namespace + "/" + pod.Name
+					ret = append(ret, "   "+nn)
+				}
+			} else {
+				for _, pod := range pods {
+					nn := pod.Namespace + "/" + pod.Name
+					ret = append(ret, "   "+nn)
+				}
+
 			}
+
 		}
 
 		return ret
@@ -75,8 +107,9 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 }
 
 type NodeWatchMe struct {
-	k KhronosConn
-	w *Watcher
+	k   KhronosConn
+	w   *Watcher
+	pwm *PodWatchMe
 
 	lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
 }
@@ -119,6 +152,12 @@ func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
 	pods, err := getPodsOnNode(n.k.client, node.Name)
 	if err == nil {
 		resource = resource.SetExtraKV("Pods", pods)
+
+		podMetrics := map[string]map[string]PodMetric{}
+		for _, pod := range pods {
+			podMetrics[string(pod.UID)] = n.pwm.getPodMetricsForPod(&pod)
+		}
+		resource = resource.SetExtraKV("PodMetrics", podMetrics)
 	}
 
 	n.w.Update(resource)
@@ -190,12 +229,16 @@ func (n *NodeWatchMe) Del(obj runtime.Object) Resource {
 
 }
 
-func watchForNodes(watcher *Watcher, k KhronosConn) {
+func watchForNodes(watcher *Watcher, k KhronosConn, pwm *PodWatchMe) *NodeWatchMe {
 	fmt.Println("Watching nodes . . .")
 	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), &NodeWatchMe{k: k, w: watcher})
+	w := &NodeWatchMe{k: k, w: watcher, pwm: pwm}
+
+	go watcher.watchEvents(watchChan.ResultChan(), w)
+
+	return w
 }

@@ -38,7 +38,7 @@ func renderProgressBar(label string, percent float64) string {
 	emptyStyle := lipgloss.NewStyle().Background(lipgloss.Color("240")).Foreground(lipgloss.Color("#FFFFFF")) // Gray
 
 	// Format percentage to fit within 3 characters
-	percentText := fmt.Sprintf("     %3.2f%%", percent)
+	percentText := fmt.Sprintf("      %3.2f%%", percent)
 
 	// Build the bar
 	bar := ""

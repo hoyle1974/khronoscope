@@ -191,3 +191,10 @@ func formatTolerations(tolerations []corev1.Toleration) string {
 	}
 	return strings.Join(tolerationStrings, " ")
 }
+
+func formatVolumeSource(source corev1.VolumeSource) string {
+	if source.HostPath != nil {
+		return fmt.Sprintf("HostPath (path: %s)", source.HostPath.Path)
+	}
+	return "<unknown>"
+}

@@ -71,5 +71,5 @@ func (r Resource) GetExtra() map[string]any {
 }
 
 func (r Resource) Key() string {
-	return r.Kind + "/" + r.Name + "/" + r.Name
+	return r.Kind + "/" + r.Namespace + "/" + r.Name
 }

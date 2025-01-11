@@ -88,14 +88,9 @@ func (n ServiceWatchMe) convert(obj runtime.Object) *corev1.Service {
 	return ret
 }
 
-func (n ServiceWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n ServiceWatchMe) Add(obj runtime.Object) Resource {
 	service := n.convert(obj)
 	return NewResource(string(service.ObjectMeta.GetUID()), service.ObjectMeta.CreationTimestamp.Time, n.Kind(), service.Namespace, service.Name, service, ServiceRenderer{})
-
 }
 func (n ServiceWatchMe) Modified(obj runtime.Object) Resource {
 	service := n.convert(obj)

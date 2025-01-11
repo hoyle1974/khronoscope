@@ -281,10 +281,6 @@ func (n *NodeWatchMe) convert(obj runtime.Object) *corev1.Node {
 	return ret
 }
 
-func (n *NodeWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n *NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
 	extra := map[string]any{}
 	extra["Metrics"] = n.getMetricsForNode(node)

@@ -11,10 +11,9 @@ import (
 
 // Interface for watching resource events.
 type ResourceEventWatcher interface {
-	Valid(obj runtime.Object) bool        // Returns true if the object is handled by this watcher
-	Add(obj runtime.Object) Resource      // Called when a valid resource is added, should construct and return a Resource
-	Modified(obj runtime.Object) Resource // Called when a valid resource is modified, should construct and return a Resource
-	Del(obj runtime.Object) Resource      // Called when a valid resource is deleted, should construct and return a Resource
+	Add(obj runtime.Object) Resource      // Called when a resource is added, should construct and return a Resource
+	Modified(obj runtime.Object) Resource // Called when a resource is modified, should construct and return a Resource
+	Del(obj runtime.Object) Resource      // Called when a resource is deleted, should construct and return a Resource
 	Tick()                                // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics
 }
 

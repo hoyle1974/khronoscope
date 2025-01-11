@@ -59,19 +59,16 @@ func (n NamespaceWatchMe) convert(obj runtime.Object) *corev1.Namespace {
 	return ret
 }
 
-func (n NamespaceWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n NamespaceWatchMe) Add(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
 	return NewResource(string(namespace.ObjectMeta.GetUID()), namespace.ObjectMeta.CreationTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})
 }
+
 func (n NamespaceWatchMe) Modified(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
 	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})
-
 }
+
 func (n NamespaceWatchMe) Del(obj runtime.Object) Resource {
 	namespace := n.convert(obj)
 	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})

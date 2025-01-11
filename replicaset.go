@@ -122,10 +122,6 @@ func (n ReplicaSetWatchMe) convert(obj runtime.Object) *appsv1.ReplicaSet {
 	return ret
 }
 
-func (n ReplicaSetWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n ReplicaSetWatchMe) getExtra(rs *appsv1.ReplicaSet) map[string]any {
 	extra := map[string]any{}
 

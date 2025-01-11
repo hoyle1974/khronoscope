@@ -110,10 +110,6 @@ func (n DaemonSetWatchMe) convert(obj runtime.Object) *appsv1.DaemonSet {
 	return ret
 }
 
-func (n DaemonSetWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n DaemonSetWatchMe) Add(obj runtime.Object) Resource {
 	ds := n.convert(obj)
 	return NewResource(string(ds.ObjectMeta.GetUID()), ds.ObjectMeta.CreationTimestamp.Time, n.Kind(), ds.Namespace, ds.Name, ds, DaemonRenderer{})

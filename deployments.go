@@ -99,10 +99,6 @@ func (n DeploymentWatchMe) convert(obj runtime.Object) *appsv1.Deployment {
 	return ret
 }
 
-func (n DeploymentWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n DeploymentWatchMe) Add(obj runtime.Object) Resource {
 	d := n.convert(obj)
 	return NewResource(string(d.ObjectMeta.GetUID()), d.ObjectMeta.CreationTimestamp.Time, n.Kind(), d.Namespace, d.Name, d, DeploymentRenderer{})

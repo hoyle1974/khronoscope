@@ -411,10 +411,6 @@ func (n *PodWatchMe) convert(obj runtime.Object) *corev1.Pod {
 	return ret
 }
 
-func (n *PodWatchMe) Valid(obj runtime.Object) bool {
-	return n.convert(obj) != nil
-}
-
 func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	extra := map[string]any{}
 	extra["Phase"] = pod.Status.Phase

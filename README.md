@@ -27,8 +27,15 @@ This application create a connection to your kubernetes cluster and starts watch
 
 Along with standard resource information the application also collects metrics data for Pods and Nodes.  This is currently done with polling but needs to be switched to a watch as well.
 
+I use [BubbleTea](https://github.com/charmbracelet/bubbletea) for rendering and [LipGloss](https://github.com/charmbracelet/lipgloss) for coloring, both great projects.
+
+
+# Future
+
 In the future I could see a variation of this application being run as a server and storing it's data long term in a database so that multiple users can connect to it and be able to look through cluster state for longer amounts of time.
 
-I'd also like to support other resources than what is currently supported, possibly a plugin system could be used to support any custom resources users want to add.
-
-I use [BubbleTea](https://github.com/charmbracelet/bubbletea) for rendering and [LipGloss](https://github.com/charmbracelet/lipgloss) for coloring, both great projects.
+I'd also like to support other resources than what is currently supported, possibly a plugin system could be used to support any custom resources users want to add.  Ones that I'd like to support out of the box include:
+- StatefulSet
+- ConfigMaps
+- PersistantVolume
+- Secrets

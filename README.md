@@ -1,3 +1,5 @@
+![khronoscope](https://github.com/user-attachments/assets/ed78c414-98e6-400e-b1a1-a18e82baf189)
+
 # Khronoscope
 WARNING: You probably don't want to point this to a prod Kubernetes cluster yet.  I have made adjustments to make sure it doesn't overload the control plane but haven't tested it's load yet.
 

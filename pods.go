@@ -333,38 +333,6 @@ func (n *PodWatchMe) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
 	return metricsExtra
 }
 
-/*
-func (n *PodWatchMe) getMetricsForPod(pod *corev1.Pod) map[string]string {
-	metricsExtra := map[string]string{}
-	lastPodMetrics := n.lastPodMetrics.Load()
-	if lastPodMetrics == nil {
-		return metricsExtra
-	}
-	for _, podMetrics := range lastPodMetrics.Items {
-		if podMetrics.Namespace == pod.Namespace && podMetrics.Name == pod.Name {
-			for _, container := range pod.Spec.Containers {
-				for _, containerMetric := range podMetrics.Containers {
-					if container.Name == containerMetric.Name {
-						cpuUsage := containerMetric.Usage[corev1.ResourceCPU]
-						memoryUsage := containerMetric.Usage[corev1.ResourceMemory]
-
-						cpuLimit := container.Resources.Limits[corev1.ResourceCPU]
-						memoryLimit := container.Resources.Limits[corev1.ResourceMemory]
-
-						cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuLimit.MilliValue())
-						memoryPercentage := calculatePercentage(memoryUsage.Value(), memoryLimit.Value())
-
-						metricsExtra[container.Name] = fmt.Sprintf("%s %s", renderProgressBar("CPU", cpuPercentage), renderProgressBar("Mem", memoryPercentage))
-					}
-				}
-			}
-			return metricsExtra
-		}
-	}
-	return metricsExtra
-}
-*/
-
 func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
 	pod := resource.Object.(*corev1.Pod)
 

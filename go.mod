@@ -12,7 +12,6 @@ require (
 require github.com/charmbracelet/bubbles v0.16.1
 
 require (
-	github.com/alitto/pond/v2 v2.1.6
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/charmbracelet/x/ansi v0.4.5 // indirect

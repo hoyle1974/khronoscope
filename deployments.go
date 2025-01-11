@@ -123,5 +123,5 @@ func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), DeploymentWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), DeploymentWatchMe{})
 }

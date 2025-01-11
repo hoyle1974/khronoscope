@@ -84,5 +84,5 @@ func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), NamespaceWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), NamespaceWatchMe{})
 }

@@ -157,5 +157,5 @@ func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), ReplicaSetWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), ReplicaSetWatchMe{})
 }

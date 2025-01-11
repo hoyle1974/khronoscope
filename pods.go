@@ -381,8 +381,6 @@ func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
 }
 
 func (n *PodWatchMe) Tick() {
-	n.w.Log(fmt.Sprintf("Tick: %v", time.Now()))
-
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	m, err := n.k.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -454,7 +452,7 @@ func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatchMe {
 	}
 
 	w := &PodWatchMe{k: k, w: watcher}
-	go watcher.watchEvents(watchChan.ResultChan(), w)
+	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
 	return w
 }

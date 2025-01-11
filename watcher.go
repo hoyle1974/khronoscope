@@ -5,49 +5,49 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alitto/pond/v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-type WatchMe interface {
-	Valid(obj runtime.Object) bool
-	Add(obj runtime.Object) Resource
-	Modified(obj runtime.Object) Resource
-	Del(obj runtime.Object) Resource
-	Tick()
+// Interface for watching resource events.
+type ResourceEventWatcher interface {
+	Valid(obj runtime.Object) bool        // Returns true if the object is handled by this watcher
+	Add(obj runtime.Object) Resource      // Called when a valid resource is added, should construct and return a Resource
+	Modified(obj runtime.Object) Resource // Called when a valid resource is modified, should construct and return a Resource
+	Del(obj runtime.Object) Resource      // Called when a valid resource is deleted, should construct and return a Resource
+	Tick()                                // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics
 }
 
+// Watches for a variety of k8s resources state changes and tracks their values over time
 type K8sWatcher struct {
-	lock       sync.Mutex
-	log        string
-	lastChange time.Time
-	timedMap   *TimedMap
-	onChange   func()
-	pool       pond.Pool
+	lock        sync.Mutex
+	lastChange  time.Time
+	temporalMap *TemporalMap
+	onChange    func()
 }
 
-func (w *K8sWatcher) Log(l string) {
-	w.lock.Lock()
-	w.log = l
-	w.lock.Unlock()
-}
-func (w *K8sWatcher) GetLog() string {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-	return w.log
+// Create a new watcher
+func NewK8sWatcher() *K8sWatcher {
+	w := &K8sWatcher{
+		lastChange:  time.Now(),
+		temporalMap: NewTemporalMap(),
+	}
+	return w
 }
 
+// Set the onChange callback
 func (w *K8sWatcher) OnChange(onChange func()) {
 	w.onChange = onChange
 }
 
-func (w K8sWatcher) ChangedSince(t time.Time) bool {
+// See if anything we watch has changed since a certain time
+func (w *K8sWatcher) ChangedSince(t time.Time) bool {
 	return w.lastChange.After(t)
 }
 
-func (w K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
-	m := w.timedMap.GetStateAtTime(timestamp)
+// Returns a list of Resources that existed at a specific time, can be filtered by kind and namespace
+func (w *K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
+	m := w.temporalMap.GetStateAtTime(timestamp)
 
 	// Create a slice of keys
 	values := make([]Resource, 0, len(m))
@@ -65,6 +65,7 @@ func (w K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace s
 	return values
 }
 
+// Used internally to denote when the internal struct has been modified and notify anyone listening about that change
 func (w *K8sWatcher) dirty() {
 	w.lastChange = time.Now()
 	if w.onChange != nil {
@@ -72,31 +73,25 @@ func (w *K8sWatcher) dirty() {
 	}
 }
 
-func NewK8sWatcher() *K8sWatcher {
-	w := &K8sWatcher{
-		lastChange: time.Now(),
-		timedMap:   NewTimedMap(),
-		pool:       pond.NewPool(64),
-	}
-	return w
-}
-
+// Add a resource to the temporal map
 func (w *K8sWatcher) Add(r Resource) {
-	w.timedMap.Add(r.Timestamp, r.Key(), r)
+	w.temporalMap.Add(r.Timestamp, r.Key(), r)
 	w.dirty()
 }
 
+// Update a resource in the temporal map
 func (w *K8sWatcher) Update(r Resource) {
-	w.timedMap.Update(r.Timestamp, r.Key(), r)
+	w.temporalMap.Update(r.Timestamp, r.Key(), r)
 	w.dirty()
 }
 
+// Delete a resource in the temporal map
 func (w *K8sWatcher) Delete(r Resource) {
-	w.timedMap.Remove(r.Timestamp, r.Key())
+	w.temporalMap.Remove(r.Timestamp, r.Key())
 	w.dirty()
 }
 
-func (w *K8sWatcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
+func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEventWatcher ResourceEventWatcher) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("Recovered in goroutine: %v\n", r)
@@ -106,7 +101,7 @@ func (w *K8sWatcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
 
 	ticker := time.NewTicker(time.Second / 2)
 	defer ticker.Stop()
-	watchMe.Tick()
+	resourceEventWatcher.Tick()
 
 	for {
 		select {
@@ -118,22 +113,16 @@ func (w *K8sWatcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
 
 			switch event.Type {
 			case watch.Added:
-				// w.pool.Go(func() {
-				w.Add(watchMe.Add(event.Object))
-				// })
+				w.Add(resourceEventWatcher.Add(event.Object))
 			case watch.Modified:
-				// w.pool.Go(func() {
-				w.Update(watchMe.Modified(event.Object))
-				// })
+				w.Update(resourceEventWatcher.Modified(event.Object))
 			case watch.Deleted:
-				// w.pool.Go(func() {
-				w.Delete(watchMe.Del(event.Object))
-				// })
+				w.Delete(resourceEventWatcher.Del(event.Object))
 			case watch.Error:
 				fmt.Printf("Unknown error watching: %v\n", event.Object)
 			}
 		case <-ticker.C:
-			watchMe.Tick()
+			resourceEventWatcher.Tick()
 		}
 	}
 

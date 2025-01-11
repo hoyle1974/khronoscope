@@ -115,5 +115,5 @@ func watchForService(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), ServiceWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), ServiceWatchMe{})
 }

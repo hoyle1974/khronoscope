@@ -136,5 +136,5 @@ func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.watchEvents(watchChan.ResultChan(), DaemonSetWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), DaemonSetWatchMe{})
 }

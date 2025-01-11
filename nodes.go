@@ -323,7 +323,7 @@ func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatchMe) *NodeWat
 
 	w := &NodeWatchMe{k: k, w: watcher, pwm: pwm}
 
-	go watcher.watchEvents(watchChan.ResultChan(), w)
+	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
 	return w
 }

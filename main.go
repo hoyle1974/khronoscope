@@ -7,10 +7,9 @@ import (
 )
 
 func main() {
-	// Connect to kubernetes
 	client, err := NewKhronosConnection()
 	if err != nil {
-		fmt.Errorf("Error creating conneciton: %w", err)
+		fmt.Errorf("Error creating connection: %w", err)
 		return
 	}
 

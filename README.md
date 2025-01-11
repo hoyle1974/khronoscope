@@ -29,6 +29,68 @@ Along with standard resource information the application also collects metrics d
 
 I use [BubbleTea](https://github.com/charmbracelet/bubbletea) for rendering and [LipGloss](https://github.com/charmbracelet/lipgloss) for coloring, both great projects.
 
+# Adding new k8s resource types
+
+A good example of how to add a new resource type can be seen in [service.go](https://github.com/hoyle1974/khronoscope/blob/main/service.go).  You implement something like the following, replacing **{K8sResourceType}** with the resource type you are implementing.
+
+```
+type {K8sResourceType}Renderer struct {
+}
+
+func format{K8sResourceType}Details(t *corev1.{K8sResourceType}) []string {
+	var result []string
+
+	// Basic details
+	result = append(result, fmt.Sprintf("Name:           %s", t.Name))
+
+	return result
+}
+
+func (r {K8sResourceType}Renderer) Render(resource Resource, details bool) []string {
+	if details {
+		return format{K8sResourceType}Details(resource.Object.(*corev1.{K8sResourceType}))
+	}
+
+	return []string{resource.Key()}
+}
+
+type {K8sResourceType}WatchMe struct {
+}
+
+func (n {K8sResourceType}WatchMe) Tick() {
+}
+
+func (n {K8sResourceType}WatchMe) Kind() string {
+	return "{K8sResourceType}"
+}
+
+func (n *{K8sResourceType}WatchMe) Renderer() ResourceRenderer {
+	return nil
+}
+
+func (n {K8sResourceType}WatchMe) convert(obj runtime.Object) *corev1.{K8sResourceType} {
+	ret, ok := obj.(*corev1.{K8sResourceType})
+	if !ok {
+		return nil
+	}
+	return ret
+}
+
+func (n {K8sResourceType}WatchMe) ToResource(obj runtime.Object) Resource {
+	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
+}
+
+func watchFor{K8sResourceType}(watcher *K8sWatcher, k KhronosConn) {
+	watchChan, err := k.client.CoreV1().{K8sResourceType}("").Watch(context.Background(), v1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	go watcher.registerEventWatcher(watchChan.ResultChan(), {K8sResourceType}WatchMe{})
+}
+```
+In [main.go](https://github.com/hoyle1974/khronoscope/blob/main/main.go) you will need to make a call to watchFor**{K8sResourceType}**.  You will see examples of other resources being watched in main as well.
+
 
 # Future
 

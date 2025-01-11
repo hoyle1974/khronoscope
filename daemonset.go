@@ -129,7 +129,7 @@ func (n DaemonSetWatchMe) Del(obj runtime.Object) Resource {
 	return NewResource(string(ds.ObjectMeta.GetUID()), time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, DaemonRenderer{})
 }
 
-func watchForDaemonSet(watcher *Watcher, k KhronosConn) {
+func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {
 	fmt.Println("Watching daemonset . . .")
 	watchChan, err := k.client.AppsV1().DaemonSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {

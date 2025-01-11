@@ -283,7 +283,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 
 type PodWatchMe struct {
 	k KhronosConn
-	w *Watcher
+	w *K8sWatcher
 
 	lastPodMetrics atomic.Pointer[v1beta1.PodMetricsList]
 }
@@ -384,7 +384,7 @@ func (n *PodWatchMe) Tick() {
 	n.w.Log(fmt.Sprintf("Tick: %v", time.Now()))
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
-	m, err := n.k.mc.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
+	m, err := n.k.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
 	}
@@ -446,7 +446,7 @@ func (n *PodWatchMe) Del(obj runtime.Object) Resource {
 	return r
 }
 
-func watchForPods(watcher *Watcher, k KhronosConn) *PodWatchMe {
+func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatchMe {
 	fmt.Println("Watching pods . . .")
 	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {

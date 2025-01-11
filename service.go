@@ -108,7 +108,7 @@ func (n ServiceWatchMe) Del(obj runtime.Object) Resource {
 
 }
 
-func watchForService(watcher *Watcher, k KhronosConn) {
+func watchForService(watcher *K8sWatcher, k KhronosConn) {
 	fmt.Println("Watching service . . .")
 	watchChan, err := k.client.CoreV1().Services("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {

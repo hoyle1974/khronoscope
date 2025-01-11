@@ -77,7 +77,7 @@ func (n NamespaceWatchMe) Del(obj runtime.Object) Resource {
 	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})
 }
 
-func watchForNamespaces(watcher *Watcher, k KhronosConn) {
+func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {
 	fmt.Println("Watching namespaces . . .")
 	watchChan, err := k.client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {

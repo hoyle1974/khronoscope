@@ -150,7 +150,7 @@ func (n ReplicaSetWatchMe) Del(obj runtime.Object) Resource {
 
 }
 
-func watchForReplicaSet(watcher *Watcher, k KhronosConn) {
+func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
 	fmt.Println("Watching replica set . . .")
 	watchChan, err := k.client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {

@@ -193,7 +193,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 
 type NodeWatchMe struct {
 	k   KhronosConn
-	w   *Watcher
+	w   *K8sWatcher
 	pwm *PodWatchMe
 
 	lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
@@ -252,7 +252,7 @@ func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
 func (n *NodeWatchMe) Tick() {
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
-	m, err := n.k.mc.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
+	m, err := n.k.metricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
 	}
@@ -314,7 +314,7 @@ func (n *NodeWatchMe) Del(obj runtime.Object) Resource {
 
 }
 
-func watchForNodes(watcher *Watcher, k KhronosConn, pwm *PodWatchMe) *NodeWatchMe {
+func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatchMe) *NodeWatchMe {
 	fmt.Println("Watching nodes . . .")
 	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {

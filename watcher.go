@@ -18,7 +18,7 @@ type WatchMe interface {
 	Tick()
 }
 
-type Watcher struct {
+type K8sWatcher struct {
 	lock       sync.Mutex
 	log        string
 	lastChange time.Time
@@ -27,26 +27,26 @@ type Watcher struct {
 	pool       pond.Pool
 }
 
-func (w *Watcher) Log(l string) {
+func (w *K8sWatcher) Log(l string) {
 	w.lock.Lock()
 	w.log = l
 	w.lock.Unlock()
 }
-func (w *Watcher) GetLog() string {
+func (w *K8sWatcher) GetLog() string {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	return w.log
 }
 
-func (w *Watcher) OnChange(onChange func()) {
+func (w *K8sWatcher) OnChange(onChange func()) {
 	w.onChange = onChange
 }
 
-func (w Watcher) ChangedSince(t time.Time) bool {
+func (w K8sWatcher) ChangedSince(t time.Time) bool {
 	return w.lastChange.After(t)
 }
 
-func (w Watcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
+func (w K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
 	m := w.timedMap.GetStateAtTime(timestamp)
 
 	// Create a slice of keys
@@ -65,15 +65,15 @@ func (w Watcher) GetStateAtTime(timestamp time.Time, kind string, namespace stri
 	return values
 }
 
-func (w *Watcher) dirty() {
+func (w *K8sWatcher) dirty() {
 	w.lastChange = time.Now()
 	if w.onChange != nil {
 		w.onChange()
 	}
 }
 
-func NewWatcher() *Watcher {
-	w := &Watcher{
+func NewK8sWatcher() *K8sWatcher {
+	w := &K8sWatcher{
 		lastChange: time.Now(),
 		timedMap:   NewTimedMap(),
 		pool:       pond.NewPool(64),
@@ -81,22 +81,22 @@ func NewWatcher() *Watcher {
 	return w
 }
 
-func (w *Watcher) Add(r Resource) {
+func (w *K8sWatcher) Add(r Resource) {
 	w.timedMap.Add(r.Timestamp, r.Key(), r)
 	w.dirty()
 }
 
-func (w *Watcher) Update(r Resource) {
+func (w *K8sWatcher) Update(r Resource) {
 	w.timedMap.Update(r.Timestamp, r.Key(), r)
 	w.dirty()
 }
 
-func (w *Watcher) Delete(r Resource) {
+func (w *K8sWatcher) Delete(r Resource) {
 	w.timedMap.Remove(r.Timestamp, r.Key())
 	w.dirty()
 }
 
-func (w *Watcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
+func (w *K8sWatcher) watchEvents(watcher <-chan watch.Event, watchMe WatchMe) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("Recovered in goroutine: %v\n", r)

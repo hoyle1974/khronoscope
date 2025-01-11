@@ -117,8 +117,7 @@ func (n DeploymentWatchMe) Del(obj runtime.Object) Resource {
 	return NewResource(string(d.ObjectMeta.GetUID()), time.Now(), n.Kind(), d.Namespace, d.Name, d, DeploymentRenderer{})
 }
 
-func watchForDeployments(watcher *Watcher, k KhronosConn) {
-	fmt.Println("Watching deployments . . .")
+func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {
 	watchChan, err := k.client.AppsV1().Deployments("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

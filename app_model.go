@@ -10,7 +10,25 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	titleStyle = func() lipgloss.Style {
+		// b := lipgloss.RoundedBorder()
+		// b.Right = "├"
+		// return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
+		return lipgloss.NewStyle()
+	}()
+
+	infoStyle = func() lipgloss.Style {
+		// b := lipgloss.RoundedBorder()
+		// b.Left = "┤"
+		// return titleStyle.BorderStyle(b)
+		return lipgloss.NewStyle()
+	}()
+)
+
 type AppModel struct {
+	enableTimeTravel  bool
+	alternateTime     time.Time
 	watcher           *K8sWatcher
 	ready             bool
 	viewMode          int
@@ -23,25 +41,24 @@ type AppModel struct {
 }
 
 func (m *AppModel) headerView() string {
-	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s", GetTimeToUse().Format("2006-01-02 15:04:05")))
+	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s ", m.GetTimeToUse().Format("2006-01-02 15:04:05")))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
 
 func (m *AppModel) footerView() string {
-	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.treeView.ScrollPercent()*100))
+	info := infoStyle.Render(fmt.Sprintf(" %3.f%%", m.treeView.ScrollPercent()*100))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(info)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
 // MODEL DATA
-var useAdjustment = false
-var adjust = time.Now()
-
 func newModel(watcher *K8sWatcher) *AppModel {
 	return &AppModel{
-		watcher: watcher,
-		tv:      NewTreeView(),
+		enableTimeTravel: false,
+		alternateTime:    time.Now(),
+		watcher:          watcher,
+		tv:               NewTreeView(),
 	}
 }
 
@@ -53,15 +70,15 @@ var curPosition = 0
 var curRealPosition = 0
 var count = 0
 
-func GetTimeToUse() time.Time {
-	if useAdjustment {
-		return adjust
+func (s *AppModel) GetTimeToUse() time.Time {
+	if s.enableTimeTravel {
+		return s.alternateTime
 	}
 	return time.Now()
 }
 
 func (m *AppModel) View() string {
-	timeToUse := GetTimeToUse()
+	timeToUse := m.GetTimeToUse()
 	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))
 
 	treeContent, focusLine, resource := m.tv.Render()
@@ -169,26 +186,26 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "left":
-			if !useAdjustment {
-				useAdjustment = true
-				adjust = time.Now()
+			if !m.enableTimeTravel {
+				m.enableTimeTravel = true
+				m.alternateTime = time.Now()
 			} else {
-				adjust = adjust.Add(-time.Second)
+				m.alternateTime = m.alternateTime.Add(-time.Second)
 			}
 			return m, nil
 		case "right":
-			if !useAdjustment {
-				useAdjustment = true
-				adjust = time.Now()
+			if !m.enableTimeTravel {
+				m.enableTimeTravel = true
+				m.alternateTime = time.Now()
 			} else {
-				adjust = adjust.Add(time.Second)
-				if adjust.After(time.Now()) {
-					useAdjustment = false
+				m.alternateTime = m.alternateTime.Add(time.Second)
+				if m.alternateTime.After(time.Now()) {
+					m.enableTimeTravel = false
 				}
 			}
 			return m, nil
 		case "esc":
-			useAdjustment = false
+			m.enableTimeTravel = false
 		case "enter":
 			m.tv.Toggle()
 			return m, nil

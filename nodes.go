@@ -291,27 +291,12 @@ func (n *NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
 	return extra
 }
 
-func (n *NodeWatchMe) update(obj runtime.Object) *Resource {
-	r := n.Modified(obj)
-	return &r
-}
-
-func (n *NodeWatchMe) Add(obj runtime.Object) Resource {
+func (n *NodeWatchMe) ToResource(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewResource(string(node.ObjectMeta.GetUID()), node.ObjectMeta.CreationTimestamp.Time, n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
-}
-func (n *NodeWatchMe) Modified(obj runtime.Object) Resource {
-	node := n.convert(obj)
-	return NewResource(string(node.ObjectMeta.GetUID()), time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
-}
-func (n *NodeWatchMe) Del(obj runtime.Object) Resource {
-	node := n.convert(obj)
-	return NewResource(string(node.ObjectMeta.GetUID()), time.Now(), n.Kind(), node.Namespace, node.Name, node, n.Renderer()).SetExtra(n.getExtra(node))
-
+	return NewK8sResource(n.Kind(), node, n.Renderer()).SetExtra(n.getExtra(node))
 }
 
 func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatchMe) *NodeWatchMe {
-	fmt.Println("Watching nodes . . .")
 	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,7 +87,7 @@ func (n DeploymentWatchMe) Kind() string {
 }
 
 func (n *DeploymentWatchMe) Renderer() ResourceRenderer {
-	return nil
+	return DeploymentRenderer{}
 }
 
 func (n DeploymentWatchMe) convert(obj runtime.Object) *appsv1.Deployment {
@@ -99,18 +98,8 @@ func (n DeploymentWatchMe) convert(obj runtime.Object) *appsv1.Deployment {
 	return ret
 }
 
-func (n DeploymentWatchMe) Add(obj runtime.Object) Resource {
-	d := n.convert(obj)
-	return NewResource(string(d.ObjectMeta.GetUID()), d.ObjectMeta.CreationTimestamp.Time, n.Kind(), d.Namespace, d.Name, d, DeploymentRenderer{})
-}
-func (n DeploymentWatchMe) Modified(obj runtime.Object) Resource {
-	d := n.convert(obj)
-	return NewResource(string(d.ObjectMeta.GetUID()), time.Now(), n.Kind(), d.Namespace, d.Name, d, DeploymentRenderer{})
-
-}
-func (n DeploymentWatchMe) Del(obj runtime.Object) Resource {
-	d := n.convert(obj)
-	return NewResource(string(d.ObjectMeta.GetUID()), time.Now(), n.Kind(), d.Namespace, d.Name, d, DeploymentRenderer{})
+func (n DeploymentWatchMe) ToResource(obj runtime.Object) Resource {
+	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
 func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {

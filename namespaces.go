@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,23 +58,11 @@ func (n NamespaceWatchMe) convert(obj runtime.Object) *corev1.Namespace {
 	return ret
 }
 
-func (n NamespaceWatchMe) Add(obj runtime.Object) Resource {
-	namespace := n.convert(obj)
-	return NewResource(string(namespace.ObjectMeta.GetUID()), namespace.ObjectMeta.CreationTimestamp.Time, n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})
-}
-
-func (n NamespaceWatchMe) Modified(obj runtime.Object) Resource {
-	namespace := n.convert(obj)
-	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})
-}
-
-func (n NamespaceWatchMe) Del(obj runtime.Object) Resource {
-	namespace := n.convert(obj)
-	return NewResource(string(namespace.ObjectMeta.GetUID()), time.Now(), n.Kind(), namespace.Namespace, namespace.Name, namespace, NamespacedRenderer{})
+func (n NamespaceWatchMe) ToResource(obj runtime.Object) Resource {
+	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
 func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {
-	fmt.Println("Watching namespaces . . .")
 	watchChan, err := k.client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,23 +87,11 @@ func (n ServiceWatchMe) convert(obj runtime.Object) *corev1.Service {
 	return ret
 }
 
-func (n ServiceWatchMe) Add(obj runtime.Object) Resource {
-	service := n.convert(obj)
-	return NewResource(string(service.ObjectMeta.GetUID()), service.ObjectMeta.CreationTimestamp.Time, n.Kind(), service.Namespace, service.Name, service, ServiceRenderer{})
-}
-func (n ServiceWatchMe) Modified(obj runtime.Object) Resource {
-	service := n.convert(obj)
-	return NewResource(string(service.ObjectMeta.GetUID()), time.Now(), n.Kind(), service.Namespace, service.Name, service, ServiceRenderer{})
-
-}
-func (n ServiceWatchMe) Del(obj runtime.Object) Resource {
-	service := n.convert(obj)
-	return NewResource(string(service.ObjectMeta.GetUID()), time.Now(), n.Kind(), service.Namespace, service.Name, service, ServiceRenderer{})
-
+func (n ServiceWatchMe) ToResource(obj runtime.Object) Resource {
+	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
 func watchForService(watcher *K8sWatcher, k KhronosConn) {
-	fmt.Println("Watching service . . .")
 	watchChan, err := k.client.CoreV1().Services("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

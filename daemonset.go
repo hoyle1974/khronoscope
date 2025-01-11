@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -11,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type DaemonRenderer struct {
+type DaemonSetRenderer struct {
 }
 
 func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
@@ -80,7 +79,7 @@ func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 	return result
 }
 
-func (r DaemonRenderer) Render(resource Resource, details bool) []string {
+func (r DaemonSetRenderer) Render(resource Resource, details bool) []string {
 	if details {
 		return formatDaemonSetDetails(resource.Object.(*appsv1.DaemonSet))
 	}
@@ -99,7 +98,7 @@ func (n DaemonSetWatchMe) Kind() string {
 }
 
 func (n *DaemonSetWatchMe) Renderer() ResourceRenderer {
-	return nil
+	return DaemonSetRenderer{}
 }
 
 func (n DaemonSetWatchMe) convert(obj runtime.Object) *appsv1.DaemonSet {
@@ -110,23 +109,11 @@ func (n DaemonSetWatchMe) convert(obj runtime.Object) *appsv1.DaemonSet {
 	return ret
 }
 
-func (n DaemonSetWatchMe) Add(obj runtime.Object) Resource {
-	ds := n.convert(obj)
-	return NewResource(string(ds.ObjectMeta.GetUID()), ds.ObjectMeta.CreationTimestamp.Time, n.Kind(), ds.Namespace, ds.Name, ds, DaemonRenderer{})
-
-}
-func (n DaemonSetWatchMe) Modified(obj runtime.Object) Resource {
-	ds := n.convert(obj)
-	return NewResource(string(ds.ObjectMeta.GetUID()), time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, DaemonRenderer{})
-
-}
-func (n DaemonSetWatchMe) Del(obj runtime.Object) Resource {
-	ds := n.convert(obj)
-	return NewResource(string(ds.ObjectMeta.GetUID()), time.Now(), n.Kind(), ds.Namespace, ds.Name, ds, DaemonRenderer{})
+func (n DaemonSetWatchMe) ToResource(obj runtime.Object) Resource {
+	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
 func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {
-	fmt.Println("Watching daemonset . . .")
 	watchChan, err := k.client.AppsV1().DaemonSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

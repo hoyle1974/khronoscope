@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,24 +129,12 @@ func (n ReplicaSetWatchMe) getExtra(rs *appsv1.ReplicaSet) map[string]any {
 	return extra
 }
 
-func (n ReplicaSetWatchMe) Add(obj runtime.Object) Resource {
+func (n ReplicaSetWatchMe) ToResource(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewResource(string(rs.ObjectMeta.GetUID()), rs.ObjectMeta.CreationTimestamp.Time, n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
-
-}
-func (n ReplicaSetWatchMe) Modified(obj runtime.Object) Resource {
-	rs := n.convert(obj)
-	return NewResource(string(rs.ObjectMeta.GetUID()), time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
-
-}
-func (n ReplicaSetWatchMe) Del(obj runtime.Object) Resource {
-	rs := n.convert(obj)
-	return NewResource(string(rs.ObjectMeta.GetUID()), time.Now(), n.Kind(), rs.Namespace, rs.Name, rs, n.Renderer()).SetExtra(n.getExtra(rs))
-
+	return NewK8sResource(n.Kind(), rs, n.Renderer()).SetExtra(n.getExtra(rs))
 }
 
 func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
-	fmt.Println("Watching replica set . . .")
 	watchChan, err := k.client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

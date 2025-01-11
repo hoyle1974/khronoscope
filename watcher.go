@@ -11,10 +11,11 @@ import (
 
 // Interface for watching resource events.
 type ResourceEventWatcher interface {
-	Add(obj runtime.Object) Resource      // Called when a resource is added, should construct and return a Resource
-	Modified(obj runtime.Object) Resource // Called when a resource is modified, should construct and return a Resource
-	Del(obj runtime.Object) Resource      // Called when a resource is deleted, should construct and return a Resource
-	Tick()                                // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics
+	//Add(obj runtime.Object) Resource      // Called when a resource is added, should construct and return a Resource
+	//Modified(obj runtime.Object) Resource // Called when a resource is modified, should construct and return a Resource
+	//Del(obj runtime.Object) Resource      // Called when a resource is deleted, should construct and return a Resource
+	ToResource(obj runtime.Object) Resource // Converts a kubernetes object to a Resource
+	Tick()                                  // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics
 }
 
 // Watches for a variety of k8s resources state changes and tracks their values over time
@@ -112,11 +113,11 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 
 			switch event.Type {
 			case watch.Added:
-				w.Add(resourceEventWatcher.Add(event.Object))
+				w.Add(resourceEventWatcher.ToResource(event.Object))
 			case watch.Modified:
-				w.Update(resourceEventWatcher.Modified(event.Object))
+				w.Update(resourceEventWatcher.ToResource(event.Object))
 			case watch.Deleted:
-				w.Delete(resourceEventWatcher.Del(event.Object))
+				w.Delete(resourceEventWatcher.ToResource(event.Object))
 			case watch.Error:
 				fmt.Printf("Unknown error watching: %v\n", event.Object)
 			}

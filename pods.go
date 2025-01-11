@@ -426,22 +426,12 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	return extra
 }
 
-func (n *PodWatchMe) Add(obj runtime.Object) Resource {
+func (n *PodWatchMe) ToResource(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewResource(string(pod.ObjectMeta.GetUID()), pod.ObjectMeta.CreationTimestamp.Time, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
-}
-func (n *PodWatchMe) Modified(obj runtime.Object) Resource {
-	pod := n.convert(obj)
-	return NewResource(string(pod.ObjectMeta.GetUID()), time.Now(), n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
-}
-func (n *PodWatchMe) Del(obj runtime.Object) Resource {
-	pod := n.convert(obj)
-	r := NewResource(string(pod.ObjectMeta.GetUID()), time.Now() /*pod.DeletionTimestamp.Time*/, n.Kind(), pod.Namespace, pod.Name, pod, n.Renderer()).SetExtra(n.getExtra(pod))
-	return r
+	return NewK8sResource(n.Kind(), pod, n.Renderer()).SetExtra(n.getExtra(pod))
 }
 
 func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatchMe {
-	fmt.Println("Watching pods . . .")
 	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

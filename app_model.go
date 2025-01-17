@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -40,8 +41,62 @@ type AppModel struct {
 	tv                *TreeView
 }
 
+func calculatePercentageOfTime(min, max, value time.Time) float64 {
+	// Ensure the value is within the range
+	if value.Before(min) || value.After(max) {
+		return 0
+	}
+
+	// Convert to Unix timestamps or durations
+	minUnix := min.Unix()
+	maxUnix := max.Unix()
+	valueUnix := value.Unix()
+
+	// Calculate percentage
+	percentage := float64(valueUnix-minUnix) / float64(maxUnix-minUnix)
+	return percentage
+}
+
 func (m *AppModel) headerView() string {
-	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s ", m.GetTimeToUse().Format("2006-01-02 15:04:05")))
+	minTime, maxTime := m.watcher.temporalMap.GetTimeRange()
+	current := m.GetTimeToUse()
+	p := calculatePercentageOfTime(minTime, maxTime, current)
+
+	currentTime := fmt.Sprintf(" Current Time: %s ", current.Format("2006-01-02 15:04:05"))
+
+	percentText := fmt.Sprintf("Available Range (%s to %s) %3.2f%% ",
+		minTime.Format("2006-01-02 15:04:05"),
+		maxTime.Format("2006-01-02 15:04:05"),
+		p*100,
+	)
+	bar := percentText
+
+	if !m.enableTimeTravel {
+		bar = currentTime
+	} else {
+
+		size := len(percentText)
+		filledSegments := int(math.Round(p * float64(size)))
+
+		// Define styles for filled and empty segments
+		filledStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FFFFFF")).Foreground(lipgloss.Color("#000000")) // Green
+		emptyStyle := lipgloss.NewStyle().Background(lipgloss.Color("#0000FF")).Foreground(lipgloss.Color("#FFFFFF"))  // Gray
+
+		// Build the bar
+		bar = currentTime + " ["
+		for i := 0; i < len(percentText); i++ {
+			if i < filledSegments {
+				bar += filledStyle.Render(string(percentText[i]))
+			} else {
+				bar += emptyStyle.Render(string(percentText[i]))
+			}
+		}
+		bar += "]"
+	}
+
+	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s ",
+		bar,
+	))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
@@ -191,6 +246,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.alternateTime = time.Now()
 			} else {
 				m.alternateTime = m.alternateTime.Add(-time.Second)
+				m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
 			}
 			return m, nil
 		case "right":
@@ -199,9 +255,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.alternateTime = time.Now()
 			} else {
 				m.alternateTime = m.alternateTime.Add(time.Second)
-				if m.alternateTime.After(time.Now()) {
-					m.enableTimeTravel = false
-				}
+				m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
 			}
 			return m, nil
 		case "esc":

@@ -46,8 +46,10 @@ func (i *temporalValue) Get(timestamp time.Time) any {
 
 // TemporalMap represents a map-like data structure with time-ordered items.
 type TemporalMap struct {
-	lock  sync.RWMutex
-	items map[string]*temporalValue
+	lock    sync.RWMutex
+	items   map[string]*temporalValue
+	minTime time.Time
+	maxTime time.Time
 }
 
 // NewTemporalMap creates a new empty TimedMap.
@@ -57,10 +59,37 @@ func NewTemporalMap() *TemporalMap {
 	}
 }
 
+func (tm *TemporalMap) GetTimeRange() (time.Time, time.Time) {
+	return tm.minTime, tm.maxTime
+}
+
+func (tm *TemporalMap) ClampTime(t time.Time) time.Time {
+	if t.Before(tm.minTime) {
+		t = tm.minTime
+	}
+	if t.After(tm.maxTime) {
+		t = tm.maxTime
+	}
+	return t
+}
+
+func (tm *TemporalMap) updateTimeRange(timestamp time.Time) {
+	if len(tm.items) == 0 || timestamp.Before(tm.minTime) {
+		tm.minTime = timestamp
+	}
+	if len(tm.items) == 0 || timestamp.After(tm.maxTime) {
+		tm.maxTime = timestamp
+	}
+
+}
+
 // Add adds an item to the TimedMap with the given timestamp, key, and value.
 func (tm *TemporalMap) Add(timestamp time.Time, key string, value interface{}) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
+
+	tm.updateTimeRange(timestamp)
+
 	v, ok := tm.items[key]
 	if !ok {
 		v = &temporalValue{}
@@ -73,6 +102,8 @@ func (tm *TemporalMap) Add(timestamp time.Time, key string, value interface{}) {
 func (tm *TemporalMap) Update(timestamp time.Time, key string, value interface{}) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
+
+	tm.updateTimeRange(timestamp)
 
 	v, ok := tm.items[key]
 	if !ok {
@@ -88,6 +119,8 @@ func (tm *TemporalMap) Update(timestamp time.Time, key string, value interface{}
 func (tm *TemporalMap) Remove(timestamp time.Time, key string) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
+
+	tm.updateTimeRange(timestamp)
 
 	v, ok := tm.items[key]
 	if !ok {

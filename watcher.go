@@ -9,6 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
+const WATCHER_STEP = time.Second * 5
+
 // Interface for watching resource events.
 type ResourceEventWatcher interface {
 	//Add(obj runtime.Object) Resource      // Called when a resource is added, should construct and return a Resource
@@ -99,7 +101,7 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second / 2)
+	ticker := time.NewTicker(WATCHER_STEP)
 	defer ticker.Stop()
 	resourceEventWatcher.Tick()
 

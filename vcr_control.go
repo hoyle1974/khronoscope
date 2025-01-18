@@ -152,20 +152,26 @@ func (tc *VCRControl) Render() string {
 		return ""
 	}
 
-	symbol := "||"
+	var leftArrow = fmt.Sprintf("%c", '\u25C0')
+	var rightArrow = fmt.Sprintf("%c", '\u25B6')
+	var pauseSymbol = fmt.Sprintf("%c", '\u23F8')
 
-	if tc.playSpeed == 1*time.Second {
-		symbol = ">"
+	symbol := pauseSymbol
+
+	if tc.playSpeed == 0 {
+		symbol = pauseSymbol
+	} else if tc.playSpeed == 1*time.Second {
+		symbol = rightArrow
 	} else if tc.playSpeed == 2*time.Second {
-		symbol = ">>"
+		symbol = rightArrow + rightArrow
 	} else if tc.playSpeed > 2*time.Second {
-		symbol = fmt.Sprintf("%d>>", tc.playSpeed/time.Second)
+		symbol = fmt.Sprintf("%d"+rightArrow+rightArrow, tc.playSpeed/time.Second)
 	} else if tc.playSpeed == -1*time.Second {
-		symbol = "<"
+		symbol = leftArrow
 	} else if tc.playSpeed == -2*time.Second {
-		symbol = "<<"
+		symbol = leftArrow + leftArrow
 	} else if tc.playSpeed < -2*time.Second {
-		symbol = fmt.Sprintf("<<%d", -tc.playSpeed/time.Second)
+		symbol = fmt.Sprintf(leftArrow+leftArrow+"%d", -tc.playSpeed/time.Second)
 	}
 
 	return symbol

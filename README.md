@@ -13,8 +13,8 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
    	- Enter - Toggle folding the tree node you have selected
 	- Alt Up/Alt Down - Move by a larger step value
 	- Shift Up/Shift Down - Move the detail window up and down 
-	- Left/Right - Go backwards or forwards in time
-	- Esc - Jump back to current time
+	- Left/Right - Pauses and starts VCR controls, press repeatedly to adjust VCR speed.
+	- Esc - Disable VCR and continue with most recent data playback.
 	- Tab - Switch view orientation
 	- Ctrl-C - Exit
 

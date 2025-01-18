@@ -87,21 +87,21 @@ func (r DaemonSetRenderer) Render(resource Resource, details bool) []string {
 	return []string{resource.Key()}
 }
 
-type DaemonSetWatchMe struct {
+type DaemonSetWatcher struct {
 }
 
-func (n DaemonSetWatchMe) Tick() {
+func (n DaemonSetWatcher) Tick() {
 }
 
-func (n DaemonSetWatchMe) Kind() string {
+func (n DaemonSetWatcher) Kind() string {
 	return "DeamonSet"
 }
 
-func (n *DaemonSetWatchMe) Renderer() ResourceRenderer {
+func (n *DaemonSetWatcher) Renderer() ResourceRenderer {
 	return DaemonSetRenderer{}
 }
 
-func (n DaemonSetWatchMe) convert(obj runtime.Object) *appsv1.DaemonSet {
+func (n DaemonSetWatcher) convert(obj runtime.Object) *appsv1.DaemonSet {
 	ret, ok := obj.(*appsv1.DaemonSet)
 	if !ok {
 		return nil
@@ -109,7 +109,7 @@ func (n DaemonSetWatchMe) convert(obj runtime.Object) *appsv1.DaemonSet {
 	return ret
 }
 
-func (n DaemonSetWatchMe) ToResource(obj runtime.Object) Resource {
+func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
@@ -119,5 +119,5 @@ func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.registerEventWatcher(watchChan.ResultChan(), DaemonSetWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), DaemonSetWatcher{})
 }

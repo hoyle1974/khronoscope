@@ -56,7 +56,7 @@ func getPodLogs(client kubernetes.Interface, namespace, podName string) (string,
 }
 
 type PodRenderer struct {
-	n *PodWatchMe
+	n *PodWatcher
 }
 
 // describePod returns a list of formatted strings describing the pod's details.
@@ -281,7 +281,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 	return out
 }
 
-type PodWatchMe struct {
+type PodWatcher struct {
 	k KhronosConn
 	w *K8sWatcher
 
@@ -300,7 +300,7 @@ type PodMetric struct {
 	memoryPercentage float64
 }
 
-func (n *PodWatchMe) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
+func (n *PodWatcher) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
 	metricsExtra := map[string]PodMetric{}
 	lastPodMetrics := n.lastPodMetrics.Load()
 	if lastPodMetrics == nil {
@@ -333,7 +333,7 @@ func (n *PodWatchMe) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
 	return metricsExtra
 }
 
-func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
+func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 	pod := resource.Object.(*corev1.Pod)
 
 	metricsExtra := n.getPodMetricsForPod(pod)
@@ -348,7 +348,7 @@ func (n *PodWatchMe) updateResourceMetrics(resource Resource) {
 	}
 }
 
-func (n *PodWatchMe) Tick() {
+func (n *PodWatcher) Tick() {
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	m, err := n.k.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -363,15 +363,15 @@ func (n *PodWatchMe) Tick() {
 	}
 }
 
-func (n *PodWatchMe) Kind() string {
+func (n *PodWatcher) Kind() string {
 	return "Pod"
 }
 
-func (n *PodWatchMe) Renderer() ResourceRenderer {
+func (n *PodWatcher) Renderer() ResourceRenderer {
 	return PodRenderer{n}
 }
 
-func (n *PodWatchMe) convert(obj runtime.Object) *corev1.Pod {
+func (n *PodWatcher) convert(obj runtime.Object) *corev1.Pod {
 	ret, ok := obj.(*corev1.Pod)
 	if !ok {
 		return nil
@@ -379,7 +379,7 @@ func (n *PodWatchMe) convert(obj runtime.Object) *corev1.Pod {
 	return ret
 }
 
-func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
+func (n *PodWatcher) getExtra(pod *corev1.Pod) map[string]any {
 	extra := map[string]any{}
 	extra["Phase"] = pod.Status.Phase
 	extra["Node"] = pod.Spec.NodeName
@@ -394,18 +394,18 @@ func (n *PodWatchMe) getExtra(pod *corev1.Pod) map[string]any {
 	return extra
 }
 
-func (n *PodWatchMe) ToResource(obj runtime.Object) Resource {
+func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	pod := n.convert(obj)
 	return NewK8sResource(n.Kind(), pod, n.Renderer()).SetExtra(n.getExtra(pod))
 }
 
-func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatchMe {
+func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatcher {
 	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	w := &PodWatchMe{k: k, w: watcher}
+	w := &PodWatcher{k: k, w: watcher}
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
 	return w

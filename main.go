@@ -21,8 +21,8 @@ func main() {
 	watchForReplicaSet(watcher, client)
 	watchForService(watcher, client)
 	watchForNamespaces(watcher, client)
-	podWatchMe := watchForPods(watcher, client)
-	watchForNodes(watcher, client, podWatchMe)
+	podWatcher := watchForPods(watcher, client)
+	watchForNodes(watcher, client, podWatcher)
 
 	appModel := newModel(watcher)
 	p := tea.NewProgram(appModel)

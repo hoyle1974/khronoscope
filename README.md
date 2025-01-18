@@ -54,21 +54,21 @@ func (r {K8sResourceType}Renderer) Render(resource Resource, details bool) []str
 	return []string{resource.Key()}
 }
 
-type {K8sResourceType}WatchMe struct {
+type {K8sResourceType}Watcher struct {
 }
 
-func (n {K8sResourceType}WatchMe) Tick() {
+func (n {K8sResourceType}Watcher) Tick() {
 }
 
-func (n {K8sResourceType}WatchMe) Kind() string {
+func (n {K8sResourceType}Watcher) Kind() string {
 	return "{K8sResourceType}"
 }
 
-func (n *{K8sResourceType}WatchMe) Renderer() ResourceRenderer {
+func (n *{K8sResourceType}Watcher) Renderer() ResourceRenderer {
 	return nil
 }
 
-func (n {K8sResourceType}WatchMe) convert(obj runtime.Object) *corev1.{K8sResourceType} {
+func (n {K8sResourceType}Watcher) convert(obj runtime.Object) *corev1.{K8sResourceType} {
 	ret, ok := obj.(*corev1.{K8sResourceType})
 	if !ok {
 		return nil
@@ -76,7 +76,7 @@ func (n {K8sResourceType}WatchMe) convert(obj runtime.Object) *corev1.{K8sResour
 	return ret
 }
 
-func (n {K8sResourceType}WatchMe) ToResource(obj runtime.Object) Resource {
+func (n {K8sResourceType}Watcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
@@ -86,7 +86,7 @@ func watchFor{K8sResourceType}(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.registerEventWatcher(watchChan.ResultChan(), {K8sResourceType}WatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), {K8sResourceType}Watcher{})
 }
 ```
 In [main.go](https://github.com/hoyle1974/khronoscope/blob/main/main.go) you will need to make a call to watchFor**{K8sResourceType}**.  You will see examples of other resources being watched in main as well.

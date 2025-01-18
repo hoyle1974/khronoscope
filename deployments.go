@@ -76,21 +76,21 @@ func (r DeploymentRenderer) Render(resource Resource, details bool) []string {
 	return []string{resource.Key()}
 }
 
-type DeploymentWatchMe struct {
+type DeploymentWatcher struct {
 }
 
-func (n DeploymentWatchMe) Tick() {
+func (n DeploymentWatcher) Tick() {
 }
 
-func (n DeploymentWatchMe) Kind() string {
+func (n DeploymentWatcher) Kind() string {
 	return "Deployment"
 }
 
-func (n *DeploymentWatchMe) Renderer() ResourceRenderer {
+func (n *DeploymentWatcher) Renderer() ResourceRenderer {
 	return DeploymentRenderer{}
 }
 
-func (n DeploymentWatchMe) convert(obj runtime.Object) *appsv1.Deployment {
+func (n DeploymentWatcher) convert(obj runtime.Object) *appsv1.Deployment {
 	ret, ok := obj.(*appsv1.Deployment)
 	if !ok {
 		return nil
@@ -98,7 +98,7 @@ func (n DeploymentWatchMe) convert(obj runtime.Object) *appsv1.Deployment {
 	return ret
 }
 
-func (n DeploymentWatchMe) ToResource(obj runtime.Object) Resource {
+func (n DeploymentWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
@@ -108,5 +108,5 @@ func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.registerEventWatcher(watchChan.ResultChan(), DeploymentWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), DeploymentWatcher{})
 }

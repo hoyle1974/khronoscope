@@ -65,21 +65,21 @@ func (r ServiceRenderer) Render(resource Resource, details bool) []string {
 	return []string{resource.Key()}
 }
 
-type ServiceWatchMe struct {
+type ServiceWatcher struct {
 }
 
-func (n ServiceWatchMe) Tick() {
+func (n ServiceWatcher) Tick() {
 }
 
-func (n ServiceWatchMe) Kind() string {
+func (n ServiceWatcher) Kind() string {
 	return "Service"
 }
 
-func (n *ServiceWatchMe) Renderer() ResourceRenderer {
+func (n *ServiceWatcher) Renderer() ResourceRenderer {
 	return nil
 }
 
-func (n ServiceWatchMe) convert(obj runtime.Object) *corev1.Service {
+func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 	ret, ok := obj.(*corev1.Service)
 	if !ok {
 		return nil
@@ -87,7 +87,7 @@ func (n ServiceWatchMe) convert(obj runtime.Object) *corev1.Service {
 	return ret
 }
 
-func (n ServiceWatchMe) ToResource(obj runtime.Object) Resource {
+func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
@@ -97,5 +97,5 @@ func watchForService(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.registerEventWatcher(watchChan.ResultChan(), ServiceWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), ServiceWatcher{})
 }

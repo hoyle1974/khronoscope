@@ -10,7 +10,7 @@ import (
 )
 
 type ReplicaSetRenderer struct {
-	n *ReplicaSetWatchMe
+	n *ReplicaSetWatcher
 }
 
 func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
@@ -99,21 +99,21 @@ func (r ReplicaSetRenderer) Render(resource Resource, details bool) []string {
 	return []string{extra}
 }
 
-type ReplicaSetWatchMe struct {
+type ReplicaSetWatcher struct {
 }
 
-func (n ReplicaSetWatchMe) Tick() {
+func (n ReplicaSetWatcher) Tick() {
 }
 
-func (n ReplicaSetWatchMe) Kind() string {
+func (n ReplicaSetWatcher) Kind() string {
 	return "ReplicaSet"
 }
 
-func (n *ReplicaSetWatchMe) Renderer() ResourceRenderer {
+func (n *ReplicaSetWatcher) Renderer() ResourceRenderer {
 	return ReplicaSetRenderer{n}
 }
 
-func (n ReplicaSetWatchMe) convert(obj runtime.Object) *appsv1.ReplicaSet {
+func (n ReplicaSetWatcher) convert(obj runtime.Object) *appsv1.ReplicaSet {
 	ret, ok := obj.(*appsv1.ReplicaSet)
 	if !ok {
 		return nil
@@ -121,7 +121,7 @@ func (n ReplicaSetWatchMe) convert(obj runtime.Object) *appsv1.ReplicaSet {
 	return ret
 }
 
-func (n ReplicaSetWatchMe) getExtra(rs *appsv1.ReplicaSet) map[string]any {
+func (n ReplicaSetWatcher) getExtra(rs *appsv1.ReplicaSet) map[string]any {
 	extra := map[string]any{}
 
 	extra["Status"] = rs.Status
@@ -129,7 +129,7 @@ func (n ReplicaSetWatchMe) getExtra(rs *appsv1.ReplicaSet) map[string]any {
 	return extra
 }
 
-func (n ReplicaSetWatchMe) ToResource(obj runtime.Object) Resource {
+func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	rs := n.convert(obj)
 	return NewK8sResource(n.Kind(), rs, n.Renderer()).SetExtra(n.getExtra(rs))
 }
@@ -140,5 +140,5 @@ func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.registerEventWatcher(watchChan.ResultChan(), ReplicaSetWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), ReplicaSetWatcher{})
 }

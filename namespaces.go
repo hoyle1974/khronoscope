@@ -36,21 +36,21 @@ func (r NamespacedRenderer) Render(resource Resource, details bool) []string {
 	return []string{resource.Name}
 }
 
-type NamespaceWatchMe struct {
+type NamespaceWatcher struct {
 }
 
-func (n NamespaceWatchMe) Tick() {
+func (n NamespaceWatcher) Tick() {
 }
 
-func (n NamespaceWatchMe) Kind() string {
+func (n NamespaceWatcher) Kind() string {
 	return "Namespace"
 }
 
-func (n *NamespaceWatchMe) Renderer() ResourceRenderer {
+func (n *NamespaceWatcher) Renderer() ResourceRenderer {
 	return NamespacedRenderer{}
 }
 
-func (n NamespaceWatchMe) convert(obj runtime.Object) *corev1.Namespace {
+func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 	ret, ok := obj.(*corev1.Namespace)
 	if !ok {
 		return nil
@@ -58,7 +58,7 @@ func (n NamespaceWatchMe) convert(obj runtime.Object) *corev1.Namespace {
 	return ret
 }
 
-func (n NamespaceWatchMe) ToResource(obj runtime.Object) Resource {
+func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
 }
 
@@ -68,5 +68,5 @@ func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {
 		panic(err)
 	}
 
-	go watcher.registerEventWatcher(watchChan.ResultChan(), NamespaceWatchMe{})
+	go watcher.registerEventWatcher(watchChan.ResultChan(), NamespaceWatcher{})
 }

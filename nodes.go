@@ -18,7 +18,7 @@ import (
 )
 
 type NodeRenderer struct {
-	n *NodeWatchMe
+	n *NodeWatcher
 }
 
 func describeNode(node *corev1.Node) []string {
@@ -191,15 +191,15 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 	return []string{out}
 }
 
-type NodeWatchMe struct {
+type NodeWatcher struct {
 	k   KhronosConn
 	w   *K8sWatcher
-	pwm *PodWatchMe
+	pwm *PodWatcher
 
 	lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
 }
 
-func (n *NodeWatchMe) getMetricsForNode(node *corev1.Node) map[string]string {
+func (n *NodeWatcher) getMetricsForNode(node *corev1.Node) map[string]string {
 	metricsExtra := map[string]string{}
 	lastNodeMetrics := n.lastNodeMetrics.Load()
 	if lastNodeMetrics == nil {
@@ -224,7 +224,7 @@ func (n *NodeWatchMe) getMetricsForNode(node *corev1.Node) map[string]string {
 	return metricsExtra
 }
 
-func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
+func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 	node := resource.Object.(*corev1.Node)
 
 	metricsExtra := n.getMetricsForNode(node)
@@ -249,7 +249,7 @@ func (n *NodeWatchMe) updateResourceMetrics(resource Resource) {
 
 }
 
-func (n *NodeWatchMe) Tick() {
+func (n *NodeWatcher) Tick() {
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	m, err := n.k.metricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
@@ -265,15 +265,15 @@ func (n *NodeWatchMe) Tick() {
 	}
 }
 
-func (n *NodeWatchMe) Kind() string {
+func (n *NodeWatcher) Kind() string {
 	return "Node"
 }
 
-func (n *NodeWatchMe) Renderer() ResourceRenderer {
+func (n *NodeWatcher) Renderer() ResourceRenderer {
 	return NodeRenderer{n}
 }
 
-func (n *NodeWatchMe) convert(obj runtime.Object) *corev1.Node {
+func (n *NodeWatcher) convert(obj runtime.Object) *corev1.Node {
 	ret, ok := obj.(*corev1.Node)
 	if !ok {
 		return nil
@@ -281,7 +281,7 @@ func (n *NodeWatchMe) convert(obj runtime.Object) *corev1.Node {
 	return ret
 }
 
-func (n *NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
+func (n *NodeWatcher) getExtra(node *corev1.Node) map[string]any {
 	extra := map[string]any{}
 	extra["Metrics"] = n.getMetricsForNode(node)
 
@@ -291,18 +291,18 @@ func (n *NodeWatchMe) getExtra(node *corev1.Node) map[string]any {
 	return extra
 }
 
-func (n *NodeWatchMe) ToResource(obj runtime.Object) Resource {
+func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	node := n.convert(obj)
 	return NewK8sResource(n.Kind(), node, n.Renderer()).SetExtra(n.getExtra(node))
 }
 
-func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatchMe) *NodeWatchMe {
+func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatcher) *NodeWatcher {
 	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	w := &NodeWatchMe{k: k, w: watcher, pwm: pwm}
+	w := &NodeWatcher{k: k, w: watcher, pwm: pwm}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 

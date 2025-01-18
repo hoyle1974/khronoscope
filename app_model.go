@@ -137,6 +137,7 @@ func (m *AppModel) View() string {
 	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))
 
 	treeContent, focusLine, resource := m.tv.Render()
+	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
 	m.treeView.SetContent(treeContent)
 	m.treeView.YOffset = focusLine - (m.treeView.Height / 2)
 	if m.treeView.YOffset < 0 {
@@ -144,7 +145,9 @@ func (m *AppModel) View() string {
 	}
 
 	if resource != nil {
-		m.detailView.SetContent(fmt.Sprintf("UID: %s\n", resource.Uid) + strings.Join(resource.Details(), "\n"))
+		detailContent := fmt.Sprintf("UID: %s\n", resource.Uid) + strings.Join(resource.Details(), "\n")
+		detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)
+		m.detailView.SetContent(detailContent)
 	}
 
 	fixWidth := func(s string, width int) string {

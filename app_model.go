@@ -28,8 +28,8 @@ var (
 )
 
 type AppModel struct {
-	enableTimeTravel  bool
-	alternateTime     time.Time
+	// enableTimeTravel  bool
+	// alternateTime     time.Time
 	watcher           *K8sWatcher
 	ready             bool
 	viewMode          int
@@ -39,6 +39,7 @@ type AppModel struct {
 	detailView        viewport.Model
 	lastWindowSizeMsg tea.WindowSizeMsg
 	tv                *TreeView
+	vcr               *VCRControl
 }
 
 func calculatePercentageOfTime(min, max, value time.Time) float64 {
@@ -59,7 +60,7 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 
 func (m *AppModel) headerView() string {
 	minTime, maxTime := m.watcher.temporalMap.GetTimeRange()
-	current := m.GetTimeToUse()
+	current := m.vcr.GetTimeToUse()
 	p := calculatePercentageOfTime(minTime, maxTime, current)
 
 	currentTime := fmt.Sprintf(" Current Time: %s ", current.Format("2006-01-02 15:04:05"))
@@ -71,7 +72,7 @@ func (m *AppModel) headerView() string {
 	)
 	bar := percentText
 
-	if !m.enableTimeTravel {
+	if !m.vcr.IsEnabled() {
 		bar = currentTime
 	} else {
 
@@ -94,7 +95,8 @@ func (m *AppModel) headerView() string {
 		bar += "]"
 	}
 
-	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s ",
+	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s %s ",
+		m.vcr.Render(),
 		bar,
 	))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
@@ -110,10 +112,10 @@ func (m *AppModel) footerView() string {
 // MODEL DATA
 func newModel(watcher *K8sWatcher) *AppModel {
 	return &AppModel{
-		enableTimeTravel: false,
-		alternateTime:    time.Now(),
-		watcher:          watcher,
-		tv:               NewTreeView(),
+		// enableTimeTravel: false,
+		// alternateTime:    time.Now(),
+		watcher: watcher,
+		tv:      NewTreeView(),
 	}
 }
 
@@ -125,15 +127,15 @@ var curPosition = 0
 var curRealPosition = 0
 var count = 0
 
-func (s *AppModel) GetTimeToUse() time.Time {
-	if s.enableTimeTravel {
-		return s.alternateTime
-	}
-	return time.Now()
-}
+// func (s *AppModel) GetTimeToUse() time.Time {
+// 	if s.enableTimeTravel {
+// 		return s.alternateTime
+// 	}
+// 	return time.Now()
+// }
 
 func (m *AppModel) View() string {
-	timeToUse := m.GetTimeToUse()
+	timeToUse := m.vcr.GetTimeToUse()
 	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))
 
 	treeContent, focusLine, resource := m.tv.Render()
@@ -244,25 +246,28 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "left":
-			if !m.enableTimeTravel {
-				m.enableTimeTravel = true
-				m.alternateTime = time.Now()
-			} else {
-				m.alternateTime = m.alternateTime.Add(-time.Second)
-				m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
-			}
+			m.vcr.Rewind()
+			// if !m.enableTimeTravel {
+			// 	m.enableTimeTravel = true
+			// 	m.alternateTime = time.Now()
+			// } else {
+			// 	m.alternateTime = m.alternateTime.Add(-time.Second)
+			// 	m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
+			// }
 			return m, nil
 		case "right":
-			if !m.enableTimeTravel {
-				m.enableTimeTravel = true
-				m.alternateTime = time.Now()
-			} else {
-				m.alternateTime = m.alternateTime.Add(time.Second)
-				m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
-			}
+			m.vcr.FastForward()
+			// if !m.enableTimeTravel {
+			// 	m.enableTimeTravel = true
+			// 	m.alternateTime = time.Now()
+			// } else {
+			// 	m.alternateTime = m.alternateTime.Add(time.Second)
+			// 	m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
+			// }
 			return m, nil
 		case "esc":
-			m.enableTimeTravel = false
+			m.vcr.DisableVCR()
+			// m.enableTimeTravel = false
 		case "enter":
 			m.tv.Toggle()
 			return m, nil

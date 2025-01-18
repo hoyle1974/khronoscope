@@ -23,9 +23,12 @@ func main() {
 	podWatchMe := watchForPods(watcher, client)
 	watchForNodes(watcher, client, podWatchMe)
 
-	p := tea.NewProgram(
-		newModel(watcher),
-	)
+	appModel := newModel(watcher)
+	p := tea.NewProgram(appModel)
+
+	appModel.vcr = NewVCRControl(watcher.temporalMap, func() {
+		p.Send(1)
+	})
 
 	watcher.OnChange(func() {
 		p.Send(1)

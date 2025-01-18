@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-const WATCHER_STEP = time.Second * 5
+const WATCHER_STEP = time.Second * 1
 
 // Interface for watching resource events.
 type ResourceEventWatcher interface {

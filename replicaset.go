@@ -86,15 +86,15 @@ func (r ReplicaSetRenderer) Render(resource Resource, details bool) []string {
 
 	if details {
 		rs := resource.Object.(*appsv1.ReplicaSet)
-
 		return formatReplicaSetDetails(rs)
 	}
 
 	extra := ""
 	e, ok := resource.GetExtra()["Status"]
 	if ok {
+		rs := resource.Object.(*appsv1.ReplicaSet)
 		s := e.(appsv1.ReplicaSetStatus)
-		extra += fmt.Sprintf(" - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)
+		extra += fmt.Sprintf("%s - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", rs.Name, s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)
 	}
 	return []string{extra}
 }

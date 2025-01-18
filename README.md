@@ -1,9 +1,8 @@
 ![khronoscope](https://github.com/user-attachments/assets/ed78c414-98e6-400e-b1a1-a18e82baf189)
 
-# Khronoscope
-WARNING: You probably don't want to point this to a prod Kubernetes cluster yet.  I have made adjustments to make sure it doesn't overload the control plane but haven't tested it's load yet.
+# Khronoscope: Rewind Your Kubernetes Cluster's History with VCR-Style Controls
 
-Imagine a tool like k9s that also lets you to inspect the state of your Kubernetes cluster BUT also let's you go back in time to see the state as it was at any point in time since you started the app.
+Khronoscope is a tool inspired by k9s that allows you to inspect the state of your Kubernetes cluster and travel back in time to see its state at any point since you started the application using VCR like controls.  
 
 This project is in it's VERY early stages, not in Alpha yet really but what it does do at the moment:
 
@@ -18,6 +17,10 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 	- Esc - Jump back to current time
 	- Tab - Switch view orientation
 	- Ctrl-C - Exit
+
+# Disclaimer
+
+This project is in its early stages of development and is not yet recommended for production use. While adjustments have been made to minimize load on the control plane, performance under heavy load has not yet been tested.
 
 # Example
 <img width="1452" alt="Screenshot 2025-01-10 at 2 07 26 PM" src="https://github.com/user-attachments/assets/d4eeac64-b203-40ff-a668-631055b06639" />

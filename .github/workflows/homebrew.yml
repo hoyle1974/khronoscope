@@ -1,41 +1,35 @@
+---
 name: Production Release
-
 env:
   USERNAME: hoyle1974
   APP_NAME: khronoscope
   RELEASE_VERSION: v1.0.0
   HOMEBREW_TAP_REPO: homebrew-tap
-
 on:
   push:
     branches:
       - main
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-     - name: Check out code
+      - name: Check out code
         uses: actions/checkout@v4
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.23.4
-
       - name: Build
-        run: |
+        run: >
           GOOS=linux GOARCH=amd64 go build -o ${{ env.APP_NAME }}_linux_amd64 -v
+
           GOOS=darwin GOARCH=amd64 go build -o ${{ env.APP_NAME }}_darwin_amd64 -v
+
           GOOS=windows GOARCH=amd64 go build -o ${{ env.APP_NAME }}_windows_amd64.exe -v
-
-      #- name: Test
-      #  run: go test ./tests/config_test.go -v
-
       - name: Print SHA for Homebrew
-        run: shasum -a 256 ${{ env.APP_NAME }}_linux_amd64 ${{ env.APP_NAME }}_darwin_amd64 ${{ env.APP_NAME }}_windows_amd64.exe > sha256checksums.txt
-
+        run: shasum -a 256 ${{ env.APP_NAME }}_linux_amd64 ${{ env.APP_NAME
+          }}_darwin_amd64 ${{ env.APP_NAME }}_windows_amd64.exe >
+          sha256checksums.txt
       - name: Create release and attach artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -45,10 +39,11 @@ jobs:
             ${{ env.APP_NAME }}_darwin_amd64
             ${{ env.APP_NAME }}_windows_amd64.exe
             sha256checksums.txt
-
       - name: Create Homebrew formula
-        run: |
-          SHA256=$(grep "${{ env.APP_NAME }}_darwin_amd64" sha256checksums.txt | awk '{ print $1 }')
+        run: >
+          SHA256=$(grep "${{ env.APP_NAME }}_darwin_amd64" sha256checksums.txt | awk
+          '{ print $1 }')
+
           FORMULA="class ${{ env.APP_NAME }} < Formula
             desc \"A description for the test app.\"
             homepage \"https://github.com/${{ env.USERNAME }}/${{ env.APP_NAME }}\"
@@ -66,10 +61,10 @@ jobs:
           end
           "
           echo "$FORMULA" > ${{ env.APP_NAME }}.rb
-
       - name: Push formula to Homebrew tap
-        run: |
-          git clone https://github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git
+        run: >
+          git clone https://github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO
+          }}.git
           cd homebrew-tap
 
           git config user.name "github-actions[bot]"

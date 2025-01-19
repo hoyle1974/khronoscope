@@ -70,7 +70,7 @@ func (m *AppModel) headerView() string {
 		maxTime.Format("2006-01-02 15:04:05"),
 		p*100,
 	)
-	bar := percentText
+	bar := ""
 
 	if !m.vcr.IsEnabled() {
 		bar = currentTime

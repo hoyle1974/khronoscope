@@ -177,7 +177,7 @@ func formatEnvironment(envVars []corev1.EnvVar) string {
 func formatVolumeMounts(mounts []corev1.VolumeMount) string {
 	var mountStrings []string
 	for _, mount := range mounts {
-		mountStrings = append(mountStrings, fmt.Sprintf("%s from %s (%s)", mount.MountPath, mount.Name, mount.ReadOnly))
+		mountStrings = append(mountStrings, fmt.Sprintf("%s from %s (%t)", mount.MountPath, mount.Name, mount.ReadOnly))
 	}
 	return strings.Join(mountStrings, ", ")
 }

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"maps"
 	"slices"
 	"strings"
@@ -36,23 +34,25 @@ func grommet2(is bool) string {
 func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
 	return "", nil
 
-	lines := int64(15)
-	req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
-		TailLines: &lines,
-	})
-	podLogs, err := req.Stream(context.Background())
-	if err != nil {
-		return "", fmt.Errorf("error opening stream: %w", err)
-	}
-	defer podLogs.Close()
+	/*
+		lines := int64(15)
+		req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+			TailLines: &lines,
+		})
+		podLogs, err := req.Stream(context.Background())
+		if err != nil {
+			return "", fmt.Errorf("error opening stream: %w", err)
+		}
+		defer podLogs.Close()
 
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, podLogs)
-	if err != nil {
-		return "", fmt.Errorf("error copying logs: %w", err)
-	}
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, podLogs)
+		if err != nil {
+			return "", fmt.Errorf("error copying logs: %w", err)
+		}
 
-	return buf.String(), nil
+		return buf.String(), nil
+	*/
 }
 
 type PodRenderer struct {
@@ -82,7 +82,7 @@ func describePod(pod *corev1.Pod) []string {
 
 	// IPs
 	details = append(details, fmt.Sprintf("IP:\t\t\t%s", pod.Status.PodIP))
-	details = append(details, fmt.Sprintf("IPs:"))
+	details = append(details, "IPs:")
 	for _, ip := range pod.Status.PodIPs {
 		details = append(details, fmt.Sprintf("\tIP:\t\t%s", ip.IP))
 	}
@@ -95,7 +95,7 @@ func describePod(pod *corev1.Pod) []string {
 	}
 
 	// Container details
-	details = append(details, fmt.Sprintf("Containers:"))
+	details = append(details, "Containers:")
 	for _, container := range pod.Spec.Containers {
 		details = append(details, fmt.Sprintf("\t%s:", container.Name))
 		details = append(details, fmt.Sprintf("\t\tContainer ID:\t%s", "N/A")) // Need to query container ID if required
@@ -114,13 +114,13 @@ func describePod(pod *corev1.Pod) []string {
 	}
 
 	// Conditions
-	details = append(details, fmt.Sprintf("Conditions:"))
+	details = append(details, "Conditions:")
 	for _, condition := range pod.Status.Conditions {
 		details = append(details, fmt.Sprintf("\tType: %s, Status: %s", condition.Type, condition.Status))
 	}
 
 	// Volumes
-	details = append(details, fmt.Sprintf("Volumes:"))
+	details = append(details, "Volumes:")
 	for _, volume := range pod.Spec.Volumes {
 		details = append(details, fmt.Sprintf("\t%s:", volume.Name))
 		details = append(details, fmt.Sprintf("\t\tType:\t%s", volume.VolumeSource))

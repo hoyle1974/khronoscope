@@ -47,7 +47,6 @@ func describeNode(node *corev1.Node) []string {
 	out = append(out, fmt.Sprintf("OS Image: %s", node.Status.NodeInfo.OSImage))
 	out = append(out, fmt.Sprintf("Container Runtime Version: %s", node.Status.NodeInfo.ContainerRuntimeVersion))
 	out = append(out, fmt.Sprintf("Kubelet Version: %s", node.Status.NodeInfo.KubeletVersion))
-	out = append(out, fmt.Sprintf("Kube-Proxy Version: %s", node.Status.NodeInfo.KubeProxyVersion))
 	out = append(out, fmt.Sprintf("Operating System: %s", node.Status.NodeInfo.OperatingSystem))
 	out = append(out, fmt.Sprintf("Architecture: %s", node.Status.NodeInfo.Architecture))
 
@@ -70,7 +69,7 @@ func describeNode(node *corev1.Node) []string {
 		out = append(out, fmt.Sprintf("  LastTransitionTime: %s", condition.LastTransitionTime.Time.Format(time.RFC3339)))
 		out = append(out, fmt.Sprintf("  Reason: %s", condition.Reason))
 		out = append(out, fmt.Sprintf("  Message: %s", condition.Message))
-		out = append(out, fmt.Sprintf(""))
+		out = append(out, "")
 	}
 
 	return out
@@ -251,7 +250,9 @@ func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 
 func (n *NodeWatcher) Tick() {
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
 	m, err := n.k.metricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return

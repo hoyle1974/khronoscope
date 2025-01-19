@@ -71,12 +71,17 @@ jobs:
         run: >
           git clone https://github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO
           }}.git
+          
           cd homebrew-tap
 
           git config user.name "github-actions[bot]"
+          
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           mv ../${{ env.APP_NAME }}.rb .
+          
           git add ./${{ env.APP_NAME }}.rb
+          
           git commit -m "Update formula for ${{ env.RELEASE_VERSION }}"
+          
           git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git HEAD:main

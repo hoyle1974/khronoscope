@@ -43,18 +43,16 @@ jobs:
             ${{ env.APP_NAME }}_darwin_amd64
             ${{ env.APP_NAME }}_windows_amd64.exe
             sha256checksums.txt
-      
-      - name: Create Homebrew formula
-        run: >
-          SHA256=$(grep "${{ env.APP_NAME }}_darwin_amd64" sha256checksums.txt | awk
-          '{ print $1 }')
 
-          FORMULA="class ${{ env.APP_NAME }} < Formula
-            desc \"A description for the test app.\"
+     - name: Create Homebrew formula
+        run: |
+          SHA256=$(grep "${{ env.APP_NAME }}_darwin_amd64" sha256checksums.txt | awk '{ print $1 }')
+          FORMULA="class Khronoscope < Formula
+            desc \"A TUI for VCR controls while inspecting your k8s cluster.\"
             homepage \"https://github.com/${{ env.USERNAME }}/${{ env.APP_NAME }}\"
-            url \"https://github.com/${{ env.USERNAME }}/${{ env.APP_NAME }}/releases/download/${{ env.RELEASE_VERSION }}/${{ env.APP_NAME }}_darwin_amd64\"
+            url \"https://github.com/${{ env.USERNAME }}/${{ env.APP_NAME }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}_darwin_amd64\"
             sha256 \"$SHA256\"
-            version \"${{ env.RELEASE_VERSION }}\"
+            version \"${{ github.ref_name }}\"
 
             def install
               bin.install \"${{ env.APP_NAME }}_darwin_amd64\" => \"${{ env.APP_NAME }}\"

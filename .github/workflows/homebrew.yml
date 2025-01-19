@@ -13,18 +13,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Init
-        run: >
-          echo "Secret:" ${{secrets.HOMEBREW_TAP_TOKEN}} | sed 's/./& /g'
-      - name: Init2
-        run: >
-          echo git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git HEAD:main  | sed 's/./& /g'
       - name: Check out code
         uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.23.4
+      
       - name: Build
         run: >
           GOOS=linux GOARCH=amd64 go build -o ${{ env.APP_NAME }}_linux_amd64 -v
@@ -32,10 +28,12 @@ jobs:
           GOOS=darwin GOARCH=amd64 go build -o ${{ env.APP_NAME }}_darwin_amd64 -v
 
           GOOS=windows GOARCH=amd64 go build -o ${{ env.APP_NAME }}_windows_amd64.exe -v
+      
       - name: Print SHA for Homebrew
         run: shasum -a 256 ${{ env.APP_NAME }}_linux_amd64 ${{ env.APP_NAME
           }}_darwin_amd64 ${{ env.APP_NAME }}_windows_amd64.exe >
           sha256checksums.txt
+      
       - name: Create release and attach artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -45,6 +43,7 @@ jobs:
             ${{ env.APP_NAME }}_darwin_amd64
             ${{ env.APP_NAME }}_windows_amd64.exe
             sha256checksums.txt
+      
       - name: Create Homebrew formula
         run: >
           SHA256=$(grep "${{ env.APP_NAME }}_darwin_amd64" sha256checksums.txt | awk
@@ -67,6 +66,7 @@ jobs:
           end
           "
           echo "$FORMULA" > ${{ env.APP_NAME }}.rb
+          
       - name: Push formula to Homebrew tap
         run: >
           git clone https://github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO
@@ -79,4 +79,4 @@ jobs:
           mv ../${{ env.APP_NAME }}.rb .
           git add ./${{ env.APP_NAME }}.rb
           git commit -m "Update formula for ${{ env.RELEASE_VERSION }}"
-          git push https://x-access-token:$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@github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git HEAD:main
+          git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git HEAD:main

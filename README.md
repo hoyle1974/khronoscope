@@ -23,6 +23,26 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 
 This project is in its early stages of development and is not yet recommended for production use. While adjustments have been made to minimize load on the control plane, performance under heavy load has not yet been tested.
 
+# Installation
+
+Currently Khronoscope has only been tested on MacOS.  To install the latest build with homebrew:
+
+```
+brew tap hoyle1974/homebrew-tap 
+brew install khronoscope
+```
+
+You can also compile from source:
+
+- Clone the repo
+- Build and run the executable
+
+```
+https://github.com/hoyle1974/khronoscope.git
+cd khronoscope 
+go run .
+```
+
 # Example
 <img width="1452" alt="Screenshot 2025-01-10 at 2 07 26 PM" src="https://github.com/user-attachments/assets/d4eeac64-b203-40ff-a668-631055b06639" />
 

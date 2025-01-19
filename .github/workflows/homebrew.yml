@@ -1,5 +1,5 @@
 ---
-name: Production Release
+name: Production Release Test
 env:
   USERNAME: hoyle1974
   APP_NAME: khronoscope

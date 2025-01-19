@@ -44,7 +44,7 @@ jobs:
             ${{ env.APP_NAME }}_windows_amd64.exe
             sha256checksums.txt
 
-     - name: Create Homebrew formula
+      - name: Create Homebrew formula
         run: |
           SHA256=$(grep "${{ env.APP_NAME }}_darwin_amd64" sha256checksums.txt | awk '{ print $1 }')
           FORMULA="class Khronoscope < Formula

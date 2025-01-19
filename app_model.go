@@ -95,8 +95,10 @@ func (m *AppModel) headerView() string {
 		bar += "]"
 	}
 
+	vcrStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FFAA00")).Foreground(lipgloss.Color("#000000"))
+
 	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s %s ",
-		m.vcr.Render(),
+		vcrStyle.Render("  "+m.vcr.Render()+"  "),
 		bar,
 	))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
@@ -112,8 +114,6 @@ func (m *AppModel) footerView() string {
 // MODEL DATA
 func newModel(watcher *K8sWatcher) *AppModel {
 	return &AppModel{
-		// enableTimeTravel: false,
-		// alternateTime:    time.Now(),
 		watcher: watcher,
 		tv:      NewTreeView(),
 	}
@@ -160,8 +160,6 @@ func (m *AppModel) View() string {
 	} else {
 		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), " ", m.detailView.View())
 	}
-
-	// log := fmt.Sprintf("%d : %v - %v\n", count, adjust.Seconds(), watcher.GetLog())
 
 	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), temp, m.footerView())
 }

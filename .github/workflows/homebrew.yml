@@ -15,7 +15,8 @@ jobs:
     steps:
       - name: Init
         run: >
-          echo ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          echo ${{ secrets.HOMEBREW_TAP_TOKEN }} > tmp.txt
+          cat tmp.txt
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go

@@ -129,7 +129,7 @@ func describePod(pod *corev1.Pod) []string {
 	// QoS class, Node selectors, and Tolerations
 	details = append(details, fmt.Sprintf("QoS Class:\t\t%s", pod.Status.QOSClass))
 	details = append(details, fmt.Sprintf("Node-Selectors:\t%s", pod.Spec.NodeSelector))
-	details = append(details, fmt.Sprintf("Tolerations:"))
+	details = append(details, "Tolerations:")
 	for _, toleration := range pod.Spec.Tolerations {
 		details = append(details, fmt.Sprintf("\t%s", toleration.Key))
 	}
@@ -186,7 +186,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 						return "Waiting: " + status.State.Waiting.Reason
 					}
 					if status.State.Running != nil {
-						return fmt.Sprintf("Running")
+						return "Running"
 					}
 					if status.State.Terminated != nil {
 						return "Terminated: " + status.State.Terminated.Reason
@@ -198,7 +198,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		}
 
 		// Print container information
-		out = append(out, fmt.Sprintf("Containers:"))
+		out = append(out, "Containers:")
 		for _, container := range pod.Spec.Containers {
 			out = append(out, fmt.Sprintf("   %s - %s : %s", container.Name, container.Image, getContainerState(container.Name)))
 		}

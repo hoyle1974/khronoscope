@@ -247,27 +247,15 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "left":
 			m.vcr.Rewind()
-			// if !m.enableTimeTravel {
-			// 	m.enableTimeTravel = true
-			// 	m.alternateTime = time.Now()
-			// } else {
-			// 	m.alternateTime = m.alternateTime.Add(-time.Second)
-			// 	m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
-			// }
 			return m, nil
 		case "right":
 			m.vcr.FastForward()
-			// if !m.enableTimeTravel {
-			// 	m.enableTimeTravel = true
-			// 	m.alternateTime = time.Now()
-			// } else {
-			// 	m.alternateTime = m.alternateTime.Add(time.Second)
-			// 	m.alternateTime = m.watcher.temporalMap.ClampTime(m.alternateTime)
-			// }
+			return m, nil
+		case " ":
+			m.vcr.Pause()
 			return m, nil
 		case "esc":
 			m.vcr.DisableVCR()
-			// m.enableTimeTravel = false
 		case "enter":
 			m.tv.Toggle()
 			return m, nil

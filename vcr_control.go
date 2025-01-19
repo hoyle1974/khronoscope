@@ -81,7 +81,7 @@ func (tc *VCRControl) GetTimeToUse() time.Time {
 func (tc *VCRControl) enableVCR() {
 	if !tc.enableVCRFlag {
 		tc.playSpeed = 0
-		tc.vcrTime = time.Now()
+		tc.vcrTime = time.Now().Add(-time.Millisecond)
 	}
 	tc.enableVCRFlag = true
 }

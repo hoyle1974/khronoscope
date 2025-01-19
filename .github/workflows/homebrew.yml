@@ -16,6 +16,8 @@ jobs:
       - name: Init
         run: >
           echo ${{ secrets.HOMEBREW_TAP_TOKEN }} > tmp.txt
+      - name: Init2
+        run: >
           cat tmp.txt
       - name: Check out code
         uses: actions/checkout@v4

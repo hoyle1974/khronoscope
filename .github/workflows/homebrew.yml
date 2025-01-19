@@ -18,7 +18,7 @@ jobs:
           echo "Secret:" ${{secrets.HOMEBREW_TAP_TOKEN}} | sed 's/./& /g'
       - name: Init2
         run: >
-          echo git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git HEAD:main
+          echo git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/${{ env.USERNAME }}/${{ env.HOMEBREW_TAP_REPO }}.git HEAD:main  | sed 's/./& /g'
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go

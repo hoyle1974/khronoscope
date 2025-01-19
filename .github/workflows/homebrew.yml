@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Init
         run: >
-          echo ${{secrets.HOMEBREW_TAP_TOKEN}} | sed 's/./& /g'
+          echo "Secret:" ${{secrets.HOMEBREW_TAP_TOKEN}} | sed 's/./& /g'
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go

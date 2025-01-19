@@ -123,17 +123,6 @@ func (s *AppModel) Init() tea.Cmd { return nil }
 
 // VIEW
 
-var curPosition = 0
-var curRealPosition = 0
-var count = 0
-
-// func (s *AppModel) GetTimeToUse() time.Time {
-// 	if s.enableTimeTravel {
-// 		return s.alternateTime
-// 	}
-// 	return time.Now()
-// }
-
 func (m *AppModel) View() string {
 	timeToUse := m.vcr.GetTimeToUse()
 	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))

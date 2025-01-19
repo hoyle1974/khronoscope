@@ -10,7 +10,7 @@ func main() {
 
 	client, err := NewKhronosConnection()
 	if err != nil {
-		fmt.Errorf("Error creating connection: %w", err)
+		fmt.Printf("Error creating connection: %v", err)
 		return
 	}
 

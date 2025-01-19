@@ -25,7 +25,7 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 	result = append(result, RenderMapOfStrings("Annotations:", rs.Annotations)...)
 
 	// Controlled By
-	if rs.OwnerReferences != nil && len(rs.OwnerReferences) > 0 {
+	if len(rs.OwnerReferences) > 0 {
 		result = append(result, fmt.Sprintf("Controlled By:  %s", rs.OwnerReferences[0].Kind+"/"+rs.OwnerReferences[0].Name))
 	}
 

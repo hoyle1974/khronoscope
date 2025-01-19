@@ -101,19 +101,15 @@ func describePod(pod *corev1.Pod) []string {
 		details = append(details, fmt.Sprintf("\t\tContainer ID:\t%s", "N/A")) // Need to query container ID if required
 		details = append(details, fmt.Sprintf("\t\tImage:\t\t%s", container.Image))
 		details = append(details, fmt.Sprintf("\t\tImage ID:\t%s", "N/A")) // Image ID can be retrieved via containerd or docker client
-		details = append(details, fmt.Sprintf("\t\tPorts:\t\t%s", container.Ports))
-		details = append(details, fmt.Sprintf("\t\tHost Ports:\t%s", container.Ports)) // For host ports
+		details = append(details, fmt.Sprintf("\t\tPorts:\t\t%v", container.Ports))
+		details = append(details, fmt.Sprintf("\t\tHost Ports:\t%v", container.Ports)) // For host ports
 		details = append(details, fmt.Sprintf("\t\tArgs:\t\t%s", container.Args))
-		// details = append(details, fmt.Sprintf("\t\tState:\t\t%s", container.State))
-		// details = append(details, fmt.Sprintf("\t\tStarted:\t%s", container.Started))
-		// details = append(details, fmt.Sprintf("\t\tReady:\t\t%s", container.Ready))
-		// details = append(details, fmt.Sprintf("\t\tRestart Count:\t%d", container.RestartCount))
-		details = append(details, fmt.Sprintf("\t\tLimits:\t%s", container.Resources.Limits))
-		details = append(details, fmt.Sprintf("\t\tRequests:\t%s", container.Resources.Requests))
+		details = append(details, fmt.Sprintf("\t\tLimits:\t%v", container.Resources.Limits))
+		details = append(details, fmt.Sprintf("\t\tRequests:\t%v", container.Resources.Requests))
 		details = append(details, fmt.Sprintf("\t\tLiveness:\t%s", container.LivenessProbe))
 		details = append(details, fmt.Sprintf("\t\tReadiness:\t%s", container.ReadinessProbe))
 		details = append(details, fmt.Sprintf("\t\tEnvironment:\t%s", container.Env))
-		details = append(details, fmt.Sprintf("\t\tMounts:\t%s", container.VolumeMounts))
+		details = append(details, fmt.Sprintf("\t\tMounts:\t%v", container.VolumeMounts))
 
 	}
 
@@ -349,7 +345,9 @@ func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 }
 
 func (n *PodWatcher) Tick() {
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
 	m, err := n.k.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return

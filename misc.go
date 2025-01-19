@@ -157,7 +157,13 @@ func formatLiveness(probe *corev1.Probe) string {
 	if probe == nil {
 		return "<none>"
 	}
-	return fmt.Sprintf("http-get %s delay=%s timeout=%s period=%s #success=%d #failure=%d", probe.HTTPGet.Path, probe.InitialDelaySeconds, probe.TimeoutSeconds, probe.PeriodSeconds, probe.SuccessThreshold, probe.FailureThreshold)
+	return fmt.Sprintf("http-get %s delay=%d timeout=%d period=%d #success=%d #failure=%d",
+		probe.HTTPGet.Path,
+		probe.InitialDelaySeconds,
+		probe.TimeoutSeconds,
+		probe.PeriodSeconds,
+		probe.SuccessThreshold,
+		probe.FailureThreshold)
 }
 
 func formatEnvironment(envVars []corev1.EnvVar) string {

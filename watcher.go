@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,7 +18,6 @@ type ResourceEventWatcher interface {
 
 // Watches for a variety of k8s resources state changes and tracks their values over time
 type K8sWatcher struct {
-	lock        sync.Mutex
 	lastChange  time.Time
 	temporalMap *TemporalMap
 	onChange    func()

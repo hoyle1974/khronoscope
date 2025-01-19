@@ -29,11 +29,11 @@ func describeNode(node *corev1.Node) []string {
 	out = append(out, RenderMapOfStrings("Labels:", node.GetLabels())...)
 	out = append(out, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
 
-	out = append(out, fmt.Sprintf("Capacity:"))
+	out = append(out, "Capacity:")
 	for resource, quantity := range NewMapRangeFunc(node.Status.Capacity) {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
-	out = append(out, fmt.Sprintf("Allocatable:"))
+	out = append(out, "Allocatable:")
 	for resource, quantity := range NewMapRangeFunc(node.Status.Allocatable) {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
@@ -51,18 +51,18 @@ func describeNode(node *corev1.Node) []string {
 	out = append(out, fmt.Sprintf("Operating System: %s", node.Status.NodeInfo.OperatingSystem))
 	out = append(out, fmt.Sprintf("Architecture: %s", node.Status.NodeInfo.Architecture))
 
-	out = append(out, fmt.Sprintf("Addresses:"))
+	out = append(out, "Addresses:")
 	for _, address := range node.Status.Addresses {
 		out = append(out, fmt.Sprintf("  %s: %s", address.Type, address.Address))
 	}
 
-	out = append(out, fmt.Sprintf("Images:"))
+	out = append(out, "Images:")
 	for _, image := range node.Status.Images {
 		out = append(out, fmt.Sprintf("  - Names: %s", strings.Join(image.Names, ", ")))
 		out = append(out, fmt.Sprintf("    Size: %d bytes", image.SizeBytes))
 	}
 
-	out = append(out, fmt.Sprintf("Conditions:"))
+	out = append(out, "Conditions:")
 	for _, condition := range node.Status.Conditions {
 		out = append(out, fmt.Sprintf("  Type: %s", condition.Type))
 		out = append(out, fmt.Sprintf("  Status: %s", condition.Status))

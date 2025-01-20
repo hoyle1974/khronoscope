@@ -40,7 +40,7 @@ type AppModel struct {
 	lastWindowSizeMsg tea.WindowSizeMsg
 	tv                *TreeView
 	vcr               *VCRControl
-	popup             string
+	popup             Popup
 }
 
 func calculatePercentageOfTime(min, max, value time.Time) float64 {
@@ -59,8 +59,8 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 	return percentage
 }
 
-func (m *AppModel) Popup(value string) {
-	m.popup = value
+func (m *AppModel) SetPopup(popup Popup) {
+	m.popup = popup
 }
 
 func (m *AppModel) headerView() string {
@@ -169,12 +169,12 @@ func (m *AppModel) View() string {
 	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", m.headerView(), temp, m.footerView()), m.popup)
 }
 
-func (m *AppModel) insertPopup(content string, popup string) string {
-	if len(popup) == 0 || !m.ready {
+func (m *AppModel) insertPopup(content string, popup Popup) string {
+	if popup == nil {
 		return content
 	}
 
-	popupLines := strings.Split(popup, "\n")
+	popupLines := strings.Split(popup.View(m.width, m.height), "\n")
 	contentLines := strings.Split(content, "\n")
 
 	ll := len(contentLines)
@@ -249,9 +249,19 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
+	if m.popup != nil {
+		if m.popup.Update(msg) {
+			m.SetPopup(nil)
+		}
+		return m, nil
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "1":
+			m.SetPopup(newMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
+			return m, nil
 		case "tab":
 			m.viewMode++
 			m.viewMode %= 2

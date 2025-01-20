@@ -28,9 +28,8 @@ var (
 )
 
 type AppModel struct {
-	// enableTimeTravel  bool
-	// alternateTime     time.Time
 	watcher           *K8sWatcher
+	meta              *TemporalMap
 	ready             bool
 	viewMode          int
 	width             int
@@ -41,6 +40,10 @@ type AppModel struct {
 	tv                *TreeView
 	vcr               *VCRControl
 	popup             Popup
+}
+
+func (m *AppModel) SetLabel(label string) {
+	m.meta.Add(m.vcr.GetTimeToUse(), "Meta.Label", label)
 }
 
 func calculatePercentageOfTime(min, max, value time.Time) float64 {
@@ -63,7 +66,7 @@ func (m *AppModel) SetPopup(popup Popup) {
 	m.popup = popup
 }
 
-func (m *AppModel) headerView() string {
+func (m *AppModel) headerView(label string) string {
 	minTime, maxTime := m.watcher.temporalMap.GetTimeRange()
 	current := m.vcr.GetTimeToUse()
 	p := calculatePercentageOfTime(minTime, maxTime, current)
@@ -102,7 +105,12 @@ func (m *AppModel) headerView() string {
 
 	vcrStyle := lipgloss.NewStyle().Background(lipgloss.Color("#FFAA00")).Foreground(lipgloss.Color("#000000"))
 
-	title := titleStyle.Render(fmt.Sprintf("Khronoscope - %s %s ",
+	if len(label) > 0 {
+		label = "[" + label + "]"
+	}
+
+	title := titleStyle.Render(fmt.Sprintf("Khronoscope %s - %s %s ",
+		label,
 		vcrStyle.Render("  "+m.vcr.Render()+"  "),
 		bar,
 	))
@@ -121,6 +129,7 @@ func newModel(watcher *K8sWatcher) *AppModel {
 	return &AppModel{
 		watcher: watcher,
 		tv:      NewTreeView(),
+		meta:    NewTemporalMap(),
 	}
 }
 
@@ -131,6 +140,11 @@ func (s *AppModel) Init() tea.Cmd { return nil }
 func (m *AppModel) View() string {
 	timeToUse := m.vcr.GetTimeToUse()
 	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))
+
+	currentLabel := ""
+	if temp, ok := m.meta.GetStateAtTime(timeToUse)["Meta.Label"]; ok {
+		currentLabel = temp.(string)
+	}
 
 	treeContent, focusLine, resource := m.tv.Render()
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
@@ -166,7 +180,7 @@ func (m *AppModel) View() string {
 		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), " ", m.detailView.View())
 	}
 
-	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", m.headerView(), temp, m.footerView()), m.popup)
+	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", m.headerView(currentLabel), temp, m.footerView()), m.popup)
 }
 
 func (m *AppModel) insertPopup(content string, popup Popup) string {
@@ -197,7 +211,7 @@ func (m *AppModel) windowResize(msg tea.WindowSizeMsg) {
 	m.height = msg.Height
 
 	m.lastWindowSizeMsg = msg
-	headerHeight := lipgloss.Height(m.headerView())
+	headerHeight := lipgloss.Height(m.headerView(""))
 	footerHeight := lipgloss.Height(m.footerView())
 	verticalMarginHeight := headerHeight + footerHeight
 
@@ -262,6 +276,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "1":
 			m.SetPopup(newMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
 			return m, nil
+		case "l":
+			m.vcr.Pause()
+			m.SetPopup(NewLabelPopup(m))
 		case "tab":
 			m.viewMode++
 			m.viewMode %= 2
@@ -276,7 +293,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.vcr.FastForward()
 			return m, nil
 		case " ":
-			m.vcr.Pause()
+			if m.vcr.playSpeed == 0 {
+				m.vcr.Play()
+			} else {
+				m.vcr.Pause()
+			}
 			return m, nil
 		case "esc":
 			m.vcr.DisableVCR()

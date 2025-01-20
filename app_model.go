@@ -40,6 +40,7 @@ type AppModel struct {
 	lastWindowSizeMsg tea.WindowSizeMsg
 	tv                *TreeView
 	vcr               *VCRControl
+	popup             string
 }
 
 func calculatePercentageOfTime(min, max, value time.Time) float64 {
@@ -56,6 +57,10 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 	// Calculate percentage
 	percentage := float64(valueUnix-minUnix) / float64(maxUnix-minUnix)
 	return percentage
+}
+
+func (m *AppModel) Popup(value string) {
+	m.popup = value
 }
 
 func (m *AppModel) headerView() string {
@@ -161,7 +166,29 @@ func (m *AppModel) View() string {
 		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), " ", m.detailView.View())
 	}
 
-	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), temp, m.footerView())
+	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", m.headerView(), temp, m.footerView()), m.popup)
+}
+
+func (m *AppModel) insertPopup(content string, popup string) string {
+	if len(popup) == 0 || !m.ready {
+		return content
+	}
+
+	popupLines := strings.Split(popup, "\n")
+	contentLines := strings.Split(content, "\n")
+
+	ll := len(contentLines)
+	for idx := 0; idx < m.height-ll; idx++ {
+		contentLines = append(contentLines, "")
+	}
+
+	offset := (m.height / 2) - (len(popupLines) / 2)
+
+	for idx, line := range popupLines {
+		contentLines[idx+offset] = line
+	}
+
+	return strings.Join(contentLines, "\n")
 }
 
 // UPDATE

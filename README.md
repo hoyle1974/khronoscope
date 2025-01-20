@@ -48,6 +48,10 @@ go run .
 
 [![Alternate Text](https://github.com/user-attachments/assets/d4eeac64-b203-40ff-a668-631055b06639)](https://github.com/user-attachments/assets/c4780bc3-1e28-40b8-bd8b-372e97a038a2 "Khronoscope Vidoe Demo showing VCR controls")
 
+# Contributions
+
+I'm happy to have folks add contributions.  I've already created some [Issues](https://github.com/hoyle1974/khronoscope/labels/good%20first%20issue) that are great places ot start if you want to contribute something useful but easy and self contained.  For more complex stuff feel free to add comments to the issues and I'm happy to discuss or create your own issues.  I'm really looking for help on how to make this tell more usable in real world scenarios, specifically in UI controls and added features!  
+
 # Internals
 This application create a connection to your kubernetes cluster and starts watching for resource changes.  It has a data structure called [TemporalMap](https://github.com/hoyle1974/khronoscope/blob/main/temporal_map.go) that is used to manage all the resource changes.  The structure allows you to add/update/delete values stored in it and then you can query the map for it's state at a specific point in time.  This let's the application show you the state of the cluster at any point since the start of the application.  
 

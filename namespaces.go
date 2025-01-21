@@ -46,7 +46,7 @@ func (n NamespaceWatcher) Kind() string {
 	return "Namespace"
 }
 
-func (n *NamespaceWatcher) Renderer() ResourceRenderer {
+func (n NamespaceWatcher) Renderer() ResourceRenderer {
 	return NamespacedRenderer{}
 }
 
@@ -59,7 +59,7 @@ func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 }
 
 func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
+	return NewK8sResource(n.Kind(), n.convert(obj))
 }
 
 func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {

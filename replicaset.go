@@ -10,7 +10,7 @@ import (
 )
 
 type ReplicaSetRenderer struct {
-	n *ReplicaSetWatcher
+	// n *ReplicaSetWatcher
 }
 
 func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
@@ -109,8 +109,8 @@ func (n ReplicaSetWatcher) Kind() string {
 	return "ReplicaSet"
 }
 
-func (n *ReplicaSetWatcher) Renderer() ResourceRenderer {
-	return ReplicaSetRenderer{n}
+func (n ReplicaSetWatcher) Renderer() ResourceRenderer {
+	return ReplicaSetRenderer{}
 }
 
 func (n ReplicaSetWatcher) convert(obj runtime.Object) *appsv1.ReplicaSet {
@@ -131,7 +131,7 @@ func (n ReplicaSetWatcher) getExtra(rs *appsv1.ReplicaSet) map[string]any {
 
 func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewK8sResource(n.Kind(), rs, n.Renderer()).SetExtra(n.getExtra(rs))
+	return NewK8sResource(n.Kind(), rs).SetExtra(n.getExtra(rs))
 }
 
 func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {

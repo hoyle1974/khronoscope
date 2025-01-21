@@ -97,7 +97,7 @@ func (n DaemonSetWatcher) Kind() string {
 	return "DeamonSet"
 }
 
-func (n *DaemonSetWatcher) Renderer() ResourceRenderer {
+func (n DaemonSetWatcher) Renderer() ResourceRenderer {
 	return DaemonSetRenderer{}
 }
 
@@ -110,7 +110,7 @@ func (n DaemonSetWatcher) convert(obj runtime.Object) *appsv1.DaemonSet {
 }
 
 func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
+	return NewK8sResource(n.Kind(), n.convert(obj))
 }
 
 func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {

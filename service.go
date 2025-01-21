@@ -75,7 +75,7 @@ func (n ServiceWatcher) Kind() string {
 	return "Service"
 }
 
-func (n *ServiceWatcher) Renderer() ResourceRenderer {
+func (n ServiceWatcher) Renderer() ResourceRenderer {
 	return nil
 }
 
@@ -88,7 +88,7 @@ func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 }
 
 func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
+	return NewK8sResource(n.Kind(), n.convert(obj))
 }
 
 func watchForService(watcher *K8sWatcher, k KhronosConn) {

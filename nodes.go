@@ -294,7 +294,7 @@ func (n *NodeWatcher) getExtra(node *corev1.Node) map[string]any {
 
 func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewK8sResource(n.Kind(), node, n.Renderer()).SetExtra(n.getExtra(node))
+	return NewK8sResource(n.Kind(), node).SetExtra(n.getExtra(node))
 }
 
 func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatcher) *NodeWatcher {

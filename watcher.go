@@ -14,6 +14,8 @@ const WATCHER_STEP = time.Second * 1
 type ResourceEventWatcher interface {
 	ToResource(obj runtime.Object) Resource // Converts a kubernetes object to a Resource
 	Tick()                                  // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics
+	Renderer() ResourceRenderer
+	Kind() string
 }
 
 // Watches for a variety of k8s resources state changes and tracks their values over time
@@ -74,6 +76,8 @@ func (w *K8sWatcher) Delete(r Resource) {
 }
 
 func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEventWatcher ResourceEventWatcher) {
+	RegisterResourceRenderer(resourceEventWatcher.Kind(), resourceEventWatcher.Renderer())
+
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("Recovered in goroutine: %v\n", r)

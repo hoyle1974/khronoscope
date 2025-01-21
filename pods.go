@@ -394,7 +394,7 @@ func (n *PodWatcher) getExtra(pod *corev1.Pod) map[string]any {
 
 func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewK8sResource(n.Kind(), pod, n.Renderer()).SetExtra(n.getExtra(pod))
+	return NewK8sResource(n.Kind(), pod).SetExtra(n.getExtra(pod))
 }
 
 func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatcher {

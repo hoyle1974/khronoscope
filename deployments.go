@@ -86,7 +86,7 @@ func (n DeploymentWatcher) Kind() string {
 	return "Deployment"
 }
 
-func (n *DeploymentWatcher) Renderer() ResourceRenderer {
+func (n DeploymentWatcher) Renderer() ResourceRenderer {
 	return DeploymentRenderer{}
 }
 
@@ -99,7 +99,7 @@ func (n DeploymentWatcher) convert(obj runtime.Object) *appsv1.Deployment {
 }
 
 func (n DeploymentWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), n.Renderer())
+	return NewK8sResource(n.Kind(), n.convert(obj))
 }
 
 func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {

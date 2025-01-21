@@ -18,16 +18,16 @@ type ResourceEventWatcher interface {
 
 // Watches for a variety of k8s resources state changes and tracks their values over time
 type K8sWatcher struct {
-	lastChange  time.Time
-	temporalMap *TemporalMap
-	onChange    func()
+	lastChange time.Time
+	data       DataModel
+	onChange   func()
 }
 
 // Create a new watcher
-func NewK8sWatcher() *K8sWatcher {
+func NewK8sWatcher(data DataModel) *K8sWatcher {
 	w := &K8sWatcher{
-		lastChange:  time.Now(),
-		temporalMap: NewTemporalMap(),
+		lastChange: time.Now(),
+		data:       data,
 	}
 	return w
 }
@@ -44,22 +44,7 @@ func (w *K8sWatcher) ChangedSince(t time.Time) bool {
 
 // Returns a list of Resources that existed at a specific time, can be filtered by kind and namespace
 func (w *K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
-	m := w.temporalMap.GetStateAtTime(timestamp)
-
-	// Create a slice of keys
-	values := make([]Resource, 0, len(m))
-	for _, v := range m {
-		r := v.(Resource)
-		if kind != "" && kind != r.Kind {
-			continue
-		}
-		if namespace != "" && namespace != r.Namespace {
-			continue
-		}
-		values = append(values, r)
-	}
-
-	return values
+	return w.data.GetResourcesAt(timestamp, kind, namespace)
 }
 
 // Used internally to denote when the internal struct has been modified and notify anyone listening about that change
@@ -72,19 +57,19 @@ func (w *K8sWatcher) dirty() {
 
 // Add a resource to the temporal map
 func (w *K8sWatcher) Add(r Resource) {
-	w.temporalMap.Add(r.Timestamp, r.Key(), r)
+	w.data.AddResource(r)
 	w.dirty()
 }
 
 // Update a resource in the temporal map
 func (w *K8sWatcher) Update(r Resource) {
-	w.temporalMap.Update(r.Timestamp, r.Key(), r)
+	w.data.UpdateResource(r)
 	w.dirty()
 }
 
 // Delete a resource in the temporal map
 func (w *K8sWatcher) Delete(r Resource) {
-	w.temporalMap.Remove(r.Timestamp, r.Key())
+	w.data.DeleteResource(r)
 	w.dirty()
 }
 

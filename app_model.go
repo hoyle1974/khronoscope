@@ -28,8 +28,8 @@ var (
 )
 
 type AppModel struct {
+	data              DataModel
 	watcher           *K8sWatcher
-	meta              *TemporalMap
 	ready             bool
 	viewMode          int
 	width             int
@@ -43,7 +43,7 @@ type AppModel struct {
 }
 
 func (m *AppModel) SetLabel(label string) {
-	m.meta.Add(m.vcr.GetTimeToUse(), "Meta.Label", label)
+	m.data.SetLabel(m.vcr.GetTimeToUse(), label)
 }
 
 func calculatePercentageOfTime(min, max, value time.Time) float64 {
@@ -67,7 +67,7 @@ func (m *AppModel) SetPopup(popup Popup) {
 }
 
 func (m *AppModel) headerView(label string) string {
-	minTime, maxTime := m.watcher.temporalMap.GetTimeRange()
+	minTime, maxTime := m.data.GetTimeRange()
 	current := m.vcr.GetTimeToUse()
 	p := calculatePercentageOfTime(minTime, maxTime, current)
 
@@ -125,12 +125,14 @@ func (m *AppModel) footerView() string {
 }
 
 // MODEL DATA
-func newModel(watcher *K8sWatcher) *AppModel {
-	return &AppModel{
+func newModel(watcher *K8sWatcher, data DataModel) *AppModel {
+	am := &AppModel{
 		watcher: watcher,
+		data:    data,
 		tv:      NewTreeView(),
-		meta:    NewTemporalMap(),
 	}
+
+	return am
 }
 
 func (s *AppModel) Init() tea.Cmd { return nil }
@@ -141,10 +143,7 @@ func (m *AppModel) View() string {
 	timeToUse := m.vcr.GetTimeToUse()
 	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))
 
-	currentLabel := ""
-	if temp, ok := m.meta.GetStateAtTime(timeToUse)["Meta.Label"]; ok {
-		currentLabel = temp.(string)
-	}
+	currentLabel := m.data.GetLabel(timeToUse)
 
 	treeContent, focusLine, resource := m.tv.Render()
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
@@ -273,6 +272,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "s":
+			m.data.Save("temp.dat")
 		case "1":
 			m.SetPopup(newMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
 			return m, nil

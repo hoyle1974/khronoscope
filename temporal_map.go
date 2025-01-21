@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"sort"
 	"sync"
 	"time"
@@ -14,7 +16,7 @@ import (
 // TemporalMap is threadsafe.
 
 type temporalValue struct {
-	history []temporalValuePair
+	History []temporalValuePair
 }
 
 type temporalValuePair struct {
@@ -25,20 +27,20 @@ type temporalValuePair struct {
 // Set the value at the specific time, maintaining chronological order.
 func (i *temporalValue) Set(timestamp time.Time, value any) {
 	// Find the insertion point to maintain chronological order.
-	index := sort.Search(len(i.history), func(j int) bool {
-		return i.history[j].Timestamp.After(timestamp)
+	index := sort.Search(len(i.History), func(j int) bool {
+		return i.History[j].Timestamp.After(timestamp)
 	})
 
 	// Insert the new value at the correct position.
-	i.history = append(i.history[:index], append([]temporalValuePair{{Timestamp: timestamp, Value: value}}, i.history[index:]...)...)
+	i.History = append(i.History[:index], append([]temporalValuePair{{Timestamp: timestamp, Value: value}}, i.History[index:]...)...)
 }
 
 // Get the value at a specific time.
 func (i *temporalValue) Get(timestamp time.Time) any {
 	// Find the most recent value before or at the given timestamp
-	for j := len(i.history) - 1; j >= 0; j-- {
-		if i.history[j].Timestamp.Before(timestamp) || i.history[j].Timestamp.Equal(timestamp) {
-			return i.history[j].Value
+	for j := len(i.History) - 1; j >= 0; j-- {
+		if i.History[j].Timestamp.Before(timestamp) || i.History[j].Timestamp.Equal(timestamp) {
+			return i.History[j].Value
 		}
 	}
 	return nil // No value found before or at the given timestamp
@@ -47,38 +49,59 @@ func (i *temporalValue) Get(timestamp time.Time) any {
 // TemporalMap represents a map-like data structure with time-ordered items.
 type TemporalMap struct {
 	lock    sync.RWMutex
-	items   map[string]*temporalValue
-	minTime time.Time
-	maxTime time.Time
+	Items   map[string]*temporalValue
+	MinTime time.Time
+	MaxTime time.Time
 }
 
 // NewTemporalMap creates a new empty TimedMap.
 func NewTemporalMap() *TemporalMap {
 	return &TemporalMap{
-		items: map[string]*temporalValue{},
+		Items: map[string]*temporalValue{},
 	}
+}
+
+func NewTemporalMapFromBytes(b []byte) *TemporalMap {
+	dec := gob.NewDecoder(bytes.NewReader(b))
+
+	tm := NewTemporalMap()
+	dec.Decode(&tm)
+
+	return tm
+}
+
+func (tm *TemporalMap) ToBytes() []byte {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	var network bytes.Buffer
+
+	enc := gob.NewEncoder(&network)
+	enc.Encode(tm)
+
+	return network.Bytes()
 }
 
 func (tm *TemporalMap) GetTimeRange() (time.Time, time.Time) {
-	return tm.minTime, tm.maxTime
+	return tm.MinTime, tm.MaxTime
 }
 
 func (tm *TemporalMap) ClampTime(t time.Time) time.Time {
-	if t.Before(tm.minTime) {
-		t = tm.minTime
+	if t.Before(tm.MinTime) {
+		t = tm.MinTime
 	}
-	if t.After(tm.maxTime) {
-		t = tm.maxTime
+	if t.After(tm.MaxTime) {
+		t = tm.MaxTime
 	}
 	return t
 }
 
 func (tm *TemporalMap) updateTimeRange(timestamp time.Time) {
-	if len(tm.items) == 0 || timestamp.Before(tm.minTime) {
-		tm.minTime = timestamp
+	if len(tm.Items) == 0 || timestamp.Before(tm.MinTime) {
+		tm.MinTime = timestamp
 	}
-	if len(tm.items) == 0 || timestamp.After(tm.maxTime) {
-		tm.maxTime = timestamp
+	if len(tm.Items) == 0 || timestamp.After(tm.MaxTime) {
+		tm.MaxTime = timestamp
 	}
 
 }
@@ -90,12 +113,12 @@ func (tm *TemporalMap) Add(timestamp time.Time, key string, value interface{}) {
 
 	tm.updateTimeRange(timestamp)
 
-	v, ok := tm.items[key]
+	v, ok := tm.Items[key]
 	if !ok {
 		v = &temporalValue{}
 	}
 	v.Set(timestamp, value)
-	tm.items[key] = v
+	tm.Items[key] = v
 }
 
 // Update updates the value of an item with the given timestamp and key.
@@ -105,13 +128,13 @@ func (tm *TemporalMap) Update(timestamp time.Time, key string, value interface{}
 
 	tm.updateTimeRange(timestamp)
 
-	v, ok := tm.items[key]
+	v, ok := tm.Items[key]
 	if !ok {
 		v = &temporalValue{}
 	}
 	if v.Get(timestamp) != nil {
 		v.Set(timestamp, value)
-		tm.items[key] = v
+		tm.Items[key] = v
 	}
 }
 
@@ -122,12 +145,12 @@ func (tm *TemporalMap) Remove(timestamp time.Time, key string) {
 
 	tm.updateTimeRange(timestamp)
 
-	v, ok := tm.items[key]
+	v, ok := tm.Items[key]
 	if !ok {
 		v = &temporalValue{}
 	}
 	v.Set(timestamp, nil)
-	tm.items[key] = v
+	tm.Items[key] = v
 }
 
 // GetStateAtTime returns a map of key-value pairs at the given timestamp.
@@ -136,7 +159,7 @@ func (tm *TemporalMap) GetStateAtTime(timestamp time.Time) map[string]interface{
 	defer tm.lock.RUnlock()
 
 	state := make(map[string]interface{})
-	for key, item := range tm.items {
+	for key, item := range tm.Items {
 		value := item.Get(timestamp)
 		if value != nil {
 			state[key] = value

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,17 +115,6 @@ func getNodeRoles(node *corev1.Node) string {
 	}
 	sort.Strings(roles)
 	return strings.Join(roles, ", ")
-}
-
-func getPodsOnNode(client kubernetes.Interface, nodeName string) ([]corev1.Pod, error) {
-	listOptions := metav1.ListOptions{
-		FieldSelector: "spec.nodeName=" + nodeName,
-	}
-	pods, err := client.CoreV1().Pods("").List(context.TODO(), listOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list pods: %w", err)
-	}
-	return pods.Items, nil
 }
 
 func (r NodeRenderer) Render(resource Resource, details bool) []string {

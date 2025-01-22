@@ -65,7 +65,10 @@ func NewTemporalMapFromBytes(b []byte) *TemporalMap {
 	dec := gob.NewDecoder(bytes.NewReader(b))
 
 	tm := NewTemporalMap()
-	dec.Decode(&tm)
+	err := dec.Decode(&tm)
+	if err != nil {
+		panic(err)
+	}
 
 	return tm
 }

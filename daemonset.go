@@ -15,6 +15,9 @@ type DaemonSetRenderer struct {
 
 func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 	var result []string
+	if ds == nil {
+		return result
+	}
 
 	// Basic details
 	result = append(result, fmt.Sprintf("Name:           %s", ds.Name))
@@ -81,7 +84,7 @@ func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 
 func (r DaemonSetRenderer) Render(resource Resource, details bool) []string {
 	if details {
-		return formatDaemonSetDetails(resource.Object.(*appsv1.DaemonSet))
+		return resource.Details
 	}
 
 	return []string{resource.Key()}
@@ -110,10 +113,11 @@ func (n DaemonSetWatcher) convert(obj runtime.Object) *appsv1.DaemonSet {
 }
 
 func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj))
+	return NewK8sResource(n.Kind(), n.convert(obj), formatDaemonSetDetails(n.convert(obj)), nil)
 }
 
 func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {
+
 	watchChan, err := k.client.AppsV1().DaemonSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

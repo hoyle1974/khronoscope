@@ -14,6 +14,9 @@ type DeploymentRenderer struct {
 
 func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 	var result []string
+	if deployment == nil {
+		return result
+	}
 
 	// Basic details
 	result = append(result, fmt.Sprintf("Name:           %s", deployment.Name))
@@ -40,7 +43,6 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 			result = append(result, fmt.Sprintf("    %s:", container.Name))
 			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
 			result = append(result, fmt.Sprintf("      Port:        %v", container.Ports))
-			// result = append(result, fmt.Sprintf("      Host Port:   %v", container.HostPorts))
 			result = append(result, fmt.Sprintf("      Limits:      %s", formatLimits(container.Resources.Limits)))
 			result = append(result, fmt.Sprintf("      Requests:    %s", formatLimits(container.Resources.Requests)))
 			result = append(result, fmt.Sprintf("      Environment: %s", formatEnvironment(container.Env)))
@@ -70,7 +72,7 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 
 func (r DeploymentRenderer) Render(resource Resource, details bool) []string {
 	if details {
-		return formatDeploymentDetails(resource.Object.(*appsv1.Deployment))
+		return resource.Details
 	}
 
 	return []string{resource.Key()}
@@ -99,7 +101,7 @@ func (n DeploymentWatcher) convert(obj runtime.Object) *appsv1.Deployment {
 }
 
 func (n DeploymentWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj))
+	return NewK8sResource(n.Kind(), n.convert(obj), formatDeploymentDetails(n.convert(obj)), nil)
 }
 
 func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {

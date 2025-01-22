@@ -2,12 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/gob"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+type ReplicaSetExtra struct {
+	Replicas             int32
+	AvailableReplicas    int32
+	ReadyReplicas        int32
+	FullyLabeledReplicas int32
+}
 
 type ReplicaSetRenderer struct {
 	// n *ReplicaSetWatcher
@@ -85,18 +93,12 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 func (r ReplicaSetRenderer) Render(resource Resource, details bool) []string {
 
 	if details {
-		rs := resource.Object.(*appsv1.ReplicaSet)
-		return formatReplicaSetDetails(rs)
+		return resource.Details
 	}
 
-	extra := ""
-	e, ok := resource.GetExtra()["Status"]
-	if ok {
-		rs := resource.Object.(*appsv1.ReplicaSet)
-		s := e.(appsv1.ReplicaSetStatus)
-		extra += fmt.Sprintf("%s - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", rs.Name, s.Replicas, s.AvailableReplicas, s.ReadyReplicas, s.FullyLabeledReplicas)
-	}
-	return []string{extra}
+	extra := resource.Extra.(ReplicaSetExtra)
+	return []string{fmt.Sprintf("%s - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", resource.Name, extra.Replicas, extra.AvailableReplicas, extra.ReadyReplicas, extra.FullyLabeledReplicas)}
+
 }
 
 type ReplicaSetWatcher struct {
@@ -121,20 +123,24 @@ func (n ReplicaSetWatcher) convert(obj runtime.Object) *appsv1.ReplicaSet {
 	return ret
 }
 
-func (n ReplicaSetWatcher) getExtra(rs *appsv1.ReplicaSet) map[string]any {
-	extra := map[string]any{}
-
-	extra["Status"] = rs.Status
-
-	return extra
-}
-
 func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	rs := n.convert(obj)
-	return NewK8sResource(n.Kind(), rs).SetExtra(n.getExtra(rs))
+
+	extra := ReplicaSetExtra{
+		Replicas:             rs.Status.Replicas,
+		AvailableReplicas:    rs.Status.AvailableReplicas,
+		ReadyReplicas:        rs.Status.ReadyReplicas,
+		FullyLabeledReplicas: rs.Status.FullyLabeledReplicas,
+	}
+
+	r := NewK8sResource(n.Kind(), rs, formatReplicaSetDetails(rs), extra)
+
+	return r
 }
 
 func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
+	gob.Register(ReplicaSetExtra{})
+
 	watchChan, err := k.client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

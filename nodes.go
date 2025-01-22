@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/gob"
 	"fmt"
 	"sort"
 	"strings"
@@ -16,6 +17,26 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+type NodeExtra struct {
+	Metrics               map[string]string
+	NodeCreationTimestamp time.Time
+	CPUCapacity           int64
+	MemCapacity           int64
+	Uptime                time.Duration
+	PodMetrics            map[string]map[string]PodMetric
+}
+
+func (n NodeExtra) Copy() NodeExtra {
+	return NodeExtra{
+		Metrics:               DeepCopyMap(n.Metrics),
+		NodeCreationTimestamp: n.NodeCreationTimestamp,
+		CPUCapacity:           n.CPUCapacity,
+		MemCapacity:           n.MemCapacity,
+		Uptime:                n.Uptime,
+		PodMetrics:            DeepCopyMap(n.PodMetrics),
+	}
+}
 
 type NodeRenderer struct {
 	n *NodeWatcher
@@ -109,83 +130,53 @@ func getPodsOnNode(client kubernetes.Interface, nodeName string) ([]corev1.Pod, 
 }
 
 func (r NodeRenderer) Render(resource Resource, details bool) []string {
-	extra := resource.GetExtra()
+	if resource.Extra == nil {
+		return []string{}
+	}
+
+	extra := resource.Extra.(NodeExtra)
 
 	if details {
-		node := resource.Object.(*corev1.Node)
+		// node := obj.(*corev1.Node)
 		ret := []string{}
 		ret = append(ret, "Name: "+resource.Name)
 
-		if rt, ok := extra["StartTime"]; ok {
-			ret = append(ret, fmt.Sprintf(" Uptime:%v", rt))
-		}
-		if e, ok := extra["Metrics"]; ok {
-			ret = append(ret, "")
-			ret = append(ret, "Metrics: ")
-			m := e.(map[string]string)
-			ret = append(ret, fmt.Sprintf("%v", m[resource.Name]))
-		}
+		ret = append(ret, fmt.Sprintf(" Uptime:%v", extra.Uptime))
 
-		// ret = append(ret, RenderMapOfStrings("Labels:", node.GetLabels())...)
-		// ret = append(ret, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
+		ret = append(ret, "")
+		ret = append(ret, "Metrics: ")
+		ret = append(ret, fmt.Sprintf("%v", extra.Metrics[resource.Name]))
 
-		if p, ok := extra["Pods"]; ok {
-			ret = append(ret, "")
-			ret = append(ret, "Pods: ")
-			pods := p.([]corev1.Pod)
+		ret = append(ret, "Pods: ")
+		for podName, podMetrics := range NewMapRangeFunc(extra.PodMetrics) {
+			var cpu float64 = 0
+			var mem float64 = 0
+			bar := ""
 
-			if pm, ok := extra["PodMetrics"]; ok {
-				podMetrics := pm.(map[string]map[string]PodMetric)
-
-				for _, pod := range pods {
-					var cpu float64 = 0
-					var mem float64 = 0
-					bar := ""
-
-					if podMetric, ok := podMetrics[string(pod.UID)]; ok {
-						for _, v := range podMetric {
-							cpu += v.cpuPercentage
-							mem += v.memoryPercentage
-						}
-						if len(podMetric) > 0 {
-							cpu /= float64(len(podMetric))
-							mem /= float64(len(podMetric))
-							bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
-						} else {
-							bar = strings.Repeat(" ", 29) + " : "
-						}
-					}
-
-					nn := bar + pod.Namespace + "/" + pod.Name
-					ret = append(ret, "   "+nn)
-				}
-			} else {
-				for _, pod := range pods {
-					nn := pod.Namespace + "/" + pod.Name
-					ret = append(ret, "   "+nn)
-				}
-
+			for _, podMetric := range podMetrics {
+				cpu += podMetric.CPUPercentage
+				mem += podMetric.MemoryPercentage
 			}
+			if len(podMetrics) > 0 {
+				cpu /= float64(len(podMetrics))
+				mem /= float64(len(podMetrics))
+				bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
+			} else {
+				bar = strings.Repeat(" ", 29) + " : "
+			}
+			nn := bar + podName
+			ret = append(ret, "   "+nn)
 
 		}
 
-		ret = append(ret, describeNode(node)...)
+		ret = append(ret, resource.Details...)
 
 		return ret
 	}
 
-	out := ""
-	e, ok := extra["Metrics"]
-	if ok {
-		m := e.(map[string]string)
-		out += fmt.Sprintf("%v", m[resource.Name])
-	}
+	out := fmt.Sprintf("%v", extra.Metrics[resource.Name])
 	out += " " + resource.Name
-
-	rt, ok := extra["StartTime"]
-	if ok {
-		out += fmt.Sprintf(" %v", rt)
-	}
+	out += fmt.Sprintf(" %v", extra.Uptime)
 
 	return []string{out}
 }
@@ -198,24 +189,23 @@ type NodeWatcher struct {
 	lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
 }
 
-func (n *NodeWatcher) getMetricsForNode(node *corev1.Node) map[string]string {
+func (n *NodeWatcher) getMetricsForNode(resource Resource) map[string]string {
+	e := resource.Extra.(NodeExtra)
+
 	metricsExtra := map[string]string{}
 	lastNodeMetrics := n.lastNodeMetrics.Load()
 	if lastNodeMetrics == nil {
 		return metricsExtra
 	}
 	for _, nodeMetrics := range lastNodeMetrics.Items {
-		if nodeMetrics.Name == node.Name {
+		if nodeMetrics.Name == resource.Name {
 			cpuUsage := nodeMetrics.Usage[corev1.ResourceCPU]
 			memUsage := nodeMetrics.Usage[corev1.ResourceMemory]
 
-			cpuCapacity := node.Status.Capacity[corev1.ResourceCPU]
-			memCapacity := node.Status.Capacity[corev1.ResourceMemory]
+			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), e.CPUCapacity)
+			memPercentage := calculatePercentage(memUsage.Value(), e.MemCapacity)
 
-			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuCapacity.MilliValue())
-			memPercentage := calculatePercentage(memUsage.Value(), memCapacity.Value())
-
-			metricsExtra[node.Name] = fmt.Sprintf("%s %s", renderProgressBar("CPU", cpuPercentage), renderProgressBar("Mem", memPercentage))
+			metricsExtra[resource.Name] = fmt.Sprintf("%s %s", renderProgressBar("CPU", cpuPercentage), renderProgressBar("Mem", memPercentage))
 
 			return metricsExtra
 		}
@@ -224,25 +214,27 @@ func (n *NodeWatcher) getMetricsForNode(node *corev1.Node) map[string]string {
 }
 
 func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
-	node := resource.Object.(*corev1.Node)
 
-	metricsExtra := n.getMetricsForNode(node)
+	e := resource.Extra.(NodeExtra).Copy()
+	resource.Timestamp = time.Now()
+
+	metricsExtra := n.getMetricsForNode(resource)
 	if len(metricsExtra) > 0 {
-		resource = resource.SetExtraKV("Metrics", metricsExtra)
-		resource = resource.SetExtraKV("StartTime", time.Since(node.ObjectMeta.CreationTimestamp.Time).Truncate(time.Second))
-		resource.Timestamp = time.Now()
+		e.Metrics = metricsExtra
+		e.Uptime = time.Since(e.NodeCreationTimestamp).Truncate(time.Second)
 	}
 
-	pods, err := getPodsOnNode(n.k.client, node.Name)
-	if err == nil {
-		resource = resource.SetExtraKV("Pods", pods)
-
-		podMetrics := map[string]map[string]PodMetric{}
-		for _, pod := range pods {
-			podMetrics[string(pod.UID)] = n.pwm.getPodMetricsForPod(&pod)
+	// Find pods on node
+	resources := n.w.GetStateAtTime(resource.Timestamp, "Pod", "")
+	e.PodMetrics = map[string]map[string]PodMetric{}
+	for _, podResource := range resources {
+		if podResource.Extra.(PodExtra).Node == resource.Name {
+			podMetrics := n.pwm.getPodMetricsForPod(podResource)
+			e.PodMetrics[podResource.Namespace+"/"+podResource.Name] = podMetrics
 		}
-		resource = resource.SetExtraKV("PodMetrics", podMetrics)
 	}
+
+	resource.Extra = e
 
 	n.w.Update(resource)
 
@@ -282,22 +274,25 @@ func (n *NodeWatcher) convert(obj runtime.Object) *corev1.Node {
 	return ret
 }
 
-func (n *NodeWatcher) getExtra(node *corev1.Node) map[string]any {
-	extra := map[string]any{}
-	extra["Metrics"] = n.getMetricsForNode(node)
-
-	// Calculate the running time
-	startTime := node.ObjectMeta.CreationTimestamp
-	extra["StartTime"] = time.Since(startTime.Time).Truncate(time.Second)
-	return extra
-}
-
 func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	node := n.convert(obj)
-	return NewK8sResource(n.Kind(), node).SetExtra(n.getExtra(node))
+
+	cpuCapacity := node.Status.Capacity[corev1.ResourceCPU]
+	memCapacity := node.Status.Capacity[corev1.ResourceMemory]
+
+	extra := NodeExtra{
+		CPUCapacity:           cpuCapacity.MilliValue(),
+		MemCapacity:           memCapacity.Value(),
+		NodeCreationTimestamp: node.CreationTimestamp.Time,
+		Uptime:                time.Since(node.CreationTimestamp.Time).Truncate(time.Second),
+	}
+
+	return NewK8sResource(n.Kind(), node, describeNode(node), extra)
 }
 
 func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatcher) *NodeWatcher {
+	gob.Register(NodeExtra{})
+
 	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

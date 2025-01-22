@@ -13,6 +13,35 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+func DeepCopyMap[K comparable, V any](m map[K]V) map[K]V {
+	newMap := make(map[K]V, len(m))
+
+	for k, v := range m {
+		newMap[k] = deepCopyValue(v)
+	}
+
+	return newMap
+}
+
+func deepCopyValue[V any](v V) V {
+	switch v := any(v).(type) {
+	case map[any]any:
+		return any(DeepCopyMap(v)).(V)
+	case []any:
+		return any(deepCopySlice(v)).(V)
+	default:
+		return v.(V)
+	}
+}
+
+func deepCopySlice[V any](s []V) []V {
+	newSlice := make([]V, len(s))
+	for i, v := range s {
+		newSlice[i] = deepCopyValue(v)
+	}
+	return newSlice
+}
+
 // renderProgressBar generates a 12-character progress bar with percentage display
 func renderProgressBar(label string, percent float64) string {
 	// Ensure percent is within 0-100

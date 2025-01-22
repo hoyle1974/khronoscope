@@ -12,25 +12,20 @@ import (
 type NamespacedRenderer struct {
 }
 
+func formatNamespaceDetails(namespace *corev1.Namespace) []string {
+	out := []string{}
+	out = append(out, "Name: "+namespace.Name)
+	out = append(out, fmt.Sprintf("Status: %v", namespace.Status))
+
+	out = append(out, RenderMapOfStrings("Labels:", namespace.GetLabels())...)
+	out = append(out, RenderMapOfStrings("Annotations:", namespace.GetAnnotations())...)
+	return out
+}
+
 func (r NamespacedRenderer) Render(resource Resource, details bool) []string {
 
 	if details {
-		// extra := resource.GetExtra()
-		namespace := resource.Object.(*corev1.Namespace)
-
-		// 		Name:         local-path-storage
-		// Labels:       kubernetes.io/metadata.name=local-path-storage
-		// Annotations:  <none>
-		// Status:       Active
-		out := []string{}
-		out = append(out, "Name: "+resource.Name)
-		out = append(out, fmt.Sprintf("Status: %v", namespace.Status))
-
-		out = append(out, RenderMapOfStrings("Labels:", namespace.GetLabels())...)
-		out = append(out, RenderMapOfStrings("Annotations:", namespace.GetAnnotations())...)
-
-		return out
-
+		return resource.Details
 	}
 
 	return []string{resource.Name}
@@ -59,7 +54,7 @@ func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 }
 
 func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj))
+	return NewK8sResource(n.Kind(), n.convert(obj), formatNamespaceDetails(n.convert(obj)), nil)
 }
 
 func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {

@@ -57,9 +57,9 @@ func formatServiceDetails(service *corev1.Service) []string {
 	return result
 }
 
-func (r ServiceRenderer) Render(resource Resource, details bool) []string {
+func (r ServiceRenderer) Render(resource Resource, obj any, details bool) []string {
 	if details {
-		return formatServiceDetails(resource.Object.(*corev1.Service))
+		return formatServiceDetails(obj.(*corev1.Service))
 	}
 
 	return []string{resource.Key()}
@@ -88,7 +88,7 @@ func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 }
 
 func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj))
+	return NewK8sResource(n.Kind(), n.convert(obj), formatServiceDetails(n.convert(obj)), nil)
 }
 
 func watchForService(watcher *K8sWatcher, k KhronosConn) {

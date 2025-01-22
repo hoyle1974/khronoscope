@@ -33,77 +33,77 @@ type K8sResource interface {
 }
 
 type Resource struct {
-	Uid       string         // The Uid of the k8s object
-	Timestamp time.Time      // The timestamp that this resource is valid for
-	Kind      string         // The k8s kind of resource
-	Namespace string         // The k8s namespace, may be empty for things like namespace and node resources
-	Name      string         // The name of the resource
-	Object    any            // The actual k8s object, often used by renderers
-	Extra     map[string]any // Any extra data, like metrics, attached to this resource
+	Uid       string    // The Uid of the k8s object
+	Timestamp time.Time // The timestamp that this resource is valid for
+	Kind      string    // The k8s kind of resource
+	Namespace string    // The k8s namespace, may be empty for things like namespace and node resources
+	Name      string    // The name of the resource
+	Extra     any       // This should be a custom, gob registered and serializable object if used
+	Details   []string
 }
 
-func NewK8sResource(kind string, obj K8sResource) Resource {
-	return Resource{
+func NewK8sResource(kind string, obj K8sResource, details []string, extra any) Resource {
+	r := Resource{
 		Uid:       string(obj.GetObjectMeta().GetUID()),
 		Timestamp: time.Now(),
 		Kind:      kind,
 		Namespace: obj.GetObjectMeta().GetNamespace(),
 		Name:      obj.GetObjectMeta().GetName(),
-		Object:    obj,
-		Extra:     map[string]any{},
+		Extra:     extra,
+		Details:   details,
 	}
+
+	return r
 }
 
-func NewResource(uuid string, timestmap time.Time, kind string, namespace string, name string, obj any) Resource {
+func (r Resource) GetDetails() []string {
+	rr := GetRenderer(r.Kind)
+	if rr == nil {
+		return []string{}
+	}
+	return rr.Render(r, true)
+}
+
+func (r Resource) String() string {
+	rr := GetRenderer(r.Kind)
+	if rr == nil {
+		return r.Key()
+	}
+	return strings.Join(rr.Render(r, false), " ")
+}
+
+func NewResource(uuid string, timestmap time.Time, kind string, namespace string, name string) Resource {
 	return Resource{
 		Uid:       uuid,
 		Timestamp: timestmap,
 		Kind:      kind,
 		Namespace: namespace,
 		Name:      name,
-		Object:    obj,
-		Extra:     map[string]any{},
 	}
 }
 
-func (r Resource) String() string {
-	rr := GetRenderer(r.Kind)
-	if rr != nil {
-		return strings.Join(rr.Render(r, false), " ")
-	}
-	return r.Key()
-}
+// func (r Resource) SetExtra(e map[string]any) Resource {
+// 	if e == nil {
+// 		return r
+// 	}
 
-func (r Resource) Details() []string {
-	rr := GetRenderer(r.Kind)
-	if rr != nil {
-		return rr.Render(r, true)
-	}
-	return []string{}
-}
+// 	r.Extra = e
+// 	return r
+// }
 
-func (r Resource) SetExtra(e map[string]any) Resource {
-	if e == nil {
-		return r
-	}
+// func (r Resource) SetExtraKV(k string, v any) Resource {
+// 	r.Extra = r.GetExtra()
+// 	r.Extra[k] = v
+// 	return r
+// }
+// func (r Resource) GetExtra() map[string]any {
+// 	newMap := make(map[string]any)
+// 	for key, value := range r.Extra {
+// 		newMap[key] = value
+// 	}
 
-	r.Extra = e
-	return r
-}
-
-func (r Resource) SetExtraKV(k string, v any) Resource {
-	r.Extra = r.GetExtra()
-	r.Extra[k] = v
-	return r
-}
-func (r Resource) GetExtra() map[string]any {
-	newMap := make(map[string]any)
-	for key, value := range r.Extra {
-		newMap[key] = value
-	}
-
-	return newMap
-}
+// 	return newMap
+// }
 
 func (r Resource) Key() string {
 	return r.Kind + "/" + r.Namespace + "/" + r.Name

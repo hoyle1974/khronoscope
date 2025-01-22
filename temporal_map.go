@@ -77,7 +77,9 @@ func (tm *TemporalMap) ToBytes() []byte {
 	var network bytes.Buffer
 
 	enc := gob.NewEncoder(&network)
-	enc.Encode(tm)
+	if err := enc.Encode(tm); err != nil {
+		panic(err)
+	}
 
 	return network.Bytes()
 }

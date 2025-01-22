@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/gob"
 	"fmt"
 	"maps"
 	"slices"
@@ -17,6 +18,36 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
+
+type ContainerInfo struct {
+	Image       string
+	CPULimit    int64
+	MemoryLimit int64
+}
+
+type PodExtra struct {
+	Phase       string
+	Node        string
+	Metrics     map[string]PodMetric
+	Uptime      time.Duration
+	StartTime   time.Time
+	Containers  map[string]ContainerInfo
+	Labels      []string
+	Annotations []string
+}
+
+func (p PodExtra) Copy() PodExtra {
+	return PodExtra{
+		Phase:       p.Phase,
+		Node:        p.Node,
+		Metrics:     DeepCopyMap(p.Metrics),
+		Uptime:      p.Uptime,
+		StartTime:   p.StartTime,
+		Containers:  DeepCopyMap(p.Containers),
+		Labels:      p.Labels,
+		Annotations: p.Annotations,
+	}
+}
 
 func grommet(is bool) string {
 	if !is {
@@ -140,73 +171,67 @@ func describePod(pod *corev1.Pod) []string {
 }
 
 func (r PodRenderer) Render(resource Resource, details bool) []string {
-	extra := resource.GetExtra()
+	if resource.Extra == nil {
+		return []string{}
+	}
+
+	extra := resource.Extra.(PodExtra)
 	out := []string{}
 	s := ""
 
 	if details {
-		pod := resource.Object.(*corev1.Pod)
+		out = append(out, fmt.Sprintf("Name: %s", resource.Name))
+		out = append(out, fmt.Sprintf("Namespace: %s", resource.Namespace))
 
-		out = append(out, fmt.Sprintf("Name: %s", pod.Name))
-		out = append(out, fmt.Sprintf("Namespace: %s", pod.Namespace))
+		s += fmt.Sprintf("Phase: %v\n", extra.Phase)
+		s += fmt.Sprintf("Node: %s\n", extra.Node)
 
-		phase, ok := extra["Phase"]
-		if ok {
-			s += fmt.Sprintf("Phase: %v\n", phase)
-		}
-		node, ok := extra["Node"]
-		if ok {
-			s += fmt.Sprintf("Node: %s\n", node)
-		}
-		rt, ok := extra["StartTime"]
-		if ok {
-			s += fmt.Sprintf("Uptime: %v\n", rt)
-		}
+		s += fmt.Sprintf("Uptime: %v\n", extra.Uptime)
 		out = append(out, s)
 
-		e, ok := extra["Metrics"]
-		if ok {
-			m := e.(map[string]PodMetric)
-			if len(m) > 0 {
-				out = append(out, "containers:")
-				sortedKeys := slices.Sorted(maps.Keys(m))
-				for _, k := range sortedKeys {
-					bar := fmt.Sprintf("%s %s", renderProgressBar("CPU", m[k].cpuPercentage), renderProgressBar("Mem", m[k].memoryPercentage))
-					out = append(out, fmt.Sprintf("   %v - %v", bar, k))
-				}
+		m := extra.Metrics
+		if len(m) > 0 {
+			out = append(out, "containers:")
+			sortedKeys := slices.Sorted(maps.Keys(m))
+			for _, k := range sortedKeys {
+				bar := fmt.Sprintf("%s %s", renderProgressBar("CPU", m[k].CPUPercentage), renderProgressBar("Mem", m[k].MemoryPercentage))
+				out = append(out, fmt.Sprintf("   %v - %v", bar, k))
 			}
 		}
 
-		out = append(out, fmt.Sprintf("Generation: %v", pod.GetGeneration()))
+		// out = append(out, fmt.Sprintf("Generation: %v", pod.GetGeneration()))
 
-		getContainerState := func(cname string) string {
-			for _, status := range pod.Status.ContainerStatuses {
-				if status.Name == cname {
-					if status.State.Waiting != nil {
-						return "Waiting: " + status.State.Waiting.Reason
-					}
-					if status.State.Running != nil {
-						return "Running"
-					}
-					if status.State.Terminated != nil {
-						return "Terminated: " + status.State.Terminated.Reason
-					}
-					return "unknown"
-				}
-			}
-			return ""
-		}
+		// getContainerState := func(cname string) string {
+		// 	for _, status := range pod.Status.ContainerStatuses {
+		// 		if status.Name == cname {
+		// 			if status.State.Waiting != nil {
+		// 				return "Waiting: " + status.State.Waiting.Reason
+		// 			}
+		// 			if status.State.Running != nil {
+		// 				return "Running"
+		// 			}
+		// 			if status.State.Terminated != nil {
+		// 				return "Terminated: " + status.State.Terminated.Reason
+		// 			}
+		// 			return "unknown"
+		// 		}
+		// 	}
+		// 	return ""
+		// }
 
 		// Print container information
 		out = append(out, "Containers:")
-		for _, container := range pod.Spec.Containers {
-			out = append(out, fmt.Sprintf("   %s - %s : %s", container.Name, container.Image, getContainerState(container.Name)))
+		for containerName, containerInfo := range extra.Containers {
+			out = append(out, fmt.Sprintf("   %s - %s : %s", containerName, containerInfo.Image, "" /* getContainerState(containerName)*/))
 		}
+		// for _, container := range pod.Spec.Containers {
+		// 	out = append(out, fmt.Sprintf("   %s - %s : %s", container.Name, container.Image, getContainerState(container.Name)))
+		// }
 
-		out = append(out, RenderMapOfStrings("Labels:", pod.GetLabels())...)
-		out = append(out, RenderMapOfStrings("Annotations:", pod.GetAnnotations())...)
+		out = append(out, extra.Labels...)
+		out = append(out, extra.Annotations...)
 
-		logs, err := getPodLogs(r.n.k.client, pod.Namespace, pod.Name)
+		logs, err := getPodLogs(r.n.k.client, resource.Namespace, resource.Name)
 		if err == nil {
 			lines := strings.Split(logs, "\n")
 			if len(lines) > 10 {
@@ -216,61 +241,52 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		} else {
 			out = append(out, fmt.Sprintf("%v", err))
 		}
-		out = append(out, describePod(pod)...)
+		out = append(out, resource.Details...)
 
 	} else {
-		phase, ok := extra["Phase"]
-		if ok {
-			p := fmt.Sprintf("%v", phase)
+		p := fmt.Sprintf("%v", extra.Phase)
 
-			switch p {
-			case "Pending":
-				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#AAAAAA"))
-				s += fmt.Sprintf(" [%s]", style.Render(p))
-			case "Failed":
-				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
-				s += fmt.Sprintf(" [%s]", style.Render(p))
-			case "Unknown":
-				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF"))
-				s += fmt.Sprintf(" [%s]", style.Render(p))
-			case "Running":
-				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00"))
-				s += fmt.Sprintf(" [%s]", style.Render(p))
-			case "Succeeded":
-				style := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF"))
-				s += fmt.Sprintf(" [%s]", style.Render(p))
-			default:
-				style := lipgloss.NewStyle()
-				s += fmt.Sprintf(" [%s]", style.Render(p))
-			}
+		switch p {
+		case "Pending":
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#AAAAAA"))
+			s += fmt.Sprintf(" [%s]", style.Render(p))
+		case "Failed":
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+			s += fmt.Sprintf(" [%s]", style.Render(p))
+		case "Unknown":
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF"))
+			s += fmt.Sprintf(" [%s]", style.Render(p))
+		case "Running":
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00"))
+			s += fmt.Sprintf(" [%s]", style.Render(p))
+		case "Succeeded":
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF"))
+			s += fmt.Sprintf(" [%s]", style.Render(p))
+		default:
+			style := lipgloss.NewStyle()
+			s += fmt.Sprintf(" [%s]", style.Render(p))
 		}
 		s += " " + resource.Name
 
-		e, ok := extra["Metrics"]
-		if ok {
-			podMetric := e.(map[string]PodMetric)
-			var cpu float64
-			var mem float64
-			bar := ""
+		podMetric := extra.Metrics
+		var cpu float64
+		var mem float64
+		bar := ""
 
-			for _, v := range podMetric {
-				cpu += v.cpuPercentage
-				mem += v.memoryPercentage
-			}
-			if len(podMetric) > 0 {
-				cpu /= float64(len(podMetric))
-				mem /= float64(len(podMetric))
-				bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
-			} else {
-				bar = strings.Repeat(" ", 29) + " : "
-			}
+		for _, v := range podMetric {
+			cpu += v.CPUPercentage
+			mem += v.MemoryPercentage
+		}
+		if len(podMetric) > 0 {
+			cpu /= float64(len(podMetric))
+			mem /= float64(len(podMetric))
+			bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
+		} else {
+			bar = strings.Repeat(" ", 29) + " : "
+		}
 
-			s = bar + s
-		}
-		rt, ok := extra["StartTime"]
-		if ok {
-			s += fmt.Sprintf(" %v", rt)
-		}
+		s = bar + s
+		s += fmt.Sprintf(" %v", extra.Uptime)
 		out = append(out, s)
 	}
 
@@ -292,33 +308,32 @@ func calculatePercentage(usage int64, limit int64) float64 {
 }
 
 type PodMetric struct {
-	cpuPercentage    float64
-	memoryPercentage float64
+	CPUPercentage    float64
+	MemoryPercentage float64
 }
 
-func (n *PodWatcher) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
+func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric {
+
+	extra := resource.Extra.(PodExtra)
 	metricsExtra := map[string]PodMetric{}
 	lastPodMetrics := n.lastPodMetrics.Load()
 	if lastPodMetrics == nil {
 		return metricsExtra
 	}
 	for _, podMetrics := range lastPodMetrics.Items {
-		if podMetrics.Namespace == pod.Namespace && podMetrics.Name == pod.Name {
-			for _, container := range pod.Spec.Containers {
+		if podMetrics.Namespace == resource.Namespace && podMetrics.Name == resource.Name {
+			for containerName, limits := range extra.Containers {
 				for _, containerMetric := range podMetrics.Containers {
-					if container.Name == containerMetric.Name {
+					if containerName == containerMetric.Name {
 						cpuUsage := containerMetric.Usage[corev1.ResourceCPU]
 						memoryUsage := containerMetric.Usage[corev1.ResourceMemory]
 
-						cpuLimit := container.Resources.Limits[corev1.ResourceCPU]
-						memoryLimit := container.Resources.Limits[corev1.ResourceMemory]
+						cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), limits.CPULimit)
+						memoryPercentage := calculatePercentage(memoryUsage.Value(), limits.MemoryLimit)
 
-						cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), cpuLimit.MilliValue())
-						memoryPercentage := calculatePercentage(memoryUsage.Value(), memoryLimit.Value())
-
-						metricsExtra[container.Name] = PodMetric{
-							cpuPercentage:    cpuPercentage,
-							memoryPercentage: memoryPercentage,
+						metricsExtra[containerName] = PodMetric{
+							CPUPercentage:    cpuPercentage,
+							MemoryPercentage: memoryPercentage,
 						}
 					}
 				}
@@ -330,16 +345,18 @@ func (n *PodWatcher) getPodMetricsForPod(pod *corev1.Pod) map[string]PodMetric {
 }
 
 func (n *PodWatcher) updateResourceMetrics(resource Resource) {
-	pod := resource.Object.(*corev1.Pod)
+	// pod := resource.Object.(*corev1.Pod)
 
-	metricsExtra := n.getPodMetricsForPod(pod)
+	extra := resource.Extra.(PodExtra).Copy()
+
+	metricsExtra := n.getPodMetricsForPod(resource)
 	if len(metricsExtra) > 0 {
-		resource = resource.SetExtraKV("Metrics", metricsExtra)
-		if pod.Status.StartTime != nil {
-			resource = resource.SetExtraKV("StartTime", time.Since(pod.Status.StartTime.Time).Truncate(time.Second))
-		}
 
+		extra.Metrics = metricsExtra
+		extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
 		resource.Timestamp = time.Now()
+		resource.Extra = extra
+
 		n.w.Update(resource)
 	}
 }
@@ -377,27 +394,36 @@ func (n *PodWatcher) convert(obj runtime.Object) *corev1.Pod {
 	return ret
 }
 
-func (n *PodWatcher) getExtra(pod *corev1.Pod) map[string]any {
-	extra := map[string]any{}
-	extra["Phase"] = pod.Status.Phase
-	extra["Node"] = pod.Spec.NodeName
-	extra["Metrics"] = n.getPodMetricsForPod(pod)
-
-	// Calculate the running time
-	startTime := pod.Status.StartTime
-	if startTime != nil {
-		extra["StartTime"] = time.Since(pod.Status.StartTime.Time).Truncate(time.Second)
-	}
-
-	return extra
-}
-
 func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	pod := n.convert(obj)
-	return NewK8sResource(n.Kind(), pod).SetExtra(n.getExtra(pod))
+
+	containerLimits := map[string]ContainerInfo{}
+	for _, container := range pod.Spec.Containers {
+		cpuLimit := container.Resources.Limits[corev1.ResourceCPU]
+		memoryLimit := container.Resources.Limits[corev1.ResourceMemory]
+
+		containerLimits[container.Name] = ContainerInfo{
+			CPULimit:    cpuLimit.MilliValue(),
+			MemoryLimit: memoryLimit.Value(),
+			Image:       container.Image,
+		}
+	}
+
+	extra := PodExtra{
+		Phase:       fmt.Sprintf("%v", pod.Status.Phase),
+		Node:        pod.Spec.NodeName,
+		Containers:  containerLimits,
+		StartTime:   pod.CreationTimestamp.Time,
+		Labels:      RenderMapOfStrings("Labels:", pod.GetLabels()),
+		Annotations: RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
+	}
+
+	return NewK8sResource(n.Kind(), pod, describePod(pod), extra)
 }
 
 func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatcher {
+	gob.Register(PodExtra{})
+
 	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

@@ -154,7 +154,7 @@ func (m *AppModel) View() string {
 	}
 
 	if resource != nil {
-		detailContent := fmt.Sprintf("UID: %s\n", resource.Uid) + strings.Join(resource.Details(), "\n")
+		detailContent := fmt.Sprintf("UID: %s\n", resource.Uid) + strings.Join(resource.GetDetails(), "\n")
 		detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)
 		m.detailView.SetContent(detailContent)
 	}

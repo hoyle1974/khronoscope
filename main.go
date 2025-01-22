@@ -1,17 +1,19 @@
 package main
 
 import (
+	"encoding/gob"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
+	gob.Register(Resource{})
 
 	// test := NewTemporalMap()
 	// test.Add(time.Now(), "A", "Value1")
 	// test.Add(time.Now(), "A", "Value2")
-	// test.Add(time.Now(), "A", "Value3")
+	// test.Add(time.Now(), "A", NewResource("abc", time.Now(), "efg", "default", "asdfasdfsa", &corev1.Pod{}))
 	// b := test.ToBytes()
 
 	// test2 := NewTemporalMapFromBytes(b)
@@ -23,7 +25,7 @@ func main() {
 		return
 	}
 
-	// filename := "temp.dat"
+	//filename := "temp.dat"
 	filename := ""
 
 	data := NewDataModel()

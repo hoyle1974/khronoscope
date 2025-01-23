@@ -20,7 +20,7 @@ type temporalValue struct {
 }
 
 type temporalValuePair struct {
-	Timestamp time.Time
+	Timestamp SerializableTime
 	Value     any
 }
 
@@ -28,18 +28,18 @@ type temporalValuePair struct {
 func (i *temporalValue) Set(timestamp time.Time, value any) {
 	// Find the insertion point to maintain chronological order.
 	index := sort.Search(len(i.History), func(j int) bool {
-		return i.History[j].Timestamp.After(timestamp)
+		return i.History[j].Timestamp.Time.After(timestamp)
 	})
 
 	// Insert the new value at the correct position.
-	i.History = append(i.History[:index], append([]temporalValuePair{{Timestamp: timestamp, Value: value}}, i.History[index:]...)...)
+	i.History = append(i.History[:index], append([]temporalValuePair{{Timestamp: SerializableTime{Time: timestamp}, Value: value}}, i.History[index:]...)...)
 }
 
 // Get the value at a specific time.
 func (i *temporalValue) Get(timestamp time.Time) any {
 	// Find the most recent value before or at the given timestamp
 	for j := len(i.History) - 1; j >= 0; j-- {
-		if i.History[j].Timestamp.Before(timestamp) || i.History[j].Timestamp.Equal(timestamp) {
+		if i.History[j].Timestamp.Time.Before(timestamp) || i.History[j].Timestamp.Time.Equal(timestamp) {
 			return i.History[j].Value
 		}
 	}
@@ -50,8 +50,8 @@ func (i *temporalValue) Get(timestamp time.Time) any {
 type TemporalMap struct {
 	lock    sync.RWMutex
 	Items   map[string]*temporalValue
-	MinTime time.Time
-	MaxTime time.Time
+	MinTime SerializableTime
+	MaxTime SerializableTime
 }
 
 // NewTemporalMap creates a new empty TimedMap.
@@ -88,25 +88,15 @@ func (tm *TemporalMap) ToBytes() []byte {
 }
 
 func (tm *TemporalMap) GetTimeRange() (time.Time, time.Time) {
-	return tm.MinTime, tm.MaxTime
-}
-
-func (tm *TemporalMap) ClampTime(t time.Time) time.Time {
-	if t.Before(tm.MinTime) {
-		t = tm.MinTime
-	}
-	if t.After(tm.MaxTime) {
-		t = tm.MaxTime
-	}
-	return t
+	return tm.MinTime.Time, tm.MaxTime.Time
 }
 
 func (tm *TemporalMap) updateTimeRange(timestamp time.Time) {
-	if len(tm.Items) == 0 || timestamp.Before(tm.MinTime) {
-		tm.MinTime = timestamp
+	if len(tm.Items) == 0 || timestamp.Before(tm.MinTime.Time) {
+		tm.MinTime = SerializableTime{Time: timestamp}
 	}
-	if len(tm.Items) == 0 || timestamp.After(tm.MaxTime) {
-		tm.MaxTime = timestamp
+	if len(tm.Items) == 0 || timestamp.After(tm.MaxTime.Time) {
+		tm.MaxTime = SerializableTime{Time: timestamp}
 	}
 
 }

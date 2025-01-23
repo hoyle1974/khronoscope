@@ -27,3 +27,4 @@ go.work.sum
 .vscode
 *.prof
 temp.dat
+temp.dat.gz

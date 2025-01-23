@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
@@ -61,10 +60,11 @@ func grommet2(is bool) string {
 	return " "
 }
 
+/*
+
 func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
 	return "", nil
 
-	/*
 		lines := int64(15)
 		req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
 			TailLines: &lines,
@@ -82,8 +82,8 @@ func getPodLogs(client kubernetes.Interface, namespace, podName string) (string,
 		}
 
 		return buf.String(), nil
-	*/
 }
+*/
 
 type PodRenderer struct {
 	d DataModel

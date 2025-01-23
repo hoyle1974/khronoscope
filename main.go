@@ -9,15 +9,10 @@ import (
 
 func main() {
 	gob.Register(Resource{})
-
-	// test := NewTemporalMap()
-	// test.Add(time.Now(), "A", "Value1")
-	// test.Add(time.Now(), "A", "Value2")
-	// test.Add(time.Now(), "A", NewResource("abc", time.Now(), "efg", "default", "asdfasdfsa", &corev1.Pod{}))
-	// b := test.ToBytes()
-
-	// test2 := NewTemporalMapFromBytes(b)
-	// fmt.Println(test2)
+	gob.Register(TemporalMap{})
+	gob.Register(ReplicaSetExtra{})
+	gob.Register(NodeExtra{})
+	gob.Register(PodExtra{})
 
 	client, err := NewKhronosConnection()
 	if err != nil {
@@ -25,7 +20,7 @@ func main() {
 		return
 	}
 
-	//filename := "temp.dat"
+	// filename := "temp.dat"
 	filename := ""
 
 	data := NewDataModel()
@@ -35,15 +30,17 @@ func main() {
 	}
 	var watcher = NewK8sWatcher(data)
 
-	if len(filename) == 0 {
-		watchForDeployments(watcher, client)
-		watchForDaemonSet(watcher, client)
-		watchForReplicaSet(watcher, client)
-		watchForService(watcher, client)
-		watchForNamespaces(watcher, client)
-		podWatcher := watchForPods(watcher, client)
-		watchForNodes(watcher, client, podWatcher)
+	if len(filename) > 0 {
+		watcher = nil
 	}
+
+	watchForDeployments(watcher, client)
+	watchForDaemonSet(watcher, client)
+	watchForReplicaSet(watcher, client)
+	watchForService(watcher, client)
+	watchForNamespaces(watcher, client)
+	podWatcher := watchForPods(watcher, client, data)
+	watchForNodes(watcher, client, data, podWatcher)
 
 	appModel := newModel(watcher, data)
 	p := tea.NewProgram(appModel)
@@ -51,6 +48,12 @@ func main() {
 	appModel.vcr = NewVCRControl(data, func() {
 		p.Send(1)
 	})
+
+	if len(filename) > 0 {
+		min, _ := data.GetTimeRange()
+		appModel.vcr.enableVCR()
+		appModel.vcr.vcrTime = min
+	}
 
 	watcher.OnChange(func() {
 		p.Send(1)

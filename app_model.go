@@ -141,7 +141,7 @@ func (s *AppModel) Init() tea.Cmd { return nil }
 
 func (m *AppModel) View() string {
 	timeToUse := m.vcr.GetTimeToUse()
-	m.tv.AddResources(m.watcher.GetStateAtTime(timeToUse, "", ""))
+	m.tv.AddResources(m.data.GetResourcesAt(timeToUse, "", ""))
 
 	currentLabel := m.data.GetLabel(timeToUse)
 

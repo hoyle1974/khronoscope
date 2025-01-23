@@ -33,19 +33,19 @@ type K8sResource interface {
 }
 
 type Resource struct {
-	Uid       string    // The Uid of the k8s object
-	Timestamp time.Time // The timestamp that this resource is valid for
-	Kind      string    // The k8s kind of resource
-	Namespace string    // The k8s namespace, may be empty for things like namespace and node resources
-	Name      string    // The name of the resource
-	Extra     any       // This should be a custom, gob registered and serializable object if used
+	Uid       string           // The Uid of the k8s object
+	Timestamp SerializableTime // The timestamp that this resource is valid for
+	Kind      string           // The k8s kind of resource
+	Namespace string           // The k8s namespace, may be empty for things like namespace and node resources
+	Name      string           // The name of the resource
+	Extra     any              // This should be a custom, gob registered and serializable object if used
 	Details   []string
 }
 
 func NewK8sResource(kind string, obj K8sResource, details []string, extra any) Resource {
 	r := Resource{
 		Uid:       string(obj.GetObjectMeta().GetUID()),
-		Timestamp: time.Now(),
+		Timestamp: SerializableTime{Time: time.Now()},
 		Kind:      kind,
 		Namespace: obj.GetObjectMeta().GetNamespace(),
 		Name:      obj.GetObjectMeta().GetName(),
@@ -75,7 +75,7 @@ func (r Resource) String() string {
 func NewResource(uuid string, timestmap time.Time, kind string, namespace string, name string) Resource {
 	return Resource{
 		Uid:       uuid,
-		Timestamp: timestmap,
+		Timestamp: SerializableTime{Time: timestmap},
 		Kind:      kind,
 		Namespace: namespace,
 		Name:      name,

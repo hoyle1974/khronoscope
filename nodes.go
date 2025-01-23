@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"sort"
 	"strings"
@@ -38,7 +37,7 @@ func (n NodeExtra) Copy() NodeExtra {
 }
 
 type NodeRenderer struct {
-	n *NodeWatcher
+	d DataModel
 }
 
 func describeNode(node *corev1.Node) []string {
@@ -170,8 +169,9 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 }
 
 type NodeWatcher struct {
-	k   KhronosConn
-	w   *K8sWatcher
+	k KhronosConn
+	// w   *K8sWatcher
+	d   DataModel
 	pwm *PodWatcher
 
 	lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
@@ -204,7 +204,7 @@ func (n *NodeWatcher) getMetricsForNode(resource Resource) map[string]string {
 func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 
 	e := resource.Extra.(NodeExtra).Copy()
-	resource.Timestamp = time.Now()
+	resource.Timestamp = SerializableTime{Time: time.Now()}
 
 	metricsExtra := n.getMetricsForNode(resource)
 	if len(metricsExtra) > 0 {
@@ -213,7 +213,7 @@ func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 	}
 
 	// Find pods on node
-	resources := n.w.GetStateAtTime(resource.Timestamp, "Pod", "")
+	resources := n.d.GetResourcesAt(resource.Timestamp.Time, "Pod", "")
 	e.PodMetrics = map[string]map[string]PodMetric{}
 	for _, podResource := range resources {
 		if podResource.Extra.(PodExtra).Node == resource.Name {
@@ -224,7 +224,7 @@ func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 
 	resource.Extra = e
 
-	n.w.Update(resource)
+	n.d.UpdateResource(resource)
 
 }
 
@@ -240,7 +240,7 @@ func (n *NodeWatcher) Tick() {
 	n.lastNodeMetrics.Store(m)
 
 	// // Get the current resources
-	resources := n.w.GetStateAtTime(time.Now(), "Node", "")
+	resources := n.d.GetResourcesAt(time.Now(), "Node", "")
 	for _, resource := range resources {
 		n.updateResourceMetrics(resource)
 	}
@@ -251,7 +251,7 @@ func (n *NodeWatcher) Kind() string {
 }
 
 func (n *NodeWatcher) Renderer() ResourceRenderer {
-	return NodeRenderer{n}
+	return NodeRenderer{n.d}
 }
 
 func (n *NodeWatcher) convert(obj runtime.Object) *corev1.Node {
@@ -278,15 +278,13 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), node, describeNode(node), extra)
 }
 
-func watchForNodes(watcher *K8sWatcher, k KhronosConn, pwm *PodWatcher) *NodeWatcher {
-	gob.Register(NodeExtra{})
-
+func watchForNodes(watcher *K8sWatcher, k KhronosConn, d DataModel, pwm *PodWatcher) *NodeWatcher {
 	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	w := &NodeWatcher{k: k, w: watcher, pwm: pwm}
+	w := &NodeWatcher{k: k, d: d, pwm: pwm}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 

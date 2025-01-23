@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"maps"
 	"slices"
@@ -87,7 +86,7 @@ func getPodLogs(client kubernetes.Interface, namespace, podName string) (string,
 }
 
 type PodRenderer struct {
-	n *PodWatcher
+	d DataModel
 }
 
 // describePod returns a list of formatted strings describing the pod's details.
@@ -230,17 +229,6 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 
 		out = append(out, extra.Labels...)
 		out = append(out, extra.Annotations...)
-
-		logs, err := getPodLogs(r.n.k.client, resource.Namespace, resource.Name)
-		if err == nil {
-			lines := strings.Split(logs, "\n")
-			if len(lines) > 10 {
-				lines = lines[len(lines)-10:]
-			}
-			out = append(out, lines...)
-		} else {
-			out = append(out, fmt.Sprintf("%v", err))
-		}
 		out = append(out, resource.Details...)
 
 	} else {
@@ -295,7 +283,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 
 type PodWatcher struct {
 	k KhronosConn
-	w *K8sWatcher
+	d DataModel
 
 	lastPodMetrics atomic.Pointer[v1beta1.PodMetricsList]
 }
@@ -354,10 +342,10 @@ func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 
 		extra.Metrics = metricsExtra
 		extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
-		resource.Timestamp = time.Now()
+		resource.Timestamp = SerializableTime{Time: time.Now()}
 		resource.Extra = extra
 
-		n.w.Update(resource)
+		n.d.UpdateResource(resource)
 	}
 }
 
@@ -372,7 +360,7 @@ func (n *PodWatcher) Tick() {
 	n.lastPodMetrics.Store(m)
 
 	// // Get the current resources
-	resources := n.w.GetStateAtTime(time.Now(), "Pod", "")
+	resources := n.d.GetResourcesAt(time.Now(), "Pod", "")
 	for _, resource := range resources {
 		n.updateResourceMetrics(resource)
 	}
@@ -383,7 +371,7 @@ func (n *PodWatcher) Kind() string {
 }
 
 func (n *PodWatcher) Renderer() ResourceRenderer {
-	return PodRenderer{n}
+	return PodRenderer{n.d}
 }
 
 func (n *PodWatcher) convert(obj runtime.Object) *corev1.Pod {
@@ -421,15 +409,13 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), pod, describePod(pod), extra)
 }
 
-func watchForPods(watcher *K8sWatcher, k KhronosConn) *PodWatcher {
-	gob.Register(PodExtra{})
-
+func watchForPods(watcher *K8sWatcher, k KhronosConn, d DataModel) *PodWatcher {
 	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	w := &PodWatcher{k: k, w: watcher}
+	w := &PodWatcher{k: k, d: d}
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
 	return w

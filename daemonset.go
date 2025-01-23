@@ -117,7 +117,6 @@ func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
 }
 
 func watchForDaemonSet(watcher *K8sWatcher, k KhronosConn) {
-
 	watchChan, err := k.client.AppsV1().DaemonSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

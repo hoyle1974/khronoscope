@@ -36,6 +36,9 @@ func NewK8sWatcher(data DataModel) *K8sWatcher {
 
 // Set the onChange callback
 func (w *K8sWatcher) OnChange(onChange func()) {
+	if w == nil {
+		return
+	}
 	w.onChange = onChange
 }
 
@@ -45,9 +48,9 @@ func (w *K8sWatcher) ChangedSince(t time.Time) bool {
 }
 
 // Returns a list of Resources that existed at a specific time, can be filtered by kind and namespace
-func (w *K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
-	return w.data.GetResourcesAt(timestamp, kind, namespace)
-}
+// func (w *K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
+// 	return w.data.GetResourcesAt(timestamp, kind, namespace)
+// }
 
 // Used internally to denote when the internal struct has been modified and notify anyone listening about that change
 func (w *K8sWatcher) dirty() {
@@ -77,6 +80,9 @@ func (w *K8sWatcher) Delete(r Resource) {
 
 func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEventWatcher ResourceEventWatcher) {
 	RegisterResourceRenderer(resourceEventWatcher.Kind(), resourceEventWatcher.Renderer())
+	if w == nil {
+		return
+	}
 
 	defer func() {
 		if r := recover(); r != nil {

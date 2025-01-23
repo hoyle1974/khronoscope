@@ -147,14 +147,14 @@ func (d *dataModelImpl) AddResource(resource Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	d.resources.Add(resource.Timestamp, resource.Key(), resource)
+	d.resources.Add(resource.Timestamp.Time, resource.Key(), resource)
 }
 
 func (d *dataModelImpl) UpdateResource(resource Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	d.resources.Update(resource.Timestamp, resource.Key(), resource)
+	d.resources.Update(resource.Timestamp.Time, resource.Key(), resource)
 
 }
 
@@ -162,7 +162,7 @@ func (d *dataModelImpl) DeleteResource(resource Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	d.resources.Remove(resource.Timestamp, resource.Key())
+	d.resources.Remove(resource.Timestamp.Time, resource.Key())
 }
 
 func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []Resource {

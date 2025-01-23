@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -139,8 +138,6 @@ func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 }
 
 func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
-	gob.Register(ReplicaSetExtra{})
-
 	watchChan, err := k.client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)

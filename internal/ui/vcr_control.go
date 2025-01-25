@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -144,6 +144,12 @@ func (tc *VCRControl) Play() {
 	tc.playSpeed = time.Second
 }
 
+func (tc *VCRControl) GetPlaySpeed() time.Duration {
+	tc.lock.Lock()
+	defer tc.lock.Unlock()
+	return tc.playSpeed
+}
+
 func (tc *VCRControl) Render() string {
 	tc.lock.Lock()
 	defer tc.lock.Unlock()
@@ -175,4 +181,11 @@ func (tc *VCRControl) Render() string {
 	}
 
 	return symbol
+}
+
+// SetTime sets the VCR time to the specified time
+func (v *VCRControl) SetTime(t time.Time) {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	v.vcrTime = t
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/ui"
 	"github.com/hoyle1974/khronoscope/resources"
 )
 
@@ -38,9 +39,9 @@ type AppModel struct {
 	treeView          viewport.Model
 	detailView        viewport.Model
 	lastWindowSizeMsg tea.WindowSizeMsg
-	tv                *TreeView
-	vcr               *VCRControl
-	popup             Popup
+	tv                *ui.TreeView
+	vcr               *ui.VCRControl
+	popup             ui.Popup
 }
 
 func (m *AppModel) SetLabel(label string) {
@@ -63,7 +64,7 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 	return percentage
 }
 
-func (m *AppModel) SetPopup(popup Popup) {
+func (m *AppModel) SetPopup(popup ui.Popup) {
 	m.popup = popup
 }
 
@@ -130,7 +131,7 @@ func newModel(watcher *resources.K8sWatcher, data DataModel) *AppModel {
 	am := &AppModel{
 		watcher: watcher,
 		data:    data,
-		tv:      NewTreeView(),
+		tv:      ui.NewTreeView(),
 	}
 
 	return am
@@ -183,7 +184,7 @@ func (m *AppModel) View() string {
 	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", m.headerView(currentLabel), temp, m.footerView()), m.popup)
 }
 
-func (m *AppModel) insertPopup(content string, popup Popup) string {
+func (m *AppModel) insertPopup(content string, popup ui.Popup) string {
 	if popup == nil {
 		return content
 	}
@@ -276,11 +277,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "s":
 			m.data.Save("temp.dat")
 		case "1":
-			m.SetPopup(newMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
+			m.SetPopup(ui.NewMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
 			return m, nil
 		case "l":
 			m.vcr.Pause()
-			m.SetPopup(NewLabelPopup(m))
+			m.SetPopup(ui.NewLabelPopup(m))
 		case "tab":
 			m.viewMode++
 			m.viewMode %= 2
@@ -295,7 +296,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.vcr.FastForward()
 			return m, nil
 		case " ":
-			if m.vcr.playSpeed == 0 {
+			if m.vcr.GetPlaySpeed() == 0 {
 				m.vcr.Play()
 			} else {
 				m.vcr.Pause()

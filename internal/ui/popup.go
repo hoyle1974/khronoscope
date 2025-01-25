@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fmt"
@@ -84,6 +84,7 @@ func (p *MessagePopup) View(width, height int) string {
 	return style.Render(p.msg)
 }
 
-func newMessagePopup(msg string, close string) Popup {
+// NewMessagePopup creates a new message popup with the given message and close key
+func NewMessagePopup(msg string, close string) Popup {
 	return &MessagePopup{msg: msg, close: close}
 }

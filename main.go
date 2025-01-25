@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/hoyle1974/khronoscope/conn"
+	"github.com/hoyle1974/khronoscope/internal/ui"
 	"github.com/hoyle1974/khronoscope/resources"
 )
 
@@ -40,14 +41,14 @@ func main() {
 	appModel := newModel(watcher, data)
 	p := tea.NewProgram(appModel)
 
-	appModel.vcr = NewVCRControl(data, func() {
+	appModel.vcr = ui.NewVCRControl(data, func() {
 		p.Send(1)
 	})
 
 	if len(filename) > 0 {
 		min, _ := data.GetTimeRange()
-		appModel.vcr.enableVCR()
-		appModel.vcr.vcrTime = min
+		appModel.vcr.EnableVCR()
+		appModel.vcr.SetTime(min)
 	}
 
 	watcher.OnChange(func() {

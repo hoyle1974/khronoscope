@@ -1,6 +1,8 @@
 module github.com/hoyle1974/khronoscope
 
-go 1.23.4
+go 1.23.0
+
+toolchain go1.23.1
 
 require (
 	github.com/charmbracelet/bubbletea v1.2.4
@@ -9,15 +11,9 @@ require (
 	k8s.io/client-go v0.32.0
 )
 
-require (
-	github.com/charmbracelet/bubbles v0.20.0
-	golang.org/x/tools v0.26.0
-)
+require github.com/charmbracelet/bubbles v0.20.0
 
-require (
-	github.com/atotto/clipboard v0.1.4 // indirect
-	golang.org/x/mod v0.21.0 // indirect
-)
+require github.com/atotto/clipboard v0.1.4 // indirect
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

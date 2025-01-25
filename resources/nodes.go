@@ -3,7 +3,6 @@ package resources
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
+	"github.com/hoyle1974/khronoscope/internal/ui"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
@@ -41,82 +41,6 @@ func (n NodeExtra) Copy() NodeExtra {
 
 type NodeRenderer struct {
 	d DAO
-}
-
-func describeNode(node *corev1.Node) []string {
-	out := []string{}
-
-	out = append(out, fmt.Sprintf("Roles: %s", getNodeRoles(node)))
-
-	out = append(out, misc.RenderMapOfStrings("Labels:", node.GetLabels())...)
-	out = append(out, misc.RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
-
-	out = append(out, "Capacity:")
-	for resource, quantity := range misc.Range(node.Status.Capacity) {
-		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
-	}
-	out = append(out, "Allocatable:")
-	for resource, quantity := range misc.Range(node.Status.Allocatable) {
-		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
-	}
-
-	// print the relevant system information
-	out = append(out, fmt.Sprintf("Node Name: %s", node.Name))
-	out = append(out, fmt.Sprintf("Machine ID: %s", node.Status.NodeInfo.MachineID))
-	out = append(out, fmt.Sprintf("System UUID: %s", node.Status.NodeInfo.SystemUUID))
-	out = append(out, fmt.Sprintf("Boot ID: %s", node.Status.NodeInfo.BootID))
-	out = append(out, fmt.Sprintf("Kernel Version: %s", node.Status.NodeInfo.KernelVersion))
-	out = append(out, fmt.Sprintf("OS Image: %s", node.Status.NodeInfo.OSImage))
-	out = append(out, fmt.Sprintf("Container Runtime Version: %s", node.Status.NodeInfo.ContainerRuntimeVersion))
-	out = append(out, fmt.Sprintf("Kubelet Version: %s", node.Status.NodeInfo.KubeletVersion))
-	out = append(out, fmt.Sprintf("Operating System: %s", node.Status.NodeInfo.OperatingSystem))
-	out = append(out, fmt.Sprintf("Architecture: %s", node.Status.NodeInfo.Architecture))
-
-	out = append(out, "Addresses:")
-	for _, address := range node.Status.Addresses {
-		out = append(out, fmt.Sprintf("  %s: %s", address.Type, address.Address))
-	}
-
-	out = append(out, "Images:")
-	for _, image := range node.Status.Images {
-		out = append(out, fmt.Sprintf("  - Names: %s", strings.Join(image.Names, ", ")))
-		out = append(out, fmt.Sprintf("    Size: %d bytes", image.SizeBytes))
-	}
-
-	out = append(out, "Conditions:")
-	for _, condition := range node.Status.Conditions {
-		out = append(out, fmt.Sprintf("  Type: %s", condition.Type))
-		out = append(out, fmt.Sprintf("  Status: %s", condition.Status))
-		out = append(out, fmt.Sprintf("  LastHeartbeatTime: %s", condition.LastHeartbeatTime.Time.Format(time.RFC3339)))
-		out = append(out, fmt.Sprintf("  LastTransitionTime: %s", condition.LastTransitionTime.Time.Format(time.RFC3339)))
-		out = append(out, fmt.Sprintf("  Reason: %s", condition.Reason))
-		out = append(out, fmt.Sprintf("  Message: %s", condition.Message))
-		out = append(out, "")
-	}
-
-	return out
-}
-
-// Helper function to get node roles
-func getNodeRoles(node *corev1.Node) string {
-	roles := []string{}
-	for label := range node.Labels {
-		if strings.HasPrefix(label, "kubernetes.io/role/") {
-			role := strings.TrimPrefix(label, "kubernetes.io/role/")
-			roles = append(roles, role)
-		}
-	}
-	for label := range node.Labels {
-		if strings.HasPrefix(label, "node-role.kubernetes.io/") {
-			role := strings.TrimPrefix(label, "node-role.kubernetes.io/")
-			roles = append(roles, role)
-		}
-	}
-	if len(roles) == 0 {
-		return "<none>"
-	}
-	sort.Strings(roles)
-	return strings.Join(roles, ", ")
 }
 
 func (r NodeRenderer) Render(resource Resource, details bool) []string {
@@ -278,7 +202,7 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 		Uptime:                time.Since(node.CreationTimestamp.Time).Truncate(time.Second),
 	}
 
-	return NewK8sResource(n.Kind(), node, describeNode(node), extra)
+	return NewK8sResource(n.Kind(), node, ui.FormatNodeDetails(node), extra)
 }
 
 func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) *NodeWatcher {

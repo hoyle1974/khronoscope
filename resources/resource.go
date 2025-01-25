@@ -43,6 +43,12 @@ type Resource struct {
 	Details   []string
 }
 
+func (r Resource) GetUID() string          { return r.Uid }
+func (r Resource) GetKind() string         { return r.Kind }
+func (r Resource) GetNamespace() string    { return r.Namespace }
+func (r Resource) GetName() string         { return r.Name }
+func (r Resource) GetTimestamp() time.Time { return r.Timestamp.Time }
+
 func NewK8sResource(kind string, obj K8sResource, details []string, extra any) Resource {
 	r := Resource{
 		Uid:       string(obj.GetObjectMeta().GetUID()),
@@ -82,29 +88,6 @@ func NewResource(uuid string, timestmap time.Time, kind string, namespace string
 		Name:      name,
 	}
 }
-
-// func (r Resource) SetExtra(e map[string]any) Resource {
-// 	if e == nil {
-// 		return r
-// 	}
-
-// 	r.Extra = e
-// 	return r
-// }
-
-// func (r Resource) SetExtraKV(k string, v any) Resource {
-// 	r.Extra = r.GetExtra()
-// 	r.Extra[k] = v
-// 	return r
-// }
-// func (r Resource) GetExtra() map[string]any {
-// 	newMap := make(map[string]any)
-// 	for key, value := range r.Extra {
-// 		newMap[key] = value
-// 	}
-
-// 	return newMap
-// }
 
 func (r Resource) Key() string {
 	return r.Kind + "/" + r.Namespace + "/" + r.Name

@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/types"
 	"github.com/hoyle1974/khronoscope/internal/ui"
 	"github.com/hoyle1974/khronoscope/resources"
 )
@@ -143,7 +144,12 @@ func (s *AppModel) Init() tea.Cmd { return nil }
 
 func (m *AppModel) View() string {
 	timeToUse := m.vcr.GetTimeToUse()
-	m.tv.AddResources(m.data.GetResourcesAt(timeToUse, "", ""))
+	resources := m.data.GetResourcesAt(timeToUse, "", "")
+	convResources := make([]types.Resource, len(resources))
+	for i := 0; i < len(resources); i++ {
+		convResources[i] = resources[i]
+	}
+	m.tv.AddResources(convResources)
 
 	currentLabel := m.data.GetLabel(timeToUse)
 
@@ -156,7 +162,7 @@ func (m *AppModel) View() string {
 	}
 
 	if resource != nil {
-		detailContent := fmt.Sprintf("UID: %s\n", resource.Uid) + strings.Join(resource.GetDetails(), "\n")
+		detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")
 		detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)
 		m.detailView.SetContent(detailContent)
 	}

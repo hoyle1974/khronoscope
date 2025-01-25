@@ -2,26 +2,15 @@ package resources
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hoyle1974/khronoscope/conn"
-	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/ui"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type NamespacedRenderer struct {
-}
-
-func formatNamespaceDetails(namespace *corev1.Namespace) []string {
-	out := []string{}
-	out = append(out, "Name: "+namespace.Name)
-	out = append(out, fmt.Sprintf("Status: %v", namespace.Status))
-
-	out = append(out, misc.RenderMapOfStrings("Labels:", namespace.GetLabels())...)
-	out = append(out, misc.RenderMapOfStrings("Annotations:", namespace.GetAnnotations())...)
-	return out
 }
 
 func (r NamespacedRenderer) Render(resource Resource, details bool) []string {
@@ -56,7 +45,7 @@ func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 }
 
 func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), formatNamespaceDetails(n.convert(obj)), nil)
+	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatNamespaceDetails(n.convert(obj)), nil)
 }
 
 func watchForNamespaces(watcher *K8sWatcher, k conn.KhronosConn) {

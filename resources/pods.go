@@ -13,6 +13,7 @@ import (
 	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
+	"github.com/hoyle1974/khronoscope/internal/ui"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -394,7 +395,7 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 		Annotations: misc.RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
 	}
 
-	return NewK8sResource(n.Kind(), pod, describePod(pod), extra)
+	return NewK8sResource(n.Kind(), pod, ui.FormatPodDetails(pod), extra)
 }
 
 func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO) *PodWatcher {

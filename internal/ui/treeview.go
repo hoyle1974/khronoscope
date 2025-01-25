@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hoyle1974/khronoscope/resources"
+	"github.com/hoyle1974/khronoscope/internal/types"
 )
 
 // TreeView provides a way to browse a set of k8s resources in a tree view.
@@ -55,7 +55,7 @@ func (tn *treeNode) GetUid() string  { return "" }
 
 type treeLeaf struct {
 	Parent   node
-	Resource resources.Resource
+	Resource types.Resource
 	Expand   bool
 }
 
@@ -63,7 +63,7 @@ func (tl *treeLeaf) GetParent() node { return tl.Parent }
 func (tl *treeLeaf) IsLeaf() bool    { return true }
 func (tl *treeLeaf) Toggle()         { tl.Expand = !tl.Expand }
 func (tl *treeLeaf) GetExpand() bool { return tl.Expand }
-func (tl *treeLeaf) GetUid() string  { return tl.Resource.Uid }
+func (tl *treeLeaf) GetUid() string  { return tl.Resource.GetUID() }
 
 type TreeView struct {
 	cursor     treeViewCursor
@@ -238,10 +238,10 @@ func (t *TreeView) findNodeAt(pos int) node {
 	return retN
 }
 
-func (t *TreeView) Render() (string, int, *resources.Resource) {
+func (t *TreeView) Render() (string, int, types.Resource) {
 	b := strings.Builder{}
 
-	var retResource *resources.Resource
+	var retResource types.Resource
 
 	if len(t.cursor.Uid) != 0 {
 		p := t.findPositionOfResource(t.cursor.Uid)
@@ -252,8 +252,8 @@ func (t *TreeView) Render() (string, int, *resources.Resource) {
 
 	if node := t.findNodeAt(t.cursor.Pos); node != nil {
 		if node.IsLeaf() {
-			t.cursor.Uid = node.(*treeLeaf).Resource.Uid
-			retResource = &(node.(*treeLeaf).Resource)
+			t.cursor.Uid = node.(*treeLeaf).Resource.GetUID()
+			retResource = (node.(*treeLeaf).Resource)
 		}
 		t.cursor.Node = node
 	}
@@ -325,30 +325,30 @@ func (t *TreeView) Render() (string, int, *resources.Resource) {
 }
 
 // Add the resources to be rendered as a tree view
-func (t *TreeView) AddResources(resourceList []resources.Resource) {
-	namespaces := map[string]resources.Resource{}
-	nodes := map[string]resources.Resource{}
-	other := map[string]map[string]map[string]resources.Resource{}
+func (t *TreeView) AddResources(resourceList []types.Resource) {
+	namespaces := map[string]types.Resource{}
+	nodes := map[string]types.Resource{}
+	other := map[string]map[string]map[string]types.Resource{}
 
 	for _, r := range resourceList {
-		switch r.Kind {
+		switch r.GetKind() {
 		case "Namespace":
-			namespaces[r.Name] = r
+			namespaces[r.GetName()] = r
 		case "Node":
-			nodes[r.Name] = r
+			nodes[r.GetName()] = r
 		default:
-			namespace, ok := other[r.Namespace]
+			namespace, ok := other[r.GetNamespace()]
 			if !ok {
-				namespace = map[string]map[string]resources.Resource{}
+				namespace = map[string]map[string]types.Resource{}
 			}
 
-			resourceMap, ok := namespace[r.Kind]
+			resourceMap, ok := namespace[r.GetKind()]
 			if !ok {
-				resourceMap = map[string]resources.Resource{}
+				resourceMap = map[string]types.Resource{}
 			}
-			resourceMap[r.Uid] = r
-			namespace[r.Kind] = resourceMap
-			other[r.Namespace] = namespace
+			resourceMap[r.GetUID()] = r
+			namespace[r.GetKind()] = resourceMap
+			other[r.GetNamespace()] = namespace
 		}
 	}
 

@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/temporal"
+	"github.com/hoyle1974/khronoscope/resources"
 )
 
 type DataModel interface {
-	GetResourcesAt(timestamp time.Time, kind string, namespace string) []Resource
+	GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource
 	GetTimeRange() (time.Time, time.Time)
-	AddResource(resource Resource)
-	UpdateResource(resource Resource)
-	DeleteResource(resource Resource)
+	AddResource(resource resources.Resource)
+	UpdateResource(resource resources.Resource)
+	DeleteResource(resource resources.Resource)
 	SetLabel(time.Time, string)
 	GetLabel(time time.Time) string
 	Save(string)
@@ -145,14 +146,14 @@ func (d *dataModelImpl) GetTimeRange() (time.Time, time.Time) {
 	return d.resources.GetTimeRange()
 }
 
-func (d *dataModelImpl) AddResource(resource Resource) {
+func (d *dataModelImpl) AddResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
 	d.resources.Add(resource.Timestamp.Time, resource.Key(), resource)
 }
 
-func (d *dataModelImpl) UpdateResource(resource Resource) {
+func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -160,22 +161,22 @@ func (d *dataModelImpl) UpdateResource(resource Resource) {
 
 }
 
-func (d *dataModelImpl) DeleteResource(resource Resource) {
+func (d *dataModelImpl) DeleteResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
 	d.resources.Remove(resource.Timestamp.Time, resource.Key())
 }
 
-func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []Resource {
+func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	m := d.resources.GetStateAtTime(timestamp)
 
 	// Create a slice of keys
-	values := make([]Resource, 0, len(m))
+	values := make([]resources.Resource, 0, len(m))
 	for _, v := range m {
-		r := v.(Resource)
+		r := v.(resources.Resource)
 		if kind != "" && kind != r.Kind {
 			continue
 		}

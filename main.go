@@ -5,15 +5,17 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/hoyle1974/khronoscope/conn"
+	"github.com/hoyle1974/khronoscope/resources"
 )
 
 func main() {
-	gob.Register(Resource{})
-	gob.Register(ReplicaSetExtra{})
-	gob.Register(NodeExtra{})
-	gob.Register(PodExtra{})
+	gob.Register(resources.Resource{})
+	gob.Register(resources.ReplicaSetExtra{})
+	gob.Register(resources.NodeExtra{})
+	gob.Register(resources.PodExtra{})
 
-	client, err := NewKhronosConnection()
+	client, err := conn.NewKhronosConnection()
 	if err != nil {
 		fmt.Printf("Error creating connection: %v", err)
 		return
@@ -27,19 +29,13 @@ func main() {
 	if len(filename) > 0 {
 		data = NewDataModelFromFile(filename)
 	}
-	var watcher = NewK8sWatcher(data)
+	var watcher = resources.NewK8sWatcher(data)
 
 	if len(filename) > 0 {
 		watcher = nil
 	}
 
-	watchForDeployments(watcher, client)
-	watchForDaemonSet(watcher, client)
-	watchForReplicaSet(watcher, client)
-	watchForService(watcher, client)
-	watchForNamespaces(watcher, client)
-	podWatcher := watchForPods(watcher, client, data)
-	watchForNodes(watcher, client, data, podWatcher)
+	watcher.Watch(client, data)
 
 	appModel := newModel(watcher, data)
 	p := tea.NewProgram(appModel)

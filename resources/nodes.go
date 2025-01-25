@@ -1,4 +1,4 @@
-package main
+package resources
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +40,7 @@ func (n NodeExtra) Copy() NodeExtra {
 }
 
 type NodeRenderer struct {
-	d DataModel
+	d DAO
 }
 
 func describeNode(node *corev1.Node) []string {
@@ -171,9 +172,9 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 }
 
 type NodeWatcher struct {
-	k KhronosConn
+	k conn.KhronosConn
 	// w   *K8sWatcher
-	d   DataModel
+	d   DAO
 	pwm *PodWatcher
 
 	lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
@@ -235,7 +236,7 @@ func (n *NodeWatcher) Tick() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	m, err := n.k.metricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
+	m, err := n.k.MetricsClient.MetricsV1beta1().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
 	}
@@ -280,8 +281,8 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), node, describeNode(node), extra)
 }
 
-func watchForNodes(watcher *K8sWatcher, k KhronosConn, d DataModel, pwm *PodWatcher) *NodeWatcher {
-	watchChan, err := k.client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
+func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) *NodeWatcher {
+	watchChan, err := k.Client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

@@ -4,12 +4,27 @@ import (
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/hoyle1974/khronoscope/resources"
 )
 
 // TreeView provides a way to browse a set of k8s resources in a tree view.
 // It builds a view consisting of 3 sections: namespaces, nodes, and details.
 // It manages cursor movement in the view, collapsing/expanding nodes and tries
 // to keep the cursor mostly sane even when resources the cursor is on disappear.
+
+func grommet(is bool) string {
+	if !is {
+		return "├"
+	}
+	return "└"
+}
+func grommet2(is bool) string {
+	if !is {
+		return "│"
+	}
+	return " "
+}
 
 type treeViewCursor struct {
 	Pos  int
@@ -40,7 +55,7 @@ func (tn *treeNode) GetUid() string  { return "" }
 
 type treeLeaf struct {
 	Parent   node
-	Resource Resource
+	Resource resources.Resource
 	Expand   bool
 }
 
@@ -223,10 +238,10 @@ func (t *TreeView) findNodeAt(pos int) node {
 	return retN
 }
 
-func (t *TreeView) Render() (string, int, *Resource) {
+func (t *TreeView) Render() (string, int, *resources.Resource) {
 	b := strings.Builder{}
 
-	var retResource *Resource
+	var retResource *resources.Resource
 
 	if len(t.cursor.Uid) != 0 {
 		p := t.findPositionOfResource(t.cursor.Uid)
@@ -310,12 +325,12 @@ func (t *TreeView) Render() (string, int, *Resource) {
 }
 
 // Add the resources to be rendered as a tree view
-func (t *TreeView) AddResources(resources []Resource) {
-	namespaces := map[string]Resource{}
-	nodes := map[string]Resource{}
-	other := map[string]map[string]map[string]Resource{}
+func (t *TreeView) AddResources(resourceList []resources.Resource) {
+	namespaces := map[string]resources.Resource{}
+	nodes := map[string]resources.Resource{}
+	other := map[string]map[string]map[string]resources.Resource{}
 
-	for _, r := range resources {
+	for _, r := range resourceList {
 		switch r.Kind {
 		case "Namespace":
 			namespaces[r.Name] = r
@@ -324,12 +339,12 @@ func (t *TreeView) AddResources(resources []Resource) {
 		default:
 			namespace, ok := other[r.Namespace]
 			if !ok {
-				namespace = map[string]map[string]Resource{}
+				namespace = map[string]map[string]resources.Resource{}
 			}
 
 			resourceMap, ok := namespace[r.Kind]
 			if !ok {
-				resourceMap = map[string]Resource{}
+				resourceMap = map[string]resources.Resource{}
 			}
 			resourceMap[r.Uid] = r
 			namespace[r.Kind] = resourceMap

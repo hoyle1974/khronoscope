@@ -1,14 +1,22 @@
-package main
+package resources
 
 import (
 	"fmt"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/conn"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
 const WATCHER_STEP = time.Second * 1
+
+type DAO interface {
+	AddResource(Resource)
+	UpdateResource(Resource)
+	DeleteResource(Resource)
+	GetResourcesAt(timestamp time.Time, kind string, namespace string) []Resource
+}
 
 // Interface for watching resource events.
 type ResourceEventWatcher interface {
@@ -21,12 +29,22 @@ type ResourceEventWatcher interface {
 // Watches for a variety of k8s resources state changes and tracks their values over time
 type K8sWatcher struct {
 	lastChange time.Time
-	data       DataModel
+	data       DAO
 	onChange   func()
 }
 
+func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO) {
+	watchForDeployments(w, client)
+	watchForDaemonSet(w, client)
+	watchForReplicaSet(w, client)
+	watchForService(w, client)
+	watchForNamespaces(w, client)
+	podWatcher := watchForPods(w, client, dao)
+	watchForNodes(w, client, dao, podWatcher)
+}
+
 // Create a new watcher
-func NewK8sWatcher(data DataModel) *K8sWatcher {
+func NewK8sWatcher(data DAO) *K8sWatcher {
 	w := &K8sWatcher{
 		lastChange: time.Now(),
 		data:       data,

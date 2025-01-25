@@ -1,4 +1,4 @@
-package main
+package resources
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
@@ -49,19 +50,6 @@ func (p PodExtra) Copy() PodExtra {
 	}
 }
 
-func grommet(is bool) string {
-	if !is {
-		return "├"
-	}
-	return "└"
-}
-func grommet2(is bool) string {
-	if !is {
-		return "│"
-	}
-	return " "
-}
-
 /*
 
 func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
@@ -88,7 +76,7 @@ func getPodLogs(client kubernetes.Interface, namespace, podName string) (string,
 */
 
 type PodRenderer struct {
-	d DataModel
+	d DAO
 }
 
 // describePod returns a list of formatted strings describing the pod's details.
@@ -284,8 +272,8 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 }
 
 type PodWatcher struct {
-	k KhronosConn
-	d DataModel
+	k conn.KhronosConn
+	d DAO
 
 	lastPodMetrics atomic.Pointer[v1beta1.PodMetricsList]
 }
@@ -353,7 +341,7 @@ func (n *PodWatcher) Tick() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	m, err := n.k.metricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
+	m, err := n.k.MetricsClient.MetricsV1beta1().PodMetricses("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return
 	}
@@ -409,8 +397,8 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), pod, describePod(pod), extra)
 }
 
-func watchForPods(watcher *K8sWatcher, k KhronosConn, d DataModel) *PodWatcher {
-	watchChan, err := k.client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
+func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO) *PodWatcher {
+	watchChan, err := k.Client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

@@ -1,9 +1,10 @@
-package main
+package resources
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,8 +59,8 @@ func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), formatNamespaceDetails(n.convert(obj)), nil)
 }
 
-func watchForNamespaces(watcher *K8sWatcher, k KhronosConn) {
-	watchChan, err := k.client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
+func watchForNamespaces(watcher *K8sWatcher, k conn.KhronosConn) {
+	watchChan, err := k.Client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

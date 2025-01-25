@@ -1,9 +1,10 @@
-package main
+package resources
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/format"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
@@ -139,8 +140,8 @@ func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	return r
 }
 
-func watchForReplicaSet(watcher *K8sWatcher, k KhronosConn) {
-	watchChan, err := k.client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
+func watchForReplicaSet(watcher *K8sWatcher, k conn.KhronosConn) {
+	watchChan, err := k.Client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

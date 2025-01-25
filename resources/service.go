@@ -1,10 +1,11 @@
-package main
+package resources
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,8 +93,8 @@ func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), formatServiceDetails(n.convert(obj)), nil)
 }
 
-func watchForService(watcher *K8sWatcher, k KhronosConn) {
-	watchChan, err := k.client.CoreV1().Services("").Watch(context.Background(), v1.ListOptions{})
+func watchForService(watcher *K8sWatcher, k conn.KhronosConn) {
+	watchChan, err := k.Client.CoreV1().Services("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

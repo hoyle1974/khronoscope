@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/resources"
 )
 
 var (
@@ -29,7 +30,7 @@ var (
 
 type AppModel struct {
 	data              DataModel
-	watcher           *K8sWatcher
+	watcher           *resources.K8sWatcher
 	ready             bool
 	viewMode          int
 	width             int
@@ -125,7 +126,7 @@ func (m *AppModel) footerView() string {
 }
 
 // MODEL DATA
-func newModel(watcher *K8sWatcher, data DataModel) *AppModel {
+func newModel(watcher *resources.K8sWatcher, data DataModel) *AppModel {
 	am := &AppModel{
 		watcher: watcher,
 		data:    data,

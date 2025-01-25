@@ -1,9 +1,10 @@
-package main
+package resources
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/conn"
 	"github.com/hoyle1974/khronoscope/internal/format"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
@@ -106,8 +107,8 @@ func (n DeploymentWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), formatDeploymentDetails(n.convert(obj)), nil)
 }
 
-func watchForDeployments(watcher *K8sWatcher, k KhronosConn) {
-	watchChan, err := k.client.AppsV1().Deployments("").Watch(context.Background(), v1.ListOptions{})
+func watchForDeployments(watcher *K8sWatcher, k conn.KhronosConn) {
+	watchChan, err := k.Client.AppsV1().Deployments("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

@@ -89,7 +89,7 @@ func RenderMapOfStrings(name string, t map[string]string) []string {
 
 	out = append(out, name)
 
-	for k, v := range NewMapRangeFunc(t) {
+	for k, v := range Range(t) {
 		out = append(out, fmt.Sprintf("   %v : %v", k, v))
 	}
 	return out

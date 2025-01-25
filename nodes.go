@@ -51,11 +51,11 @@ func describeNode(node *corev1.Node) []string {
 	out = append(out, misc.RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
 
 	out = append(out, "Capacity:")
-	for resource, quantity := range misc.NewMapRangeFunc(node.Status.Capacity) {
+	for resource, quantity := range misc.Range(node.Status.Capacity) {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
 	out = append(out, "Allocatable:")
-	for resource, quantity := range misc.NewMapRangeFunc(node.Status.Allocatable) {
+	for resource, quantity := range misc.Range(node.Status.Allocatable) {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
 
@@ -137,7 +137,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 		ret = append(ret, fmt.Sprintf("%v", extra.Metrics[resource.Name]))
 
 		ret = append(ret, "Pods: ")
-		for podName, podMetrics := range misc.NewMapRangeFunc(extra.PodMetrics) {
+		for podName, podMetrics := range misc.Range(extra.PodMetrics) {
 			var cpu float64 = 0
 			var mem float64 = 0
 			bar := ""

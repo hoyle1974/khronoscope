@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-func NewMapRangeFunc[K comparable, V any](m map[K]V) func(func(K, V) bool) {
+func Range[K comparable, V any](m map[K]V) func(func(K, V) bool) {
 	keys := make([]K, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

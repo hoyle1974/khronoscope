@@ -23,7 +23,7 @@ func Args(args []string) string {
 
 func Limits(limits map[corev1.ResourceName]resource.Quantity) string {
 	var limitStrings []string
-	for resource, quantity := range misc.NewMapRangeFunc(limits) {
+	for resource, quantity := range misc.Range(limits) {
 		limitStrings = append(limitStrings, fmt.Sprintf("%s: %s", resource, quantity.String()))
 	}
 	return strings.Join(limitStrings, " ")
@@ -60,7 +60,7 @@ func VolumeMounts(mounts []corev1.VolumeMount) string {
 
 func NodeSelectors(nodeSelectors map[string]string) string {
 	var selectorStrings []string
-	for key, value := range misc.NewMapRangeFunc(nodeSelectors) {
+	for key, value := range misc.Range(nodeSelectors) {
 		selectorStrings = append(selectorStrings, fmt.Sprintf("%s=%s", key, value))
 	}
 	return strings.Join(selectorStrings, " ")

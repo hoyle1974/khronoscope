@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hoyle1974/khronoscope/conn"
-	"github.com/hoyle1974/khronoscope/internal/format"
+	"github.com/hoyle1974/khronoscope/internal/k8s"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,11 +45,11 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 		for _, container := range deployment.Spec.Template.Spec.Containers {
 			result = append(result, fmt.Sprintf("    %s:", container.Name))
 			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
-			result = append(result, fmt.Sprintf("      Port:        %v", container.Ports))
-			result = append(result, fmt.Sprintf("      Limits:      %s", format.Limits(container.Resources.Limits)))
-			result = append(result, fmt.Sprintf("      Requests:    %s", format.Limits(container.Resources.Requests)))
-			result = append(result, fmt.Sprintf("      Environment: %s", format.Environment(container.Env)))
-			result = append(result, fmt.Sprintf("      Mounts:      %s", format.VolumeMounts(container.VolumeMounts)))
+			result = append(result, fmt.Sprintf("      Port:        %s", k8s.FormatPorts(container.Ports)))
+			result = append(result, fmt.Sprintf("      Limits:      %s", k8s.FormatLimits(container.Resources.Limits)))
+			result = append(result, fmt.Sprintf("      Requests:    %s", k8s.FormatLimits(container.Resources.Requests)))
+			result = append(result, fmt.Sprintf("      Environment: %s", k8s.FormatEnvironment(container.Env)))
+			result = append(result, fmt.Sprintf("      Mounts:      %s", k8s.FormatVolumeMounts(container.VolumeMounts)))
 		}
 	}
 
@@ -57,15 +57,15 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 	if len(deployment.Spec.Template.Spec.Volumes) > 0 {
 		result = append(result, "  Volumes:")
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
-			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, format.VolumeSource(volume.VolumeSource)))
+			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, k8s.FormatVolumeSource(volume.VolumeSource)))
 		}
 	}
 
 	// Node Selectors
-	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", format.NodeSelectors(deployment.Spec.Template.Spec.NodeSelector)))
+	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", k8s.FormatNodeSelectors(deployment.Spec.Template.Spec.NodeSelector)))
 
 	// Tolerations
-	result = append(result, fmt.Sprintf("  Tolerations:          %s", format.Tolerations(deployment.Spec.Template.Spec.Tolerations)))
+	result = append(result, fmt.Sprintf("  Tolerations:          %s", k8s.FormatTolerations(deployment.Spec.Template.Spec.Tolerations)))
 
 	// Events
 	result = append(result, "Events:                 <none>")

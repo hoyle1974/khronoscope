@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hoyle1974/khronoscope/conn"
-	"github.com/hoyle1974/khronoscope/internal/format"
+	"github.com/hoyle1974/khronoscope/internal/k8s"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,14 +58,14 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 		for _, container := range rs.Spec.Template.Spec.Containers {
 			result = append(result, fmt.Sprintf("    %s:", container.Name))
 			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
-			result = append(result, fmt.Sprintf("      Ports:       %s", format.Ports(container.Ports)))
-			result = append(result, fmt.Sprintf("      Args:        %s", format.Args(container.Args)))
-			result = append(result, fmt.Sprintf("      Limits:      %s", format.Limits(container.Resources.Limits)))
-			result = append(result, fmt.Sprintf("      Requests:    %s", format.Limits(container.Resources.Requests)))
-			result = append(result, fmt.Sprintf("      Liveness:    %s", format.Liveness(container.LivenessProbe)))
-			result = append(result, fmt.Sprintf("      Readiness:   %s", format.Liveness(container.ReadinessProbe)))
-			result = append(result, fmt.Sprintf("      Environment: %s", format.Environment(container.Env)))
-			result = append(result, fmt.Sprintf("      Mounts:      %s", format.VolumeMounts(container.VolumeMounts)))
+			result = append(result, fmt.Sprintf("      Ports:       %s", k8s.FormatPorts(container.Ports)))
+			result = append(result, fmt.Sprintf("      Args:        %s", k8s.FormatArgs(container.Args)))
+			result = append(result, fmt.Sprintf("      Limits:      %s", k8s.FormatLimits(container.Resources.Limits)))
+			result = append(result, fmt.Sprintf("      Requests:    %s", k8s.FormatLimits(container.Resources.Requests)))
+			result = append(result, fmt.Sprintf("      Liveness:    %s", k8s.FormatLiveness(container.LivenessProbe)))
+			result = append(result, fmt.Sprintf("      Readiness:   %s", k8s.FormatLiveness(container.ReadinessProbe)))
+			result = append(result, fmt.Sprintf("      Environment: %s", k8s.FormatEnvironment(container.Env)))
+			result = append(result, fmt.Sprintf("      Mounts:      %s", k8s.FormatVolumeMounts(container.VolumeMounts)))
 		}
 	}
 
@@ -81,10 +81,10 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 	result = append(result, fmt.Sprintf("  Priority Class Name:  %s", rs.Spec.Template.Spec.PriorityClassName))
 
 	// Node Selectors
-	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", format.NodeSelectors(rs.Spec.Template.Spec.NodeSelector)))
+	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", k8s.FormatNodeSelectors(rs.Spec.Template.Spec.NodeSelector)))
 
 	// Tolerations
-	result = append(result, fmt.Sprintf("  Tolerations:          %s", format.Tolerations(rs.Spec.Template.Spec.Tolerations)))
+	result = append(result, fmt.Sprintf("  Tolerations:          %s", k8s.FormatTolerations(rs.Spec.Template.Spec.Tolerations)))
 
 	// Events
 	result = append(result, "Events:                 <none>")

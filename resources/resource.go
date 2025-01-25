@@ -83,24 +83,6 @@ func NewResource(uuid string, timestmap time.Time, kind string, namespace string
 	}
 }
 
-// IsDeleted checks if this resource was deleted at the given time
-func (r Resource) IsDeleted(t time.Time) bool {
-	// If the resource's timestamp is after the given time, it means
-	// this resource didn't exist at time t (it was "deleted")
-	return r.Timestamp.Time.After(t)
-}
-
-// IsModified checks if this resource was modified at the given time
-func (r Resource) IsModified(t time.Time) bool {
-	// If the resource's timestamp equals the given time, it means
-	// this resource was modified at that exact time
-	return r.Timestamp.Time.Equal(t)
-}
-
-func (r Resource) Key() string {
-	return r.Kind + "/" + r.Namespace + "/" + r.Name
-}
-
 // func (r Resource) SetExtra(e map[string]any) Resource {
 // 	if e == nil {
 // 		return r
@@ -123,3 +105,7 @@ func (r Resource) Key() string {
 
 // 	return newMap
 // }
+
+func (r Resource) Key() string {
+	return r.Kind + "/" + r.Namespace + "/" + r.Name
+}

@@ -11,7 +11,6 @@ import (
 type Popup interface {
 	Update(msg tea.Msg) bool
 	View(width, height int) string
-	Render() string
 }
 
 type Labeler interface {
@@ -21,8 +20,6 @@ type Labeler interface {
 type LabelPopup struct {
 	textInput textinput.Model
 	labeler   Labeler
-	width     int
-	height    int
 }
 
 func (p *LabelPopup) Update(msg tea.Msg) bool {
@@ -44,8 +41,6 @@ func (p *LabelPopup) Update(msg tea.Msg) bool {
 }
 
 func (p *LabelPopup) View(width, height int) string {
-	p.width = width
-	p.height = height
 	b := lipgloss.RoundedBorder()
 	style := lipgloss.NewStyle().BorderStyle(b).Padding(1).Width(width - 2).Height(3).AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center)
 
@@ -54,10 +49,6 @@ func (p *LabelPopup) View(width, height int) string {
 		p.textInput.View(),
 		"(esc to quit)",
 	) + "\n")
-}
-
-func (p *LabelPopup) Render() string {
-	return p.View(p.width, p.height)
 }
 
 func NewLabelPopup(labeler Labeler) Popup {
@@ -73,8 +64,6 @@ func NewLabelPopup(labeler Labeler) Popup {
 type MessagePopup struct {
 	msg   string
 	close string
-	width int
-	height int
 }
 
 func (p *MessagePopup) Update(msg tea.Msg) bool {
@@ -90,15 +79,9 @@ func (p *MessagePopup) Update(msg tea.Msg) bool {
 }
 
 func (p *MessagePopup) View(width, height int) string {
-	p.width = width
-	p.height = height
 	b := lipgloss.RoundedBorder()
 	style := lipgloss.NewStyle().BorderStyle(b).Padding(1).Width(width - 2).Height(3).AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center)
 	return style.Render(p.msg)
-}
-
-func (p *MessagePopup) Render() string {
-	return p.View(p.width, p.height)
 }
 
 func newMessagePopup(msg string, close string) Popup {

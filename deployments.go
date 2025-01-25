@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/internal/format"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,8 +24,8 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 	result = append(result, fmt.Sprintf("Name:           %s", deployment.Name))
 	result = append(result, fmt.Sprintf("Namespace:      %s", deployment.Namespace))
 	result = append(result, fmt.Sprintf("Selector:       %s", deployment.Spec.Selector))
-	result = append(result, RenderMapOfStrings("Labels:", deployment.Labels)...)
-	result = append(result, RenderMapOfStrings("Annotations:", deployment.Annotations)...)
+	result = append(result, misc.RenderMapOfStrings("Labels:", deployment.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("Annotations:", deployment.Annotations)...)
 
 	// Replicas
 	result = append(result, fmt.Sprintf("Replicas:       %d current / %d desired", deployment.Status.Replicas, *deployment.Spec.Replicas))
@@ -34,7 +36,7 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 
 	// Pod template details
 	result = append(result, "Pod Template:")
-	result = append(result, RenderMapOfStrings("  Labels:", deployment.Spec.Template.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("  Labels:", deployment.Spec.Template.Labels)...)
 
 	// Containers info
 	if len(deployment.Spec.Template.Spec.Containers) > 0 {
@@ -43,10 +45,10 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 			result = append(result, fmt.Sprintf("    %s:", container.Name))
 			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
 			result = append(result, fmt.Sprintf("      Port:        %v", container.Ports))
-			result = append(result, fmt.Sprintf("      Limits:      %s", formatLimits(container.Resources.Limits)))
-			result = append(result, fmt.Sprintf("      Requests:    %s", formatLimits(container.Resources.Requests)))
-			result = append(result, fmt.Sprintf("      Environment: %s", formatEnvironment(container.Env)))
-			result = append(result, fmt.Sprintf("      Mounts:      %s", formatVolumeMounts(container.VolumeMounts)))
+			result = append(result, fmt.Sprintf("      Limits:      %s", format.Limits(container.Resources.Limits)))
+			result = append(result, fmt.Sprintf("      Requests:    %s", format.Limits(container.Resources.Requests)))
+			result = append(result, fmt.Sprintf("      Environment: %s", format.Environment(container.Env)))
+			result = append(result, fmt.Sprintf("      Mounts:      %s", format.VolumeMounts(container.VolumeMounts)))
 		}
 	}
 
@@ -54,15 +56,15 @@ func formatDeploymentDetails(deployment *appsv1.Deployment) []string {
 	if len(deployment.Spec.Template.Spec.Volumes) > 0 {
 		result = append(result, "  Volumes:")
 		for _, volume := range deployment.Spec.Template.Spec.Volumes {
-			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, formatVolumeSource(volume.VolumeSource)))
+			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, format.VolumeSource(volume.VolumeSource)))
 		}
 	}
 
 	// Node Selectors
-	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", formatNodeSelectors(deployment.Spec.Template.Spec.NodeSelector)))
+	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", format.NodeSelectors(deployment.Spec.Template.Spec.NodeSelector)))
 
 	// Tolerations
-	result = append(result, fmt.Sprintf("  Tolerations:          %s", formatTolerations(deployment.Spec.Template.Spec.Tolerations)))
+	result = append(result, fmt.Sprintf("  Tolerations:          %s", format.Tolerations(deployment.Spec.Template.Spec.Tolerations)))
 
 	// Events
 	result = append(result, "Events:                 <none>")

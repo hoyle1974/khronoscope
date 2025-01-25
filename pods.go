@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,10 +40,10 @@ func (p PodExtra) Copy() PodExtra {
 	return PodExtra{
 		Phase:       p.Phase,
 		Node:        p.Node,
-		Metrics:     DeepCopyMap(p.Metrics),
+		Metrics:     misc.DeepCopyMap(p.Metrics),
 		Uptime:      p.Uptime,
 		StartTime:   p.StartTime,
-		Containers:  DeepCopyMap(p.Containers),
+		Containers:  misc.DeepCopyMap(p.Containers),
 		Labels:      p.Labels,
 		Annotations: p.Annotations,
 	}
@@ -193,7 +195,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 			out = append(out, "containers:")
 			sortedKeys := slices.Sorted(maps.Keys(m))
 			for _, k := range sortedKeys {
-				bar := fmt.Sprintf("%s %s", renderProgressBar("CPU", m[k].CPUPercentage), renderProgressBar("Mem", m[k].MemoryPercentage))
+				bar := fmt.Sprintf("%s %s", misc.RenderProgressBar("CPU", m[k].CPUPercentage), misc.RenderProgressBar("Mem", m[k].MemoryPercentage))
 				out = append(out, fmt.Sprintf("   %v - %v", bar, k))
 			}
 		}
@@ -268,7 +270,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		if len(podMetric) > 0 {
 			cpu /= float64(len(podMetric))
 			mem /= float64(len(podMetric))
-			bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
+			bar = fmt.Sprintf("%s %s : ", misc.RenderProgressBar("CPU", cpu), misc.RenderProgressBar("Mem", mem))
 		} else {
 			bar = strings.Repeat(" ", 29) + " : "
 		}
@@ -333,8 +335,6 @@ func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric
 }
 
 func (n *PodWatcher) updateResourceMetrics(resource Resource) {
-	// pod := resource.Object.(*corev1.Pod)
-
 	extra := resource.Extra.(PodExtra).Copy()
 
 	metricsExtra := n.getPodMetricsForPod(resource)
@@ -342,7 +342,7 @@ func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 
 		extra.Metrics = metricsExtra
 		extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
-		resource.Timestamp = SerializableTime{Time: time.Now()}
+		resource.Timestamp = serializable.Time{Time: time.Now()}
 		resource.Extra = extra
 
 		n.d.UpdateResource(resource)
@@ -402,8 +402,8 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 		Node:        pod.Spec.NodeName,
 		Containers:  containerLimits,
 		StartTime:   pod.CreationTimestamp.Time,
-		Labels:      RenderMapOfStrings("Labels:", pod.GetLabels()),
-		Annotations: RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
+		Labels:      misc.RenderMapOfStrings("Labels:", pod.GetLabels()),
+		Annotations: misc.RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
 	}
 
 	return NewK8sResource(n.Kind(), pod, describePod(pod), extra)

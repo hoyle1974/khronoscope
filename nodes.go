@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
@@ -27,12 +29,12 @@ type NodeExtra struct {
 
 func (n NodeExtra) Copy() NodeExtra {
 	return NodeExtra{
-		Metrics:               DeepCopyMap(n.Metrics),
+		Metrics:               misc.DeepCopyMap(n.Metrics),
 		NodeCreationTimestamp: n.NodeCreationTimestamp,
 		CPUCapacity:           n.CPUCapacity,
 		MemCapacity:           n.MemCapacity,
 		Uptime:                n.Uptime,
-		PodMetrics:            DeepCopyMap(n.PodMetrics),
+		PodMetrics:            misc.DeepCopyMap(n.PodMetrics),
 	}
 }
 
@@ -45,15 +47,15 @@ func describeNode(node *corev1.Node) []string {
 
 	out = append(out, fmt.Sprintf("Roles: %s", getNodeRoles(node)))
 
-	out = append(out, RenderMapOfStrings("Labels:", node.GetLabels())...)
-	out = append(out, RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
+	out = append(out, misc.RenderMapOfStrings("Labels:", node.GetLabels())...)
+	out = append(out, misc.RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
 
 	out = append(out, "Capacity:")
-	for resource, quantity := range NewMapRangeFunc(node.Status.Capacity) {
+	for resource, quantity := range misc.NewMapRangeFunc(node.Status.Capacity) {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
 	out = append(out, "Allocatable:")
-	for resource, quantity := range NewMapRangeFunc(node.Status.Allocatable) {
+	for resource, quantity := range misc.NewMapRangeFunc(node.Status.Allocatable) {
 		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
 	}
 
@@ -135,7 +137,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 		ret = append(ret, fmt.Sprintf("%v", extra.Metrics[resource.Name]))
 
 		ret = append(ret, "Pods: ")
-		for podName, podMetrics := range NewMapRangeFunc(extra.PodMetrics) {
+		for podName, podMetrics := range misc.NewMapRangeFunc(extra.PodMetrics) {
 			var cpu float64 = 0
 			var mem float64 = 0
 			bar := ""
@@ -147,7 +149,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 			if len(podMetrics) > 0 {
 				cpu /= float64(len(podMetrics))
 				mem /= float64(len(podMetrics))
-				bar = fmt.Sprintf("%s %s : ", renderProgressBar("CPU", cpu), renderProgressBar("Mem", mem))
+				bar = fmt.Sprintf("%s %s : ", misc.RenderProgressBar("CPU", cpu), misc.RenderProgressBar("Mem", mem))
 			} else {
 				bar = strings.Repeat(" ", 29) + " : "
 			}
@@ -193,7 +195,7 @@ func (n *NodeWatcher) getMetricsForNode(resource Resource) map[string]string {
 			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), e.CPUCapacity)
 			memPercentage := calculatePercentage(memUsage.Value(), e.MemCapacity)
 
-			metricsExtra[resource.Name] = fmt.Sprintf("%s %s", renderProgressBar("CPU", cpuPercentage), renderProgressBar("Mem", memPercentage))
+			metricsExtra[resource.Name] = fmt.Sprintf("%s %s", misc.RenderProgressBar("CPU", cpuPercentage), misc.RenderProgressBar("Mem", memPercentage))
 
 			return metricsExtra
 		}
@@ -204,7 +206,7 @@ func (n *NodeWatcher) getMetricsForNode(resource Resource) map[string]string {
 func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 
 	e := resource.Extra.(NodeExtra).Copy()
-	resource.Timestamp = SerializableTime{Time: time.Now()}
+	resource.Timestamp = serializable.Time{Time: time.Now()}
 
 	metricsExtra := n.getMetricsForNode(resource)
 	if len(metricsExtra) > 0 {

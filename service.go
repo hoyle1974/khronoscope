@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,12 +20,12 @@ func formatServiceDetails(service *corev1.Service) []string {
 	// Basic details
 	result = append(result, fmt.Sprintf("Name:           %s", service.Name))
 	result = append(result, fmt.Sprintf("Namespace:      %s", service.Namespace))
-	result = append(result, RenderMapOfStrings("Labels:", service.Labels)...)
-	result = append(result, RenderMapOfStrings("Annotations:", service.Annotations)...)
+	result = append(result, misc.RenderMapOfStrings("Labels:", service.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("Annotations:", service.Annotations)...)
 
 	// Selector
 	if service.Spec.Selector != nil {
-		result = append(result, RenderMapOfStrings("Selector:", service.Spec.Selector)...)
+		result = append(result, misc.RenderMapOfStrings("Selector:", service.Spec.Selector)...)
 	}
 
 	// Type

@@ -1,13 +1,12 @@
-package main
+package temporal
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
 
-func createTestMap() (start, end, t1, t2, t3 time.Time, m *TemporalMap) {
-	m = NewTemporalMap()
+func createTestMap() (start, end, t1, t2, t3 time.Time, m Map) {
+	m = New()
 
 	start = time.Now().Add(-time.Second)
 	t1 = time.Now()
@@ -25,7 +24,7 @@ func createTestMap() (start, end, t1, t2, t3 time.Time, m *TemporalMap) {
 	return start, end, t1, t2, t3, m
 }
 
-func validateMap(t *testing.T, start, end, t1, t2, t3 time.Time, m *TemporalMap) {
+func validateMap(t *testing.T, start, end, t1, t2, t3 time.Time, m Map) {
 
 	min, max := m.GetTimeRange()
 
@@ -64,10 +63,7 @@ func TestBasicSerialization(t *testing.T) {
 	start, end, t1, t2, t3, m := createTestMap()
 	validateMap(t, start, end, t1, t2, t3, m)
 
-	m2 := NewTemporalMapFromBytes(m.ToBytes())
-
-	fmt.Printf("%v \n", m.MinTime.Time)
-	fmt.Printf("%v \n", m2.MinTime.Time)
+	m2 := FromBytes(m.ToBytes())
 
 	validateMap(t, start, end, t1, t2, t3, m2)
 

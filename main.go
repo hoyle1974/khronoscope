@@ -9,7 +9,6 @@ import (
 
 func main() {
 	gob.Register(Resource{})
-	gob.Register(TemporalMap{})
 	gob.Register(ReplicaSetExtra{})
 	gob.Register(NodeExtra{})
 	gob.Register(PodExtra{})

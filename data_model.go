@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/hoyle1974/khronoscope/internal/temporal"
 )
 
 type DataModel interface {
@@ -23,14 +25,14 @@ type DataModel interface {
 
 type dataModelImpl struct {
 	lock      sync.Mutex
-	meta      *TemporalMap
-	resources *TemporalMap
+	meta      temporal.Map
+	resources temporal.Map
 }
 
 func NewDataModel() DataModel {
 	return &dataModelImpl{
-		meta:      NewTemporalMap(),
-		resources: NewTemporalMap(),
+		meta:      temporal.New(),
+		resources: temporal.New(),
 	}
 }
 
@@ -74,8 +76,8 @@ func NewDataModelFromFile(filename string) DataModel {
 		panic(fmt.Errorf("failed to read data2: %w", err))
 	}
 
-	d.resources = NewTemporalMapFromBytes(data1)
-	d.meta = NewTemporalMapFromBytes(data2)
+	d.resources = temporal.FromBytes(data1)
+	d.meta = temporal.FromBytes(data2)
 
 	return d
 }

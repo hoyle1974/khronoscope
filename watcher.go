@@ -47,11 +47,6 @@ func (w *K8sWatcher) ChangedSince(t time.Time) bool {
 	return w.lastChange.After(t)
 }
 
-// Returns a list of Resources that existed at a specific time, can be filtered by kind and namespace
-// func (w *K8sWatcher) GetStateAtTime(timestamp time.Time, kind string, namespace string) []Resource {
-// 	return w.data.GetResourcesAt(timestamp, kind, namespace)
-// }
-
 // Used internally to denote when the internal struct has been modified and notify anyone listening about that change
 func (w *K8sWatcher) dirty() {
 	w.lastChange = time.Now()

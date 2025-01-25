@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,8 +18,8 @@ func formatNamespaceDetails(namespace *corev1.Namespace) []string {
 	out = append(out, "Name: "+namespace.Name)
 	out = append(out, fmt.Sprintf("Status: %v", namespace.Status))
 
-	out = append(out, RenderMapOfStrings("Labels:", namespace.GetLabels())...)
-	out = append(out, RenderMapOfStrings("Annotations:", namespace.GetAnnotations())...)
+	out = append(out, misc.RenderMapOfStrings("Labels:", namespace.GetLabels())...)
+	out = append(out, misc.RenderMapOfStrings("Annotations:", namespace.GetAnnotations())...)
 	return out
 }
 

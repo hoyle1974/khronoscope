@@ -1,4 +1,4 @@
-package main
+package temporal
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
 
 // TemporalMap acts like a map with the added ability to rewind and see a snapshot of the state of the map given a time.Time
@@ -20,7 +22,7 @@ type temporalValue struct {
 }
 
 type temporalValuePair struct {
-	Timestamp SerializableTime
+	Timestamp serializable.Time
 	Value     any
 }
 
@@ -32,7 +34,7 @@ func (i *temporalValue) Set(timestamp time.Time, value any) {
 	})
 
 	// Insert the new value at the correct position.
-	i.History = append(i.History[:index], append([]temporalValuePair{{Timestamp: SerializableTime{Time: timestamp}, Value: value}}, i.History[index:]...)...)
+	i.History = append(i.History[:index], append([]temporalValuePair{{Timestamp: serializable.Time{Time: timestamp}, Value: value}}, i.History[index:]...)...)
 }
 
 // Get the value at a specific time.
@@ -46,25 +48,34 @@ func (i *temporalValue) Get(timestamp time.Time) any {
 	return nil // No value found before or at the given timestamp
 }
 
-// TemporalMap represents a map-like data structure with time-ordered items.
-type TemporalMap struct {
-	lock    sync.RWMutex
-	Items   map[string]*temporalValue
-	MinTime SerializableTime
-	MaxTime SerializableTime
+type Map interface {
+	ToBytes() []byte
+	GetTimeRange() (time.Time, time.Time)
+	Add(timestamp time.Time, key string, value interface{})
+	Update(timestamp time.Time, key string, value interface{})
+	Remove(timestamp time.Time, key string)
+	GetStateAtTime(timestamp time.Time) map[string]interface{}
 }
 
-// NewTemporalMap creates a new empty TimedMap.
-func NewTemporalMap() *TemporalMap {
-	return &TemporalMap{
+// Map represents a map-like data structure with time-ordered items.
+type mapImpl struct {
+	lock    sync.RWMutex
+	Items   map[string]*temporalValue
+	MinTime serializable.Time
+	MaxTime serializable.Time
+}
+
+// New creates a new empty TimedMap.
+func New() Map {
+	return &mapImpl{
 		Items: map[string]*temporalValue{},
 	}
 }
 
-func NewTemporalMapFromBytes(b []byte) *TemporalMap {
+func FromBytes(b []byte) Map {
 	dec := gob.NewDecoder(bytes.NewReader(b))
 
-	tm := NewTemporalMap()
+	tm := New()
 	err := dec.Decode(&tm)
 	if err != nil {
 		panic(err)
@@ -73,7 +84,7 @@ func NewTemporalMapFromBytes(b []byte) *TemporalMap {
 	return tm
 }
 
-func (tm *TemporalMap) ToBytes() []byte {
+func (tm *mapImpl) ToBytes() []byte {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -87,22 +98,22 @@ func (tm *TemporalMap) ToBytes() []byte {
 	return network.Bytes()
 }
 
-func (tm *TemporalMap) GetTimeRange() (time.Time, time.Time) {
+func (tm *mapImpl) GetTimeRange() (time.Time, time.Time) {
 	return tm.MinTime.Time, tm.MaxTime.Time
 }
 
-func (tm *TemporalMap) updateTimeRange(timestamp time.Time) {
+func (tm *mapImpl) updateTimeRange(timestamp time.Time) {
 	if len(tm.Items) == 0 || timestamp.Before(tm.MinTime.Time) {
-		tm.MinTime = SerializableTime{Time: timestamp}
+		tm.MinTime = serializable.Time{Time: timestamp}
 	}
 	if len(tm.Items) == 0 || timestamp.After(tm.MaxTime.Time) {
-		tm.MaxTime = SerializableTime{Time: timestamp}
+		tm.MaxTime = serializable.Time{Time: timestamp}
 	}
 
 }
 
 // Add adds an item to the TimedMap with the given timestamp, key, and value.
-func (tm *TemporalMap) Add(timestamp time.Time, key string, value interface{}) {
+func (tm *mapImpl) Add(timestamp time.Time, key string, value interface{}) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -117,7 +128,7 @@ func (tm *TemporalMap) Add(timestamp time.Time, key string, value interface{}) {
 }
 
 // Update updates the value of an item with the given timestamp and key.
-func (tm *TemporalMap) Update(timestamp time.Time, key string, value interface{}) {
+func (tm *mapImpl) Update(timestamp time.Time, key string, value interface{}) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -134,7 +145,7 @@ func (tm *TemporalMap) Update(timestamp time.Time, key string, value interface{}
 }
 
 // Remove removes the item with the given timestamp and key.
-func (tm *TemporalMap) Remove(timestamp time.Time, key string) {
+func (tm *mapImpl) Remove(timestamp time.Time, key string) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -149,7 +160,7 @@ func (tm *TemporalMap) Remove(timestamp time.Time, key string) {
 }
 
 // GetStateAtTime returns a map of key-value pairs at the given timestamp.
-func (tm *TemporalMap) GetStateAtTime(timestamp time.Time) map[string]interface{} {
+func (tm *mapImpl) GetStateAtTime(timestamp time.Time) map[string]interface{} {
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 

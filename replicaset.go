@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/internal/format"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,8 +30,8 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 	result = append(result, fmt.Sprintf("Namespace:      %s", rs.Namespace))
 	result = append(result, fmt.Sprintf("Selector:       %s", rs.Spec.Selector))
 
-	result = append(result, RenderMapOfStrings("Labels:", rs.Labels)...)
-	result = append(result, RenderMapOfStrings("Annotations:", rs.Annotations)...)
+	result = append(result, misc.RenderMapOfStrings("Labels:", rs.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("Annotations:", rs.Annotations)...)
 
 	// Controlled By
 	if len(rs.OwnerReferences) > 0 {
@@ -45,8 +47,8 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 
 	// Pod template details
 	result = append(result, "Pod Template:")
-	result = append(result, RenderMapOfStrings("  Labels:", rs.Spec.Template.Labels)...)
-	result = append(result, RenderMapOfStrings("  Annotations:", rs.Spec.Template.Annotations)...)
+	result = append(result, misc.RenderMapOfStrings("  Labels:", rs.Spec.Template.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("  Annotations:", rs.Spec.Template.Annotations)...)
 	// result = append(result, fmt.Sprintf("  Service Account:  %s", rs.Spec.Template.ServiceAccountName)) // Corrected here
 
 	// Containers info
@@ -55,14 +57,14 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 		for _, container := range rs.Spec.Template.Spec.Containers {
 			result = append(result, fmt.Sprintf("    %s:", container.Name))
 			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
-			result = append(result, fmt.Sprintf("      Ports:       %s", formatPorts(container.Ports)))
-			result = append(result, fmt.Sprintf("      Args:        %s", formatArgs(container.Args)))
-			result = append(result, fmt.Sprintf("      Limits:      %s", formatLimits(container.Resources.Limits)))
-			result = append(result, fmt.Sprintf("      Requests:    %s", formatLimits(container.Resources.Requests)))
-			result = append(result, fmt.Sprintf("      Liveness:    %s", formatLiveness(container.LivenessProbe)))
-			result = append(result, fmt.Sprintf("      Readiness:   %s", formatLiveness(container.ReadinessProbe)))
-			result = append(result, fmt.Sprintf("      Environment: %s", formatEnvironment(container.Env)))
-			result = append(result, fmt.Sprintf("      Mounts:      %s", formatVolumeMounts(container.VolumeMounts)))
+			result = append(result, fmt.Sprintf("      Ports:       %s", format.Ports(container.Ports)))
+			result = append(result, fmt.Sprintf("      Args:        %s", format.Args(container.Args)))
+			result = append(result, fmt.Sprintf("      Limits:      %s", format.Limits(container.Resources.Limits)))
+			result = append(result, fmt.Sprintf("      Requests:    %s", format.Limits(container.Resources.Requests)))
+			result = append(result, fmt.Sprintf("      Liveness:    %s", format.Liveness(container.LivenessProbe)))
+			result = append(result, fmt.Sprintf("      Readiness:   %s", format.Liveness(container.ReadinessProbe)))
+			result = append(result, fmt.Sprintf("      Environment: %s", format.Environment(container.Env)))
+			result = append(result, fmt.Sprintf("      Mounts:      %s", format.VolumeMounts(container.VolumeMounts)))
 		}
 	}
 
@@ -78,10 +80,10 @@ func formatReplicaSetDetails(rs *appsv1.ReplicaSet) []string {
 	result = append(result, fmt.Sprintf("  Priority Class Name:  %s", rs.Spec.Template.Spec.PriorityClassName))
 
 	// Node Selectors
-	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", formatNodeSelectors(rs.Spec.Template.Spec.NodeSelector)))
+	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", format.NodeSelectors(rs.Spec.Template.Spec.NodeSelector)))
 
 	// Tolerations
-	result = append(result, fmt.Sprintf("  Tolerations:          %s", formatTolerations(rs.Spec.Template.Spec.Tolerations)))
+	result = append(result, fmt.Sprintf("  Tolerations:          %s", format.Tolerations(rs.Spec.Template.Spec.Tolerations)))
 
 	// Events
 	result = append(result, "Events:                 <none>")

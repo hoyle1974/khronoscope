@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hoyle1974/khronoscope/internal/format"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,9 +24,9 @@ func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 	// Basic details
 	result = append(result, fmt.Sprintf("Name:           %s", ds.Name))
 	result = append(result, fmt.Sprintf("Selector:       %s", ds.Spec.Selector))
-	result = append(result, fmt.Sprintf("Node-Selector:  %s", formatNodeSelectors(ds.Spec.Template.Spec.NodeSelector)))
-	result = append(result, RenderMapOfStrings("Labels:", ds.Labels)...)
-	result = append(result, RenderMapOfStrings("Annotations:", ds.Annotations)...)
+	result = append(result, fmt.Sprintf("Node-Selector:  %s", format.NodeSelectors(ds.Spec.Template.Spec.NodeSelector)))
+	result = append(result, misc.RenderMapOfStrings("Labels:", ds.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("Annotations:", ds.Annotations)...)
 
 	// Desired Number of Nodes Scheduled
 	result = append(result, fmt.Sprintf("Desired Number of Nodes Scheduled: %d", ds.Status.DesiredNumberScheduled))
@@ -47,7 +49,7 @@ func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 
 	// Pod template details
 	result = append(result, "Pod Template:")
-	result = append(result, RenderMapOfStrings("  Labels:", ds.Spec.Template.Labels)...)
+	result = append(result, misc.RenderMapOfStrings("  Labels:", ds.Spec.Template.Labels)...)
 	// result = append(result, fmt.Sprintf("  Service Account:  %s", ds.Spec.Template.ServiceAccountName))
 
 	// Containers info
@@ -58,10 +60,10 @@ func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 			result = append(result, fmt.Sprintf("      Image:       %s", container.Image))
 			result = append(result, fmt.Sprintf("      Port:        %v", container.Ports))
 			// result = append(result, fmt.Sprintf("      Host Port:   %v", container.HostPorts))
-			result = append(result, fmt.Sprintf("      Limits:      %s", formatLimits(container.Resources.Limits)))
-			result = append(result, fmt.Sprintf("      Requests:    %s", formatLimits(container.Resources.Requests)))
-			result = append(result, fmt.Sprintf("      Environment: %s", formatEnvironment(container.Env)))
-			result = append(result, fmt.Sprintf("      Mounts:      %s", formatVolumeMounts(container.VolumeMounts)))
+			result = append(result, fmt.Sprintf("      Limits:      %s", format.Limits(container.Resources.Limits)))
+			result = append(result, fmt.Sprintf("      Requests:    %s", format.Limits(container.Resources.Requests)))
+			result = append(result, fmt.Sprintf("      Environment: %s", format.Environment(container.Env)))
+			result = append(result, fmt.Sprintf("      Mounts:      %s", format.VolumeMounts(container.VolumeMounts)))
 		}
 	}
 
@@ -69,15 +71,15 @@ func formatDaemonSetDetails(ds *appsv1.DaemonSet) []string {
 	if len(ds.Spec.Template.Spec.Volumes) > 0 {
 		result = append(result, "  Volumes:")
 		for _, volume := range ds.Spec.Template.Spec.Volumes {
-			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, formatVolumeSource(volume.VolumeSource)))
+			result = append(result, fmt.Sprintf("    %s: %s", volume.Name, format.VolumeSource(volume.VolumeSource)))
 		}
 	}
 
 	// Node Selectors
-	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", formatNodeSelectors(ds.Spec.Template.Spec.NodeSelector)))
+	result = append(result, fmt.Sprintf("  Node-Selectors:       %s", format.NodeSelectors(ds.Spec.Template.Spec.NodeSelector)))
 
 	// Tolerations
-	result = append(result, fmt.Sprintf("  Tolerations:          %s", formatTolerations(ds.Spec.Template.Spec.Tolerations)))
+	result = append(result, fmt.Sprintf("  Tolerations:          %s", format.Tolerations(ds.Spec.Template.Spec.Tolerations)))
 
 	return result
 }

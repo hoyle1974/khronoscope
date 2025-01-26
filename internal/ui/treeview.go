@@ -13,17 +13,17 @@ import (
 // It manages cursor movement in the view, collapsing/expanding nodes and tries
 // to keep the cursor mostly sane even when resources the cursor is on disappear.
 
-func grommet(is bool) string {
+func grommet(is bool, isVertical bool) string {
+	if isVertical {
+		if !is {
+			return "│"
+		}
+		return " "
+	}
 	if !is {
 		return "├"
 	}
 	return "└"
-}
-func grommet2(is bool) string {
-	if !is {
-		return "│"
-	}
-	return " "
 }
 
 type treeViewCursor struct {
@@ -281,7 +281,7 @@ func (t *TreeView) Render() (string, int, types.Resource) {
 			l := len(n.Children)
 			for idx, child := range n.Children {
 				leaf := child.(*treeLeaf)
-				b.WriteString(line(leaf) + " " + grommet(idx == l-1) + "── " + leaf.Resource.String() + "\n")
+				b.WriteString(line(leaf) + " " + grommet(idx == l-1, false) + "── " + leaf.Resource.String() + "\n")
 			}
 		} else {
 			b.WriteString(line(nil) + "   ...\n")
@@ -301,14 +301,14 @@ func (t *TreeView) Render() (string, int, types.Resource) {
 					kindTreeNode := kindNode.(*treeNode)
 
 					if kindTreeNode.Expand {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1) + "── " + kindTreeNode.Title + "\n")
+						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1, false) + "── " + kindTreeNode.Title + "\n")
 						l2 := len(kindTreeNode.Children)
 						for idx, resourceNode := range kindTreeNode.Children {
 							resourceLeafNode := resourceNode.(*treeLeaf)
-							b.WriteString(line(resourceLeafNode) + "  " + grommet2(idx2 == l-1) + "   " + grommet(idx == l2-1) + "──" + resourceLeafNode.Resource.String() + "\n")
+							b.WriteString(line(resourceLeafNode) + "  " + grommet(idx2 == l-1, true) + "   " + grommet(idx == l2-1, false) + "──" + resourceLeafNode.Resource.String() + "\n")
 						}
 					} else {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1) + "── " + kindTreeNode.Title + " { ... }\n")
+						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1, false) + "── " + kindTreeNode.Title + " { ... }\n")
 					}
 				}
 			} else {

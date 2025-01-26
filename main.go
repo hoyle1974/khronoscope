@@ -41,13 +41,13 @@ func main() {
 	appModel := newModel(watcher, data)
 	p := tea.NewProgram(appModel)
 
-	appModel.vcr = ui.NewVCRControl(data, func() {
+	appModel.vcr = ui.NewTimeController(data, func() {
 		p.Send(1)
 	})
 
 	if len(filename) > 0 {
 		min, _ := data.GetTimeRange()
-		appModel.vcr.EnableVCR()
+		appModel.vcr.EnableVirtualTime()
 		appModel.vcr.SetTime(min)
 	}
 

@@ -41,7 +41,7 @@ type AppModel struct {
 	detailView        viewport.Model
 	lastWindowSizeMsg tea.WindowSizeMsg
 	tv                *ui.TreeView
-	vcr               *ui.VCRControl
+	vcr               *ui.PlaybackController
 	popup             ui.Popup
 }
 
@@ -309,7 +309,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "esc":
-			m.vcr.DisableVCR()
+			m.vcr.DisableVirtualTime()
 		case "enter":
 			m.tv.Toggle()
 			return m, nil

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestTimeRenderer(t *testing.T) {
+func TestPlaybackRenderer(t *testing.T) {
 	renderer := PlaybackRenderer{}
 
 	tests := []struct {

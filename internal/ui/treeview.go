@@ -258,8 +258,6 @@ func (t *TreeView) Render() (string, int, types.Resource) {
 		t.cursor.Node = node
 	}
 
-	// b.WriteString(fmt.Sprintf("Cursor: %d [%s] Expand:%v %v\n", t.cursor.Pos, t.cursor.Uid, t.cursor.Node.GetExpand(), t.cursor.Node.IsLeaf()))
-
 	curLinePos := -1
 	focusLine := 0
 
@@ -275,13 +273,13 @@ func (t *TreeView) Render() (string, int, types.Resource) {
 		return "   "
 	}
 
-	for _, n := range []*treeNode{t.namespaces, t.nodes} {
-		b.WriteString(line(n) + n.Title + "\n")
-		if n.Expand {
-			l := len(n.Children)
-			for idx, child := range n.Children {
+	for _, node := range []*treeNode{t.namespaces, t.nodes} {
+		b.WriteString(line(node) + node.Title + "\n")
+		if node.Expand {
+			numOfChildren := len(node.Children)
+			for idx, child := range node.Children {
 				leaf := child.(*treeLeaf)
-				b.WriteString(line(leaf) + " " + grommet(idx == l-1, false) + "── " + leaf.Resource.String() + "\n")
+				b.WriteString(line(leaf) + " " + grommet(idx == numOfChildren-1, false) + "── " + leaf.Resource.String() + "\n")
 			}
 		} else {
 			b.WriteString(line(nil) + "   ...\n")
@@ -296,19 +294,19 @@ func (t *TreeView) Render() (string, int, types.Resource) {
 
 			if namespaceTreeNode.Expand {
 				b.WriteString(line(namespaceTreeNode) + namespaceTreeNode.Title + "\n")
-				l := len(namespaceTreeNode.Children)
-				for idx2, kindNode := range namespaceTreeNode.Children {
+				numOfNamespaces := len(namespaceTreeNode.Children)
+				for namespaceIdx, kindNode := range namespaceTreeNode.Children {
 					kindTreeNode := kindNode.(*treeNode)
 
 					if kindTreeNode.Expand {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1, false) + "── " + kindTreeNode.Title + "\n")
-						l2 := len(kindTreeNode.Children)
-						for idx, resourceNode := range kindTreeNode.Children {
+						b.WriteString(line(kindTreeNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindTreeNode.Title + "\n")
+						numOfKinds := len(kindTreeNode.Children)
+						for kindIdx, resourceNode := range kindTreeNode.Children {
 							resourceLeafNode := resourceNode.(*treeLeaf)
-							b.WriteString(line(resourceLeafNode) + "  " + grommet(idx2 == l-1, true) + "   " + grommet(idx == l2-1, false) + "──" + resourceLeafNode.Resource.String() + "\n")
+							b.WriteString(line(resourceLeafNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, true) + "   " + grommet(kindIdx == numOfKinds-1, false) + "──" + resourceLeafNode.Resource.String() + "\n")
 						}
 					} else {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(idx2 == l-1, false) + "── " + kindTreeNode.Title + " { ... }\n")
+						b.WriteString(line(kindTreeNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindTreeNode.Title + " { ... }\n")
 					}
 				}
 			} else {

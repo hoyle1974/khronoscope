@@ -38,6 +38,7 @@ type node interface {
 	Toggle()
 	GetExpand() bool
 	GetUid() string
+	GetLine() int
 }
 
 type treeNode struct {
@@ -45,6 +46,7 @@ type treeNode struct {
 	Parent   node
 	Children []node
 	Expand   bool
+	Line     int
 }
 
 func (tn *treeNode) GetParent() node { return tn.Parent }
@@ -52,11 +54,13 @@ func (tn *treeNode) IsLeaf() bool    { return false }
 func (tn *treeNode) Toggle()         { tn.Expand = !tn.Expand }
 func (tn *treeNode) GetExpand() bool { return tn.Expand }
 func (tn *treeNode) GetUid() string  { return "" }
+func (tn *treeNode) GetLine() int    { return tn.Line }
 
 type treeLeaf struct {
 	Parent   node
 	Resource types.Resource
 	Expand   bool
+	Line     int
 }
 
 func (tl *treeLeaf) GetParent() node { return tl.Parent }
@@ -64,9 +68,11 @@ func (tl *treeLeaf) IsLeaf() bool    { return true }
 func (tl *treeLeaf) Toggle()         { tl.Expand = !tl.Expand }
 func (tl *treeLeaf) GetExpand() bool { return tl.Expand }
 func (tl *treeLeaf) GetUid() string  { return tl.Resource.GetUID() }
+func (tl *treeLeaf) GetLine() int    { return tl.Line }
 
 type TreeView struct {
 	cursor     treeViewCursor
+	root       *treeNode
 	namespaces *treeNode
 	nodes      *treeNode
 	details    *treeNode
@@ -83,6 +89,8 @@ func NewTreeView() *TreeView {
 		details,
 	}
 	return &TreeView{
+		cursor:     treeViewCursor{Pos: 1},
+		root:       root,
 		namespaces: namespaces,
 		nodes:      nodes,
 		details:    details,
@@ -90,16 +98,21 @@ func NewTreeView() *TreeView {
 }
 
 func (t *TreeView) Up() {
-	if t.cursor.Pos == 0 {
+	if t.cursor.Pos == 1 {
 		return
 	}
 	t.cursor.Uid = ""
+	t.cursor.Node = nil
 	t.cursor.Pos--
 
+	t.updateSelected()
 }
 func (t *TreeView) Down() {
 	t.cursor.Pos++
+	t.cursor.Node = nil
 	t.cursor.Uid = ""
+
+	t.updateSelected()
 }
 func (t *TreeView) PageUp() {
 	for idx := 0; idx < 10; idx++ {
@@ -117,155 +130,93 @@ func (t *TreeView) Toggle() {
 	}
 }
 
-func (t *TreeView) findPositionOfResource(uid string) int {
-	idx := -1
-
-	idx++
-
-	if t.namespaces.Expand {
-		for _, n := range t.namespaces.Children {
-			idx++
-			if uid == n.GetUid() {
-				return idx
-			}
-		}
+func traverseNodeTree(node node, evaluator func(node) bool) node {
+	if node == nil {
+		return nil
 	}
 
-	idx++
-
-	if t.nodes.Expand {
-
-		for _, n := range t.nodes.Children {
-			idx++
-			if uid == n.GetUid() {
-				return idx
-			}
-
-		}
+	// Evaluate the current node
+	if evaluator(node) {
+		return node
 	}
 
-	idx++
+	// If the current node is a parent, traverse its children
+	if !node.IsLeaf() {
+		treeNode := node.(*treeNode)
 
-	if t.details.Expand {
-		for _, n1 := range t.details.Children {
-			idx++
-			if n1.GetExpand() {
-				for _, n2 := range n1.(*treeNode).Children {
-					idx++
-					if n2.GetExpand() {
-						for _, n3 := range n2.(*treeNode).Children {
-							idx++
-							if uid == n3.GetUid() {
-								return idx
-							}
-						}
-					}
+		// Traverse all children of the current node
+		if treeNode.Expand {
+			for _, child := range treeNode.Children {
+				if foundNode := traverseNodeTree(child, evaluator); foundNode != nil {
+					return foundNode
 				}
 			}
 		}
 	}
 
-	return -1
+	// If it's a leaf, return it if it satisfies the evaluator
+	if node.IsLeaf() && evaluator(node) {
+		return node
+	}
+
+	return nil
+}
+
+func (t *TreeView) findPositionOfResource(uid string) int {
+	p := -1
+	traverseNodeTree(t.root, func(n node) bool {
+		p++
+		return n.GetUid() == uid
+	})
+	return p
 }
 
 func (t *TreeView) findNodeAt(pos int) node {
-	idx := -1
-	var retN node
-
-	idx++
-	if idx == pos {
-		return t.namespaces
-	}
-
-	if t.namespaces.Expand {
-		for _, n := range t.namespaces.Children {
-			idx++
-			if idx == pos {
-				retN = n
-			}
-		}
-	}
-
-	idx++
-	if idx == pos {
-		retN = t.nodes
-	}
-
-	if t.nodes.Expand {
-
-		for _, n := range t.nodes.Children {
-			idx++
-			if idx == pos {
-				retN = n
-			}
-		}
-	}
-
-	idx++
-	if idx == pos {
-		retN = t.details
-	}
-
-	if t.details.Expand {
-		for _, n1 := range t.details.Children {
-			idx++
-			if idx == pos {
-				retN = n1
-			}
-			if n1.GetExpand() {
-				for _, n2 := range n1.(*treeNode).Children {
-					idx++
-					if idx == pos {
-						retN = n2
-					}
-					if n2.GetExpand() {
-						for _, n3 := range n2.(*treeNode).Children {
-							idx++
-							if idx == pos {
-								retN = n3
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if t.cursor.Pos > idx {
-		t.cursor.Pos = idx
-	}
-
-	return retN
+	return traverseNodeTree(t.root, func(n node) bool {
+		return n.GetLine() == pos
+	})
 }
 
-func (t *TreeView) Render() (string, int, types.Resource) {
-	b := strings.Builder{}
-
-	var retResource types.Resource
-
-	if len(t.cursor.Uid) != 0 {
-		p := t.findPositionOfResource(t.cursor.Uid)
-		if p != -1 {
-			t.cursor.Pos = p
-		}
+func (t *TreeView) GetSelected() types.Resource {
+	if val, ok := t.cursor.Node.(*treeLeaf); ok {
+		return val.Resource
 	}
 
+	return nil
+}
+
+func (t *TreeView) GetSelectedLine() (int, int) {
+	if t.cursor.Node == nil {
+		return -1, t.cursor.Pos
+	}
+	return t.cursor.Node.GetLine(), t.cursor.Pos
+}
+
+func (t *TreeView) updateSelected() {
+	// if len(t.cursor.Uid) != 0 {
+	// 	p := t.findPositionOfResource(t.cursor.Uid)
+	// 	if p != -1 {
+	// 		t.cursor.Pos = p
+	// 	}
+	// }
+
+	t.cursor.Node = nil
 	if node := t.findNodeAt(t.cursor.Pos); node != nil {
 		if node.IsLeaf() {
 			t.cursor.Uid = node.(*treeLeaf).Resource.GetUID()
-			retResource = (node.(*treeLeaf).Resource)
 		}
 		t.cursor.Node = node
 	}
+}
+
+func (t *TreeView) Render() (string, int) {
+	b := strings.Builder{}
 
 	curLinePos := -1
-	focusLine := 0
-
 	line := func(r node) string {
 		curLinePos++
 		if r != nil {
-			if r == t.cursor.Node {
-				focusLine = curLinePos
+			if t.cursor.Pos == r.GetLine() {
 				return "[*] "
 			}
 			return "[ ] "
@@ -319,11 +270,12 @@ func (t *TreeView) Render() (string, int, types.Resource) {
 	}
 	b.WriteString(line(nil) + "\n")
 
-	return b.String(), focusLine, retResource
+	return b.String(), t.cursor.Pos
 }
 
 // Add the resources to be rendered as a tree view
 func (t *TreeView) AddResources(resourceList []types.Resource) {
+
 	namespaces := map[string]types.Resource{}
 	nodes := map[string]types.Resource{}
 	other := map[string]map[string]map[string]types.Resource{}
@@ -362,52 +314,74 @@ func (t *TreeView) AddResources(resourceList []types.Resource) {
 		}
 	}
 
-	t.namespaces = &treeNode{Parent: nil, Expand: t.namespaces.Expand, Title: "Namespaces"}
-	t.nodes = &treeNode{Parent: nil, Expand: t.nodes.Expand, Title: "Nodes"}
-	t.details = &treeNode{Parent: nil, Expand: t.details.Expand, Title: "Details"}
+	t.namespaces = &treeNode{Parent: t.root, Expand: t.namespaces.Expand, Title: "Namespaces"}
+	t.nodes = &treeNode{Parent: t.root, Expand: t.nodes.Expand, Title: "Nodes"}
+	t.details = &treeNode{Parent: t.root, Expand: t.details.Expand, Title: "Details"}
+	t.root.Children = []node{
+		t.namespaces,
+		t.nodes,
+		t.details,
+	}
+	t.root.Line = 0
 
+	lineNo := 1
+	t.namespaces.Line = lineNo
 	for _, k := range slices.Sorted(maps.Keys(namespaces)) {
+		lineNo++
 		t.namespaces.Children = append(t.namespaces.Children, &treeLeaf{
 			Parent:   t.namespaces,
 			Resource: namespaces[k],
+			Line:     lineNo,
 		})
 	}
 
+	lineNo++
+	t.nodes.Line = lineNo
 	for _, k := range slices.Sorted(maps.Keys(nodes)) {
+		lineNo++
 		t.nodes.Children = append(t.nodes.Children, &treeLeaf{
 			Parent:   t.namespaces,
 			Resource: nodes[k],
+			Line:     lineNo,
 		})
 	}
 
 	enabled := false
 	ok := false
+	lineNo++
+	t.details.Line = lineNo
 	for _, namespaceName := range slices.Sorted(maps.Keys(other)) {
 		if enabled, ok = ndEnabled[namespaceName]; !ok {
 			enabled = true
 		}
+		lineNo++
 		namespace := &treeNode{
 			Parent: t.details,
 			Title:  namespaceName,
 			Expand: enabled,
+			Line:   lineNo,
 		}
 		t.details.Children = append(t.details.Children, namespace)
 		for _, kindName := range slices.Sorted(maps.Keys(other[namespaceName])) {
 			if enabled, ok = kEnabled[namespaceName][kindName]; !ok {
 				enabled = true
 			}
+			lineNo++
 			kind := &treeNode{
 				Parent: namespace,
 				Title:  kindName,
 				Expand: enabled,
+				Line:   lineNo,
 			}
 			namespace.Children = append(namespace.Children, kind)
 
 			for _, resourceUid := range slices.Sorted(maps.Keys(other[namespaceName][kindName])) {
+				lineNo++
 				kind.Children = append(kind.Children, &treeLeaf{
 					Parent:   kind,
 					Resource: other[namespaceName][kindName][resourceUid],
 					Expand:   true,
+					Line:     lineNo,
 				})
 			}
 		}

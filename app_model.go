@@ -153,7 +153,7 @@ func (m *AppModel) View() string {
 
 	currentLabel := m.data.GetLabel(timeToUse)
 
-	treeContent, focusLine, resource := m.tv.Render()
+	treeContent, focusLine := m.tv.Render()
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
 	m.treeView.SetContent(treeContent)
 	m.treeView.YOffset = focusLine - (m.treeView.Height / 2)
@@ -161,10 +161,14 @@ func (m *AppModel) View() string {
 		m.treeView.YOffset = 0
 	}
 
+	resource := m.tv.GetSelected()
+	a, b := m.tv.GetSelectedLine()
 	if resource != nil {
 		detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")
 		detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)
-		m.detailView.SetContent(detailContent)
+		m.detailView.SetContent(fmt.Sprintf("%v %v\n", a, b) + detailContent)
+	} else {
+		m.detailView.SetContent(fmt.Sprintf("%v %v\n", a, b))
 	}
 
 	fixWidth := func(s string, width int) string {

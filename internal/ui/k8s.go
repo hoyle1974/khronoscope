@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"github.com/hoyle1974/khronoscope/internal/misc"
 )
 
 // FormatDaemonSetDetails formats the details of a DaemonSet for display
@@ -156,7 +156,10 @@ func FormatPodDetails(pod *corev1.Pod) []string {
 	out = append(out, fmt.Sprintf("Namespace:    %s", pod.Namespace))
 	out = append(out, fmt.Sprintf("Priority:     %d", *pod.Spec.Priority))
 	out = append(out, fmt.Sprintf("Node:         %s", pod.Spec.NodeName))
-	out = append(out, fmt.Sprintf("Start Time:   %s", pod.Status.StartTime.Time))
+	if pod.Status.StartTime != nil {
+		out = append(out, fmt.Sprintf("Start Time:   %s", pod.Status.StartTime.Time))
+	}
+
 	out = append(out, fmt.Sprintf("Phase:        %s", pod.Status.Phase))
 
 	out = append(out, misc.RenderMapOfStrings("Labels:", pod.Labels)...)

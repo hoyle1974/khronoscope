@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"bufio"
@@ -30,15 +30,15 @@ type dataModelImpl struct {
 	resources temporal.Map
 }
 
-func NewDataModel() DataModel {
+func New() DataModel {
 	return &dataModelImpl{
 		meta:      temporal.New(),
 		resources: temporal.New(),
 	}
 }
 
-func NewDataModelFromFile(filename string) DataModel {
-	d := NewDataModel().(*dataModelImpl)
+func NewFromFile(filename string) DataModel {
+	d := New().(*dataModelImpl)
 
 	fi, err := os.Open(filename)
 	if err != nil {

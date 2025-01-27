@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/data"
 	"github.com/hoyle1974/khronoscope/internal/types"
 	"github.com/hoyle1974/khronoscope/internal/ui"
 	"github.com/hoyle1974/khronoscope/resources"
@@ -31,7 +32,7 @@ var (
 )
 
 type AppModel struct {
-	data              DataModel
+	data              data.DataModel
 	watcher           *resources.K8sWatcher
 	ready             bool
 	viewMode          int
@@ -41,12 +42,12 @@ type AppModel struct {
 	detailView        viewport.Model
 	lastWindowSizeMsg tea.WindowSizeMsg
 	tv                *ui.TreeController
-	vcr               *ui.PlaybackController
+	VCR               *ui.PlaybackController
 	popup             ui.Popup
 }
 
 func (m *AppModel) SetLabel(label string) {
-	m.data.SetLabel(m.vcr.GetTimeToUse(), label)
+	m.data.SetLabel(m.VCR.GetTimeToUse(), label)
 }
 
 func calculatePercentageOfTime(min, max, value time.Time) float64 {
@@ -71,7 +72,7 @@ func (m *AppModel) SetPopup(popup ui.Popup) {
 
 func (m *AppModel) headerView(label string) string {
 	minTime, maxTime := m.data.GetTimeRange()
-	current := m.vcr.GetTimeToUse()
+	current := m.VCR.GetTimeToUse()
 	p := calculatePercentageOfTime(minTime, maxTime, current)
 
 	currentTime := fmt.Sprintf(" Current Time: %s ", current.Format("2006-01-02 15:04:05"))
@@ -83,7 +84,7 @@ func (m *AppModel) headerView(label string) string {
 	)
 	bar := ""
 
-	if !m.vcr.IsEnabled() {
+	if !m.VCR.IsEnabled() {
 		bar = currentTime
 	} else {
 
@@ -114,7 +115,7 @@ func (m *AppModel) headerView(label string) string {
 
 	title := titleStyle.Render(fmt.Sprintf("Khronoscope %s - %s %s ",
 		label,
-		vcrStyle.Render("  "+m.vcr.Render()+"  "),
+		vcrStyle.Render("  "+m.VCR.Render()+"  "),
 		bar,
 	))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(title)))
@@ -128,10 +129,10 @@ func (m *AppModel) footerView() string {
 }
 
 // MODEL DATA
-func newModel(watcher *resources.K8sWatcher, data DataModel) *AppModel {
+func NewAppModel(watcher *resources.K8sWatcher, d data.DataModel) *AppModel {
 	am := &AppModel{
 		watcher: watcher,
-		data:    data,
+		data:    d,
 		tv:      ui.NewTreeView(),
 	}
 
@@ -143,7 +144,7 @@ func (s *AppModel) Init() tea.Cmd { return nil }
 // VIEW
 
 func (m *AppModel) View() string {
-	timeToUse := m.vcr.GetTimeToUse()
+	timeToUse := m.VCR.GetTimeToUse()
 	resources := m.data.GetResourcesAt(timeToUse, "", "")
 	convResources := make([]types.Resource, len(resources))
 	for i := 0; i < len(resources); i++ {
@@ -290,7 +291,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.SetPopup(ui.NewMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
 			return m, nil
 		case "l":
-			m.vcr.Pause()
+			m.VCR.Pause()
 			m.SetPopup(ui.NewLabelPopup(m))
 		case "tab":
 			m.viewMode++
@@ -300,20 +301,20 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "left":
-			m.vcr.Rewind()
+			m.VCR.Rewind()
 			return m, nil
 		case "right":
-			m.vcr.FastForward()
+			m.VCR.FastForward()
 			return m, nil
 		case " ":
-			if m.vcr.GetPlaySpeed() == 0 {
-				m.vcr.Play()
+			if m.VCR.GetPlaySpeed() == 0 {
+				m.VCR.Play()
 			} else {
-				m.vcr.Pause()
+				m.VCR.Pause()
 			}
 			return m, nil
 		case "esc":
-			m.vcr.DisableVirtualTime()
+			m.VCR.DisableVirtualTime()
 		case "enter":
 			m.tv.Toggle()
 			return m, nil

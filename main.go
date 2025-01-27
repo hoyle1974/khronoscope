@@ -6,6 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/hoyle1974/khronoscope/conn"
+	"github.com/hoyle1974/khronoscope/internal/app"
+	"github.com/hoyle1974/khronoscope/internal/data"
 	"github.com/hoyle1974/khronoscope/internal/ui"
 	"github.com/hoyle1974/khronoscope/resources"
 )
@@ -25,30 +27,30 @@ func main() {
 	// filename := "temp.dat"
 	filename := ""
 
-	data := NewDataModel()
+	d := data.New()
 
 	if len(filename) > 0 {
-		data = NewDataModelFromFile(filename)
+		d = data.NewFromFile(filename)
 	}
-	var watcher = resources.NewK8sWatcher(data)
+	var watcher = resources.NewK8sWatcher(d)
 
 	if len(filename) > 0 {
 		watcher = nil
 	}
 
-	watcher.Watch(client, data)
+	watcher.Watch(client, d)
 
-	appModel := newModel(watcher, data)
+	appModel := app.NewAppModel(watcher, d)
 	p := tea.NewProgram(appModel)
 
-	appModel.vcr = ui.NewTimeController(data, func() {
+	appModel.VCR = ui.NewTimeController(d, func() {
 		p.Send(1)
 	})
 
 	if len(filename) > 0 {
-		min, _ := data.GetTimeRange()
-		appModel.vcr.EnableVirtualTime()
-		appModel.vcr.SetTime(min)
+		min, _ := d.GetTimeRange()
+		appModel.VCR.EnableVirtualTime()
+		appModel.VCR.SetTime(min)
 	}
 
 	watcher.OnChange(func() {

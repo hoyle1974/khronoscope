@@ -88,3 +88,7 @@ func (t *TreeController) updateSelected() {
 func (t *TreeController) Render() (string, int) {
 	return TreeRender(t.model, t.cursor.Pos), t.cursor.Pos
 }
+
+func (t *TreeController) UpdateResources(resources []types.Resource) {
+	t.model.UpdateResources(resources)
+}

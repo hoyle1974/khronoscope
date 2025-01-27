@@ -43,7 +43,7 @@ type node interface {
 	GetExpand() bool
 	GetUid() string
 	GetLine() int
-	IsVisible() bool
+	// IsVisible() bool
 	SetLine(line int)
 }
 
@@ -65,15 +65,6 @@ func (tn *treeNode) GetExpand() bool       { return tn.Expand }
 func (tn *treeNode) GetUid() string        { return tn.Uid }
 func (tn *treeNode) GetLine() int          { return tn.Line }
 func (tn *treeNode) SetLine(l int)         { tn.Line = l }
-func (tn *treeNode) IsVisible() bool {
-	if tn.Parent == nil {
-		return tn.Expand
-	}
-	if tn.Expand {
-		return tn.Parent.IsVisible()
-	}
-	return false
-}
 
 func (tn *treeNode) AddChild(node node) {
 	for idx, n := range tn.Children {
@@ -104,18 +95,7 @@ func (tl *treeLeaf) Toggle()               { tl.Expand = !tl.Expand }
 func (tl *treeLeaf) GetExpand() bool       { return tl.Expand }
 func (tl *treeLeaf) GetUid() string        { return tl.Resource.GetUID() }
 func (tl *treeLeaf) GetLine() int          { return tl.line }
-func (tl *treeLeaf) SetLine(l int) {
-	tl.line = l
-}
-func (tl *treeLeaf) IsVisible() bool {
-	if tl.Parent == nil {
-		return tl.Expand
-	}
-	if tl.Expand {
-		return tl.Parent.IsVisible()
-	}
-	return false
-}
+func (tl *treeLeaf) SetLine(l int)         { tl.line = l }
 
 type TreeView struct {
 	cursor     treeViewCursor
@@ -299,7 +279,7 @@ func (t *TreeView) Render() (string, int) {
 }
 
 // Add the resources to be rendered as a tree view
-func (t *TreeView) AddResources(resourceList []types.Resource) {
+func (t *TreeView) UpdateResources(resourceList []types.Resource) {
 	// maps resource uid to the node we currently have referencing it
 	nodesToDelete := map[string]node{}
 

@@ -149,7 +149,7 @@ func (m *AppModel) View() string {
 	for i := 0; i < len(resources); i++ {
 		convResources[i] = resources[i]
 	}
-	m.tv.AddResources(convResources)
+	m.tv.UpdateResources(convResources)
 
 	currentLabel := m.data.GetLabel(timeToUse)
 

@@ -118,7 +118,7 @@ func FormatNodeDetails(node *corev1.Node) []string {
 	out = append(out, fmt.Sprintf("  OS Image:                 %s", node.Status.NodeInfo.OSImage))
 	out = append(out, fmt.Sprintf("  Container Runtime Version: %s", node.Status.NodeInfo.ContainerRuntimeVersion))
 	out = append(out, fmt.Sprintf("  Kubelet Version:          %s", node.Status.NodeInfo.KubeletVersion))
-	out = append(out, fmt.Sprintf("  Kube-Proxy Version:       %s", node.Status.NodeInfo.KubeProxyVersion))
+	// out = append(out, fmt.Sprintf("  Kube-Proxy Version:       %s", node.Status.NodeInfo.KubeProxyVersion))
 	out = append(out, fmt.Sprintf("  Operating System:         %s", node.Status.NodeInfo.OperatingSystem))
 	out = append(out, fmt.Sprintf("  Architecture:             %s", node.Status.NodeInfo.Architecture))
 

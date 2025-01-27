@@ -80,6 +80,7 @@ type PodRenderer struct {
 	d DAO
 }
 
+/*
 // describePod returns a list of formatted strings describing the pod's details.
 func describePod(pod *corev1.Pod) []string {
 	// Prepare the list of strings
@@ -159,6 +160,7 @@ func describePod(pod *corev1.Pod) []string {
 
 	return details
 }
+*/
 
 func (r PodRenderer) Render(resource Resource, details bool) []string {
 	if resource.Extra == nil {

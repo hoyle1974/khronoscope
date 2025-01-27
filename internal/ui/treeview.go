@@ -106,10 +106,6 @@ func (tl *treeLeaf) GetUid() string        { return tl.Resource.GetUID() }
 func (tl *treeLeaf) GetLine() int          { return tl.line }
 func (tl *treeLeaf) SetLine(l int) {
 	tl.line = l
-	if l == 4 {
-		fmt.Sprintf("4")
-		// fmt.Println("4") s
-	}
 }
 func (tl *treeLeaf) IsVisible() bool {
 	if tl.Parent == nil {
@@ -207,15 +203,6 @@ func traverseNodeTree(node node, evaluator func(node) bool) node {
 	return nil
 }
 
-func (t *TreeView) findPositionOfResource(uid string) int {
-	p := -1
-	traverseNodeTree(t.root, func(n node) bool {
-		p++
-		return n.GetUid() == uid
-	})
-	return p
-}
-
 func (t *TreeView) findNodeAt(pos int) node {
 	return traverseNodeTree(t.root, func(n node) bool {
 		return n.GetLine() == pos
@@ -238,13 +225,6 @@ func (t *TreeView) GetSelectedLine() (int, int) {
 }
 
 func (t *TreeView) updateSelected() {
-	// if len(t.cursor.Uid) != 0 {
-	// 	p := t.findPositionOfResource(t.cursor.Uid)
-	// 	if p != -1 {
-	// 		t.cursor.Pos = p
-	// 	}
-	// }
-
 	t.cursor.Node = nil
 	if node := t.findNodeAt(t.cursor.Pos); node != nil {
 		if node.IsLeaf() {

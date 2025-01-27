@@ -113,7 +113,7 @@ func (m *TreeModel) UpdateResources(resourceList []types.Resource) {
 	// maps resource uid to the node we currently have referencing it
 	nodesToDelete := map[string]node{}
 
-	// Resources we may po
+	// Resources we may need to add
 	resourcesToAdd := map[string]types.Resource{}
 	for _, r := range resourceList {
 		resourcesToAdd[r.GetUID()] = r

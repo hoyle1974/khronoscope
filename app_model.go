@@ -40,7 +40,7 @@ type AppModel struct {
 	treeView          viewport.Model
 	detailView        viewport.Model
 	lastWindowSizeMsg tea.WindowSizeMsg
-	tv                *ui.TreeView
+	tv                *ui.TreeController
 	vcr               *ui.PlaybackController
 	popup             ui.Popup
 }

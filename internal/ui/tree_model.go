@@ -4,36 +4,11 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/types"
 )
-
-// TreeView provides a way to browse a set of k8s resources in a tree view.
-// It builds a view consisting of 3 sections: namespaces, nodes, and details.
-// It manages cursor movement in the view, collapsing/expanding nodes and tries
-// to keep the cursor mostly sane even when resources the cursor is on disappear.
-
-func grommet(is bool, isVertical bool) string {
-	if isVertical {
-		if !is {
-			return "│"
-		}
-		return " "
-	}
-	if !is {
-		return "├"
-	}
-	return "└"
-}
-
-type treeViewCursor struct {
-	Pos  int
-	Uid  string
-	Node node
-}
 
 type node interface {
 	misc.Node
@@ -108,15 +83,14 @@ func (tl *treeLeaf) GetLine() int             { return tl.line }
 func (tl *treeLeaf) SetLine(l int)            { tl.line = l }
 func (tl *treeLeaf) GetChildren() []misc.Node { return []misc.Node{} }
 
-type TreeView struct {
-	cursor     treeViewCursor
+type TreeModel struct {
 	root       *treeNode
 	namespaces *treeNode
 	nodes      *treeNode
 	details    *treeNode
 }
 
-func NewTreeView() *TreeView {
+func NewTreeModel() TreeModel {
 	root := &treeNode{Title: "Root", Expand: true, Uid: uuid.New().String()}
 	namespaces := &treeNode{Parent: root, Expand: true, Title: "Namespaces", Uid: uuid.New().String()}
 	nodes := &treeNode{Parent: root, Expand: true, Title: "Nodes", Uid: uuid.New().String()}
@@ -126,8 +100,7 @@ func NewTreeView() *TreeView {
 		nodes,
 		details,
 	}
-	return &TreeView{
-		cursor:     treeViewCursor{Pos: 1},
+	return TreeModel{
 		root:       root,
 		namespaces: namespaces,
 		nodes:      nodes,
@@ -135,136 +108,8 @@ func NewTreeView() *TreeView {
 	}
 }
 
-func (t *TreeView) Up() {
-	if t.cursor.Pos == 1 {
-		return
-	}
-	t.cursor.Uid = ""
-	t.cursor.Node = nil
-	t.cursor.Pos--
-
-	t.updateSelected()
-}
-func (t *TreeView) Down() {
-	t.cursor.Pos++
-	t.cursor.Node = nil
-	t.cursor.Uid = ""
-
-	t.updateSelected()
-}
-func (t *TreeView) PageUp() {
-	for idx := 0; idx < 10; idx++ {
-		t.Up()
-	}
-}
-func (t *TreeView) PageDown() {
-	for idx := 0; idx < 10; idx++ {
-		t.Down()
-	}
-}
-func (t *TreeView) Toggle() {
-	if t.cursor.Node != nil {
-		t.cursor.Node.Toggle()
-	}
-}
-
-func (t *TreeView) findNodeAt(pos int) node {
-	return misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
-		return n.(node).GetLine() == pos
-	}).(node)
-}
-
-func (t *TreeView) GetSelected() types.Resource {
-	if val, ok := t.cursor.Node.(*treeLeaf); ok {
-		return val.Resource
-	}
-
-	return nil
-}
-
-func (t *TreeView) GetSelectedLine() (int, int) {
-	if t.cursor.Node == nil {
-		return -1, t.cursor.Pos
-	}
-	return t.cursor.Node.GetLine(), t.cursor.Pos
-}
-
-func (t *TreeView) updateSelected() {
-	t.cursor.Node = nil
-	if node := t.findNodeAt(t.cursor.Pos); node != nil {
-		if node.IsLeaf() {
-			t.cursor.Uid = node.(*treeLeaf).Resource.GetUID()
-		}
-		t.cursor.Node = node
-	}
-}
-
-func (t *TreeView) Render() (string, int) {
-	b := strings.Builder{}
-
-	curLinePos := -1
-	line := func(node node) string {
-		curLinePos++
-		if node != nil {
-			if t.cursor.Pos == node.GetLine() {
-				return "[*] "
-			}
-			return "[ ] "
-		}
-		return "   "
-	}
-
-	for _, node := range []*treeNode{t.namespaces, t.nodes} {
-		b.WriteString(line(node) + node.GetTitle() + "\n")
-		if node.Expand {
-			numOfChildren := len(node.Children)
-			for idx, child := range node.Children {
-				leaf := child.(*treeLeaf)
-				b.WriteString(line(leaf) + " " + grommet(idx == numOfChildren-1, false) + "── " + leaf.Resource.String() + " " + leaf.GetTitle() + "\n")
-			}
-		} else {
-			b.WriteString(line(nil) + "   ...\n")
-		}
-		b.WriteString(line(nil) + "\n")
-	}
-
-	b.WriteString(line(t.details) + t.details.Title + "\n")
-	if t.details.Expand {
-		for _, namespaceNode := range t.details.Children {
-			namespaceTreeNode := namespaceNode.(*treeNode)
-
-			if namespaceTreeNode.Expand {
-				b.WriteString(line(namespaceTreeNode) + namespaceTreeNode.Title + "\n")
-				numOfNamespaces := len(namespaceTreeNode.Children)
-				for namespaceIdx, kindNode := range namespaceTreeNode.Children {
-					kindTreeNode := kindNode.(*treeNode)
-
-					if kindTreeNode.Expand {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindTreeNode.Title + "\n")
-						numOfKinds := len(kindTreeNode.Children)
-						for kindIdx, resourceNode := range kindTreeNode.Children {
-							resourceLeafNode := resourceNode.(*treeLeaf)
-							b.WriteString(line(resourceLeafNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, true) + "   " + grommet(kindIdx == numOfKinds-1, false) + "──" + resourceLeafNode.Resource.String() + "\n")
-						}
-					} else {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindTreeNode.Title + " { ... }\n")
-					}
-				}
-			} else {
-				b.WriteString(line(namespaceTreeNode) + namespaceTreeNode.Title + "{ ... }\n")
-			}
-
-		}
-	} else {
-		b.WriteString(line(nil) + "   ...\n")
-	}
-	b.WriteString(line(nil) + "\n")
-
-	return b.String(), t.cursor.Pos
-}
-
 // Add the resources to be rendered as a tree view
-func (t *TreeView) UpdateResources(resourceList []types.Resource) {
+func (m *TreeModel) UpdateResources(resourceList []types.Resource) {
 	// maps resource uid to the node we currently have referencing it
 	nodesToDelete := map[string]node{}
 
@@ -275,7 +120,7 @@ func (t *TreeView) UpdateResources(resourceList []types.Resource) {
 	}
 
 	// Any resources in this list we need to update if the node already exists
-	misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
+	misc.TraverseNodeTree(m.root, func(n misc.Node) bool {
 		if tl, ok := n.(*treeLeaf); ok {
 			if res, exists := resourcesToAdd[tl.Resource.GetUID()]; exists {
 				tl.Resource = res
@@ -320,23 +165,23 @@ func (t *TreeView) UpdateResources(resourceList []types.Resource) {
 	}
 
 	for _, k := range slices.Sorted(maps.Keys(namespaces)) {
-		t.namespaces.AddChild(&treeLeaf{Parent: t.namespaces, Resource: namespaces[k], Expand: true})
+		m.namespaces.AddChild(&treeLeaf{Parent: m.namespaces, Resource: namespaces[k], Expand: true})
 	}
 
 	for _, k := range slices.Sorted(maps.Keys(nodes)) {
-		t.nodes.AddChild(&treeLeaf{Parent: t.namespaces, Resource: nodes[k], Expand: true})
+		m.nodes.AddChild(&treeLeaf{Parent: m.namespaces, Resource: nodes[k], Expand: true})
 	}
 
 	for _, namespaceName := range slices.Sorted(maps.Keys(other)) {
 		// Get or create a namespace node
-		namespace := &treeNode{Title: namespaceName, Uid: "NS:" + namespaceName, Parent: t.details, Expand: true}
-		for _, nsNodes := range t.details.Children {
+		namespace := &treeNode{Title: namespaceName, Uid: "NS:" + namespaceName, Parent: m.details, Expand: true}
+		for _, nsNodes := range m.details.Children {
 			if nsNodes.GetUid() == namespace.GetUid() {
 				namespace = nsNodes.(*treeNode)
 				break
 			}
 		}
-		t.details.AddChild(namespace)
+		m.details.AddChild(namespace)
 
 		for _, kindName := range slices.Sorted(maps.Keys(other[namespaceName])) {
 			// Get or create a kind node
@@ -357,23 +202,36 @@ func (t *TreeView) UpdateResources(resourceList []types.Resource) {
 
 	// remove anything that should be removed
 	for _, n := range nodesToDelete {
-		if n.GetParent() != nil {
-			parent := n.GetParent().(*treeNode)
-			for i, v := range parent.Children {
-				if v.GetUid() == n.GetUid() {
-					parent.Children = append(parent.Children[:i], parent.Children[i+1:]...)
-					break
-				}
+		m.deleteNode(n)
+	}
+
+	m.renumberNodes()
+
+}
+
+func (m TreeModel) deleteNode(n node) {
+	if n.GetParent() != nil {
+		parent := n.GetParent().(*treeNode)
+		for i, v := range parent.Children {
+			if v.GetUid() == n.GetUid() {
+				parent.Children = append(parent.Children[:i], parent.Children[i+1:]...)
+				break
 			}
 		}
 	}
+}
 
-	// Renumber everything based on visibility
-	lineNo := -1
-	misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
-		lineNo++
+func (m TreeModel) renumberNodes() {
+	lineNo := 0
+	misc.TraverseNodeTree(m.root, func(n misc.Node) bool {
 		n.(node).SetLine(lineNo)
+		lineNo++
 		return false
 	})
+}
 
+func (t TreeModel) findNodeAt(pos int) node {
+	return misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
+		return n.(node).GetLine() == pos
+	}).(node)
 }

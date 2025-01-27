@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/types"
 )
 
@@ -35,6 +36,7 @@ type treeViewCursor struct {
 }
 
 type node interface {
+	misc.Node
 	GetTitle() string
 	GetParent() node
 	SetParent(parent node)
@@ -43,8 +45,8 @@ type node interface {
 	GetExpand() bool
 	GetUid() string
 	GetLine() int
-	// IsVisible() bool
 	SetLine(line int)
+	GetChildren() []misc.Node
 }
 
 type treeNode struct {
@@ -62,10 +64,17 @@ func (tn *treeNode) SetParent(parent node) { tn.Parent = parent }
 func (tn *treeNode) IsLeaf() bool          { return false }
 func (tn *treeNode) Toggle()               { tn.Expand = !tn.Expand }
 func (tn *treeNode) GetExpand() bool       { return tn.Expand }
+func (tn *treeNode) ShouldTraverse() bool  { return tn.Expand }
 func (tn *treeNode) GetUid() string        { return tn.Uid }
 func (tn *treeNode) GetLine() int          { return tn.Line }
 func (tn *treeNode) SetLine(l int)         { tn.Line = l }
-
+func (tn *treeNode) GetChildren() []misc.Node {
+	b := make([]misc.Node, len(tn.Children), len(tn.Children))
+	for i := range tn.Children {
+		b[i] = tn.Children[i]
+	}
+	return b
+}
 func (tn *treeNode) AddChild(node node) {
 	for idx, n := range tn.Children {
 		if n.GetUid() == node.GetUid() {
@@ -88,14 +97,16 @@ type treeLeaf struct {
 func (tl *treeLeaf) GetTitle() string {
 	return tl.Resource.GetName() + fmt.Sprintf(":%d", tl.line)
 }
-func (tl *treeLeaf) GetParent() node       { return tl.Parent }
-func (tl *treeLeaf) SetParent(parent node) { tl.Parent = parent }
-func (tl *treeLeaf) IsLeaf() bool          { return true }
-func (tl *treeLeaf) Toggle()               { tl.Expand = !tl.Expand }
-func (tl *treeLeaf) GetExpand() bool       { return tl.Expand }
-func (tl *treeLeaf) GetUid() string        { return tl.Resource.GetUID() }
-func (tl *treeLeaf) GetLine() int          { return tl.line }
-func (tl *treeLeaf) SetLine(l int)         { tl.line = l }
+func (tl *treeLeaf) GetParent() node          { return tl.Parent }
+func (tl *treeLeaf) SetParent(parent node)    { tl.Parent = parent }
+func (tl *treeLeaf) IsLeaf() bool             { return true }
+func (tl *treeLeaf) Toggle()                  { tl.Expand = !tl.Expand }
+func (tl *treeLeaf) GetExpand() bool          { return tl.Expand }
+func (tl *treeLeaf) ShouldTraverse() bool     { return tl.Expand }
+func (tl *treeLeaf) GetUid() string           { return tl.Resource.GetUID() }
+func (tl *treeLeaf) GetLine() int             { return tl.line }
+func (tl *treeLeaf) SetLine(l int)            { tl.line = l }
+func (tl *treeLeaf) GetChildren() []misc.Node { return []misc.Node{} }
 
 type TreeView struct {
 	cursor     treeViewCursor
@@ -157,36 +168,10 @@ func (t *TreeView) Toggle() {
 	}
 }
 
-func traverseNodeTree(node node, evaluator func(node) bool) node {
-	if node == nil {
-		return nil
-	}
-
-	// Evaluate the current node
-	if evaluator(node) {
-		return node
-	}
-
-	// If the current node is a parent, traverse its children
-	if !node.IsLeaf() {
-		treeNode := node.(*treeNode)
-
-		// Traverse all children of the current node
-		if treeNode.Expand {
-			for _, child := range treeNode.Children {
-				if foundNode := traverseNodeTree(child, evaluator); foundNode != nil {
-					return foundNode
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (t *TreeView) findNodeAt(pos int) node {
-	return traverseNodeTree(t.root, func(n node) bool {
-		return n.GetLine() == pos
-	})
+	return misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
+		return n.(node).GetLine() == pos
+	}).(node)
 }
 
 func (t *TreeView) GetSelected() types.Resource {
@@ -290,13 +275,13 @@ func (t *TreeView) UpdateResources(resourceList []types.Resource) {
 	}
 
 	// Any resources in this list we need to update if the node already exists
-	traverseNodeTree(t.root, func(n node) bool {
+	misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
 		if tl, ok := n.(*treeLeaf); ok {
 			if res, exists := resourcesToAdd[tl.Resource.GetUID()]; exists {
 				tl.Resource = res
 				delete(resourcesToAdd, res.GetUID()) // We updates this resource so we don't need to add it after wards
 			} else {
-				nodesToDelete[n.GetUid()] = n // We updated this resource so the node should still exists
+				nodesToDelete[tl.GetUid()] = tl // We updated this resource so the node should still exists
 			}
 		}
 		return false
@@ -385,9 +370,9 @@ func (t *TreeView) UpdateResources(resourceList []types.Resource) {
 
 	// Renumber everything based on visibility
 	lineNo := -1
-	traverseNodeTree(t.root, func(n node) bool {
+	misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
 		lineNo++
-		n.SetLine(lineNo)
+		n.(node).SetLine(lineNo)
 		return false
 	})
 

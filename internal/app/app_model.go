@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -32,7 +33,7 @@ var (
 )
 
 type AppModel struct {
-	data              data.DataModel
+	data              data.DAO
 	watcher           *resources.K8sWatcher
 	ready             bool
 	viewMode          int
@@ -44,6 +45,9 @@ type AppModel struct {
 	tv                *ui.TreeController
 	VCR               *ui.PlaybackController
 	popup             ui.Popup
+	search            bool
+	searchValue       string
+	searchInput       textinput.Model
 }
 
 func (m *AppModel) SetLabel(label string) {
@@ -112,6 +116,9 @@ func (m *AppModel) headerView(label string) string {
 	if len(label) > 0 {
 		label = "[" + label + "]"
 	}
+	if len(m.searchValue) > 0 {
+		label += " " + m.searchValue
+	}
 
 	title := titleStyle.Render(fmt.Sprintf("Khronoscope %s - %s %s ",
 		label,
@@ -129,7 +136,7 @@ func (m *AppModel) footerView() string {
 }
 
 // MODEL DATA
-func NewAppModel(watcher *resources.K8sWatcher, d data.DataModel) *AppModel {
+func NewAppModel(watcher *resources.K8sWatcher, d data.DAO) *AppModel {
 	am := &AppModel{
 		watcher: watcher,
 		data:    d,
@@ -192,7 +199,14 @@ func (m *AppModel) View() string {
 		temp = lipgloss.JoinVertical(0, fixWidth(m.treeView.View(), m.width), " ", m.detailView.View())
 	}
 
-	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", m.headerView(currentLabel), temp, m.footerView()), m.popup)
+	var top string
+	if m.search {
+		top = m.searchInput.View()
+	} else {
+		top = m.headerView(currentLabel)
+	}
+
+	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", top, temp, m.footerView()), m.popup)
 }
 
 func (m *AppModel) insertPopup(content string, popup ui.Popup) string {
@@ -282,9 +296,35 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.search {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyCtrlC, tea.KeyEsc:
+				m.search = false
+				return m, nil
+			case tea.KeyEnter:
+				// Save the label
+				m.searchValue = m.searchInput.Value()
+				m.search = false
+				return m, nil
+			}
+		}
+
+		m.searchInput, _ = m.searchInput.Update(msg)
+		return m, nil
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "/":
+			m.searchInput = textinput.New()
+			m.searchInput.Placeholder = ""
+			m.searchInput.Focus()
+			m.searchInput.CharLimit = 156
+			m.searchInput.Width = 20
+			m.search = true
 		case "s":
 			m.data.Save("temp.dat")
 		case "1":

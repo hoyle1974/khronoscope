@@ -13,7 +13,7 @@ import (
 	"github.com/hoyle1974/khronoscope/resources"
 )
 
-type DataModel interface {
+type DAO interface {
 	GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource
 	GetTimeRange() (time.Time, time.Time)
 	AddResource(resource resources.Resource)
@@ -30,14 +30,14 @@ type dataModelImpl struct {
 	resources temporal.Map
 }
 
-func New() DataModel {
+func New() DAO {
 	return &dataModelImpl{
 		meta:      temporal.New(),
 		resources: temporal.New(),
 	}
 }
 
-func NewFromFile(filename string) DataModel {
+func NewFromFile(filename string) DAO {
 	d := New().(*dataModelImpl)
 
 	fi, err := os.Open(filename)

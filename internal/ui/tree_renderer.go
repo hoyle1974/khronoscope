@@ -1,6 +1,10 @@
 package ui
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 func grommet(is bool, isVertical bool) string {
 	if isVertical {
@@ -76,17 +80,62 @@ func TreeRender(model TreeModel, cursorPos int, filter string) string {
 	}
 	b.WriteString(line(nil) + "\n")
 
-	return strings.Join(filterStrings(filter, strings.Split(b.String(), "\n")), "\n")
+	return strings.Join(FilterAndBoldStrings(filter, strings.Split(b.String(), "\n")), "\n")
 
 	// return b.String()
 }
 
-func filterStrings(filter string, stringsToFilter []string) []string {
+// func filterStrings(filter string, stringsToFilter []string) []string {
+// 	var filteredStrings []string
+// 	for _, str := range stringsToFilter {
+// 		if strings.Contains(str, filter) {
+// 			filteredStrings = append(filteredStrings, str)
+// 		}
+// 	}
+// 	return filteredStrings
+// }
+
+func FilterAndBoldStrings(filter string, stringsToFilter []string) []string {
+	if filter == "" {
+		return stringsToFilter // Return original slice if filter is empty
+	}
+
 	var filteredStrings []string
+	boldStyle := lipgloss.NewStyle().Bold(true)
+
 	for _, str := range stringsToFilter {
 		if strings.Contains(str, filter) {
-			filteredStrings = append(filteredStrings, str)
+			indices := findFilterIndices(str, filter)
+			newStr := ""
+			lastIndex := 0
+			for _, indexPair := range indices {
+				newStr += str[lastIndex:indexPair[0]]
+				newStr += boldStyle.Render(str[indexPair[0]:indexPair[1]])
+				lastIndex = indexPair[1]
+			}
+			if lastIndex < len(str) {
+				newStr += str[lastIndex:]
+			}
+
+			filteredStrings = append(filteredStrings, newStr)
 		}
 	}
 	return filteredStrings
+}
+
+func findFilterIndices(str, filter string) [][]int {
+	var indices [][]int
+	lowerStr := strings.ToLower(str)
+	lowerFilter := strings.ToLower(filter)
+	startIndex := 0
+	for {
+		index := strings.Index(lowerStr[startIndex:], lowerFilter)
+		if index == -1 {
+			break
+		}
+		absoluteIndex := startIndex + index
+		indices = append(indices, []int{absoluteIndex, absoluteIndex + len(filter)})
+		startIndex = absoluteIndex + len(filter)
+	}
+	return indices
 }

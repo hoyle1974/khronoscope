@@ -78,9 +78,7 @@ func (t *TreeController) GetSelectedLine() (int, int) {
 func (t *TreeController) updateSelected() {
 	t.cursor.Node = nil
 	if node := t.model.findNodeAt(t.cursor.Pos); node != nil {
-		if node.IsLeaf() {
-			t.cursor.Uid = node.(*treeLeaf).Resource.GetUID()
-		}
+		t.cursor.Uid = node.GetUid()
 		t.cursor.Node = node
 	}
 }

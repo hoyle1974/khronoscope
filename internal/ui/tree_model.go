@@ -15,7 +15,6 @@ type node interface {
 	GetTitle() string
 	GetParent() node
 	SetParent(parent node)
-	IsLeaf() bool
 	Toggle()
 	GetExpand() bool
 	GetUid() string
@@ -36,7 +35,6 @@ type treeNode struct {
 func (tn *treeNode) GetTitle() string      { return tn.Title }
 func (tn *treeNode) GetParent() node       { return tn.Parent }
 func (tn *treeNode) SetParent(parent node) { tn.Parent = parent }
-func (tn *treeNode) IsLeaf() bool          { return false }
 func (tn *treeNode) Toggle()               { tn.Expand = !tn.Expand }
 func (tn *treeNode) GetExpand() bool       { return tn.Expand }
 func (tn *treeNode) ShouldTraverse() bool  { return tn.Expand }
@@ -74,7 +72,6 @@ func (tl *treeLeaf) GetTitle() string {
 }
 func (tl *treeLeaf) GetParent() node          { return tl.Parent }
 func (tl *treeLeaf) SetParent(parent node)    { tl.Parent = parent }
-func (tl *treeLeaf) IsLeaf() bool             { return true }
 func (tl *treeLeaf) Toggle()                  { tl.Expand = !tl.Expand }
 func (tl *treeLeaf) GetExpand() bool          { return tl.Expand }
 func (tl *treeLeaf) ShouldTraverse() bool     { return tl.Expand }

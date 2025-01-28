@@ -46,7 +46,7 @@ type AppModel struct {
 	VCR               *ui.PlaybackController
 	popup             ui.Popup
 	search            bool
-	searchValue       string
+	searchFilter      string
 	searchInput       textinput.Model
 }
 
@@ -116,8 +116,8 @@ func (m *AppModel) headerView(label string) string {
 	if len(label) > 0 {
 		label = "[" + label + "]"
 	}
-	if len(m.searchValue) > 0 {
-		label += " " + m.searchValue
+	if len(m.searchFilter) > 0 {
+		label += " " + m.searchFilter
 	}
 
 	title := titleStyle.Render(fmt.Sprintf("Khronoscope %s - %s %s ",
@@ -161,6 +161,7 @@ func (m *AppModel) View() string {
 
 	currentLabel := m.data.GetLabel(timeToUse)
 
+	m.tv.SetFilter(m.searchFilter)
 	treeContent, focusLine := m.tv.Render()
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
 	m.treeView.SetContent(treeContent)
@@ -305,7 +306,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case tea.KeyEnter:
 				// Save the label
-				m.searchValue = m.searchInput.Value()
+				m.searchFilter = m.searchInput.Value()
 				m.search = false
 				return m, nil
 			}

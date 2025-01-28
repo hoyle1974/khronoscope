@@ -18,6 +18,7 @@ type treeViewCursor struct {
 type TreeController struct {
 	cursor treeViewCursor
 	model  TreeModel
+	filter string
 }
 
 func NewTreeView() *TreeController {
@@ -25,6 +26,10 @@ func NewTreeView() *TreeController {
 		cursor: treeViewCursor{Pos: 1},
 		model:  NewTreeModel(),
 	}
+}
+
+func (t *TreeController) SetFilter(filter string) {
+	t.filter = filter
 }
 
 func (t *TreeController) Up() {
@@ -84,7 +89,7 @@ func (t *TreeController) updateSelected() {
 }
 
 func (t *TreeController) Render() (string, int) {
-	return TreeRender(t.model, t.cursor.Pos), t.cursor.Pos
+	return TreeRender(t.model, t.cursor.Pos, t.filter), t.cursor.Pos
 }
 
 func (t *TreeController) UpdateResources(resources []types.Resource) {

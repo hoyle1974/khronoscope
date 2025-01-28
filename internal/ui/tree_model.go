@@ -42,7 +42,7 @@ func (tn *treeNode) GetUid() string        { return tn.Uid }
 func (tn *treeNode) GetLine() int          { return tn.Line }
 func (tn *treeNode) SetLine(l int)         { tn.Line = l }
 func (tn *treeNode) GetChildren() []misc.Node {
-	b := make([]misc.Node, len(tn.Children), len(tn.Children))
+	b := make([]misc.Node, len(tn.Children))
 	for i := range tn.Children {
 		b[i] = tn.Children[i]
 	}
@@ -228,7 +228,12 @@ func (m TreeModel) renumberNodes() {
 }
 
 func (t TreeModel) findNodeAt(pos int) node {
-	return misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
+	ret := misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
 		return n.(node).GetLine() == pos
-	}).(node)
+	})
+	if ret == nil {
+		return nil
+	}
+
+	return ret.(node)
 }

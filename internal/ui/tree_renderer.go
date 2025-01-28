@@ -15,7 +15,7 @@ func grommet(is bool, isVertical bool) string {
 	return "└"
 }
 
-func TreeRender(model TreeModel, cursorPos int) string {
+func TreeRender(model TreeModel, cursorPos int, filter string) string {
 	b := strings.Builder{}
 
 	curLinePos := -1
@@ -76,5 +76,17 @@ func TreeRender(model TreeModel, cursorPos int) string {
 	}
 	b.WriteString(line(nil) + "\n")
 
-	return b.String()
+	return strings.Join(filterStrings(filter, strings.Split(b.String(), "\n")), "\n")
+
+	// return b.String()
+}
+
+func filterStrings(filter string, stringsToFilter []string) []string {
+	var filteredStrings []string
+	for _, str := range stringsToFilter {
+		if strings.Contains(str, filter) {
+			filteredStrings = append(filteredStrings, str)
+		}
+	}
+	return filteredStrings
 }

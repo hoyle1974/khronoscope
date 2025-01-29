@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hoyle1974/khronoscope/conn"
+	"github.com/hoyle1974/khronoscope/internal/conn"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 )

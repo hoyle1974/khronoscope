@@ -28,3 +28,4 @@ go.work.sum
 *.prof
 temp.dat
 temp.dat.gz
+.DS_Store

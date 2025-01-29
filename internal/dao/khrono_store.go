@@ -1,4 +1,4 @@
-package data
+package dao
 
 import (
 	"bufio"
@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/temporal"
-	"github.com/hoyle1974/khronoscope/resources"
 )
 
-type DAO interface {
+type KhronoStore interface {
 	GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource
 	GetTimeRange() (time.Time, time.Time)
 	AddResource(resource resources.Resource)
@@ -30,14 +30,14 @@ type dataModelImpl struct {
 	resources temporal.Map
 }
 
-func New() DAO {
+func New() KhronoStore {
 	return &dataModelImpl{
 		meta:      temporal.New(),
 		resources: temporal.New(),
 	}
 }
 
-func NewFromFile(filename string) DAO {
+func NewFromFile(filename string) KhronoStore {
 	d := New().(*dataModelImpl)
 
 	fi, err := os.Open(filename)

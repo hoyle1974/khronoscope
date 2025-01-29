@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hoyle1974/khronoscope/conn"
-	"github.com/hoyle1974/khronoscope/internal/app"
-	"github.com/hoyle1974/khronoscope/internal/data"
+	"github.com/hoyle1974/khronoscope/internal/conn"
+	"github.com/hoyle1974/khronoscope/internal/dao"
+	khronoscope "github.com/hoyle1974/khronoscope/internal/program"
+	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/ui"
-	"github.com/hoyle1974/khronoscope/resources"
 )
 
 func main() {
@@ -27,10 +27,10 @@ func main() {
 	// filename := "temp.dat"
 	filename := ""
 
-	d := data.New()
+	d := dao.New()
 
 	if len(filename) > 0 {
-		d = data.NewFromFile(filename)
+		d = dao.NewFromFile(filename)
 	}
 	var watcher = resources.NewK8sWatcher(d)
 
@@ -43,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	appModel := app.NewAppModel(watcher, d)
+	appModel := khronoscope.NewProgram(watcher, d)
 	p := tea.NewProgram(appModel)
 
 	appModel.VCR = ui.NewTimeController(d, func() {

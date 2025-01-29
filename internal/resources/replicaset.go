@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hoyle1974/khronoscope/conn"
+	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/ui"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -1,4 +1,4 @@
-package app
+package program
 
 import (
 	"fmt"
@@ -10,30 +10,14 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/hoyle1974/khronoscope/internal/data"
+	"github.com/hoyle1974/khronoscope/internal/dao"
+	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/types"
 	"github.com/hoyle1974/khronoscope/internal/ui"
-	"github.com/hoyle1974/khronoscope/resources"
 )
 
-var (
-	titleStyle = func() lipgloss.Style {
-		// b := lipgloss.RoundedBorder()
-		// b.Right = "├"
-		// return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
-		return lipgloss.NewStyle()
-	}()
-
-	infoStyle = func() lipgloss.Style {
-		// b := lipgloss.RoundedBorder()
-		// b.Left = "┤"
-		// return titleStyle.BorderStyle(b)
-		return lipgloss.NewStyle()
-	}()
-)
-
-type AppModel struct {
-	data              data.DAO
+type KhronoscopeTeaProgram struct {
+	data              dao.KhronoStore
 	watcher           *resources.K8sWatcher
 	ready             bool
 	viewMode          int
@@ -50,7 +34,7 @@ type AppModel struct {
 	searchInput       textinput.Model
 }
 
-func (m *AppModel) SetLabel(label string) {
+func (m *KhronoscopeTeaProgram) SetLabel(label string) {
 	m.data.SetLabel(m.VCR.GetTimeToUse(), label)
 }
 
@@ -70,11 +54,11 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 	return percentage
 }
 
-func (m *AppModel) SetPopup(popup ui.Popup) {
+func (m *KhronoscopeTeaProgram) SetPopup(popup ui.Popup) {
 	m.popup = popup
 }
 
-func (m *AppModel) headerView(label string) string {
+func (m *KhronoscopeTeaProgram) headerView(label string) string {
 	minTime, maxTime := m.data.GetTimeRange()
 	current := m.VCR.GetTimeToUse()
 	p := calculatePercentageOfTime(minTime, maxTime, current)
@@ -120,7 +104,7 @@ func (m *AppModel) headerView(label string) string {
 		label += " " + m.searchFilter
 	}
 
-	title := titleStyle.Render(fmt.Sprintf("Khronoscope %s - %s %s ",
+	title := lipgloss.NewStyle().Render(fmt.Sprintf("Khronoscope %s - %s %s ",
 		label,
 		vcrStyle.Render("  "+m.VCR.Render()+"  "),
 		bar,
@@ -129,15 +113,14 @@ func (m *AppModel) headerView(label string) string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
 
-func (m *AppModel) footerView() string {
-	info := infoStyle.Render(fmt.Sprintf(" %3.f%%", m.treeView.ScrollPercent()*100))
+func (m *KhronoscopeTeaProgram) footerView() string {
+	info := lipgloss.NewStyle().Render(fmt.Sprintf(" %3.f%%", m.treeView.ScrollPercent()*100))
 	line := strings.Repeat("─", max(0, m.width-lipgloss.Width(info)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
-// MODEL DATA
-func NewAppModel(watcher *resources.K8sWatcher, d data.DAO) *AppModel {
-	am := &AppModel{
+func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore) *KhronoscopeTeaProgram {
+	am := &KhronoscopeTeaProgram{
 		watcher: watcher,
 		data:    d,
 		tv:      ui.NewTreeView(),
@@ -146,11 +129,9 @@ func NewAppModel(watcher *resources.K8sWatcher, d data.DAO) *AppModel {
 	return am
 }
 
-func (s *AppModel) Init() tea.Cmd { return nil }
+func (s *KhronoscopeTeaProgram) Init() tea.Cmd { return nil }
 
-// VIEW
-
-func (m *AppModel) View() string {
+func (m *KhronoscopeTeaProgram) View() string {
 	timeToUse := m.VCR.GetTimeToUse()
 	resources := m.data.GetResourcesAt(timeToUse, "", "")
 	convResources := make([]types.Resource, len(resources))
@@ -209,7 +190,7 @@ func (m *AppModel) View() string {
 	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", top, temp, m.footerView()), m.popup)
 }
 
-func (m *AppModel) insertPopup(content string, popup ui.Popup) string {
+func (m *KhronoscopeTeaProgram) insertPopup(content string, popup ui.Popup) string {
 	if popup == nil {
 		return content
 	}
@@ -232,7 +213,7 @@ func (m *AppModel) insertPopup(content string, popup ui.Popup) string {
 }
 
 // UPDATE
-func (m *AppModel) windowResize(msg tea.WindowSizeMsg) {
+func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
 
@@ -283,7 +264,7 @@ func (m *AppModel) windowResize(msg tea.WindowSizeMsg) {
 	}
 }
 
-func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

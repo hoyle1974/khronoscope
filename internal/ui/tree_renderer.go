@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 )
 
 func grommet(is bool, isVertical bool) string {
@@ -19,14 +20,96 @@ func grommet(is bool, isVertical bool) string {
 	return "└"
 }
 
-func TreeRender(model TreeModel, cursorPos int, filter string) string {
+type renderNode struct {
+	Line     int
+	Filtered bool
+	Node     node
+	Children []*renderNode
+}
+
+func (r *renderNode) ShouldTraverse() bool {
+	return !r.Filtered && r.Node.GetExpand()
+}
+func (r *renderNode) GetChildren() []misc.Node {
+	b := make([]misc.Node, len(r.Children))
+	for i := range r.Children {
+		b[i] = r.Children[i]
+	}
+	return b
+}
+
+func buildRenderTree(node node, filter func(node) bool) *renderNode {
+	if node == nil {
+		return nil
+	}
+
+	renderNode := &renderNode{
+		Filtered: filter(node),
+		Node:     node,
+	}
+
+	// Traverse all children of the current node
+	if node.ShouldTraverse() {
+		for _, child := range node.GetChildren() {
+			if tn, ok := child.(*treeNode); ok {
+				if renderChild := buildRenderTree(tn, filter); renderChild != nil {
+					renderNode.Children = append(renderNode.Children, renderChild)
+				}
+			}
+			if tl, ok := child.(*treeLeaf); ok {
+				if renderChild := buildRenderTree(tl, filter); renderChild != nil {
+					renderNode.Children = append(renderNode.Children, renderChild)
+				}
+			}
+		}
+	}
+
+	return renderNode
+}
+
+func CreateRenderTree(model TreeModel, filter string) *renderNode {
+	// Before we render we want to traverse the model and add visual data to the nodes
+	// This includes line number and filter state
+	renderNodeRoot := buildRenderTree(model.root, func(node node) bool {
+		switch n := node.(type) {
+		case *treeLeaf:
+			match := strings.Contains(n.Resource.String(), filter)
+			if !match && n.Parent != nil {
+				match = strings.Contains(n.Parent.(*treeNode).GetTitle(), filter)
+				if !match && n.Parent.GetParent() != nil {
+					match = strings.Contains(n.Parent.GetParent().(*treeNode).GetTitle(), filter)
+				}
+			}
+			return match
+		default:
+			return false
+		}
+	})
+
+	// Assign line numbers to nodes
+	lineNo := 0
+	misc.TraverseNodeTree(renderNodeRoot, func(n misc.Node) bool {
+		rn := n.(*renderNode)
+		if !rn.Filtered {
+			rn.Line = lineNo
+			lineNo++
+		} else {
+			rn.Line = -1
+		}
+		return false
+	})
+
+	return renderNodeRoot
+}
+
+func TreeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string {
 	b := strings.Builder{}
 
 	curLinePos := -1
-	line := func(node node) string {
+	line := func(node *renderNode) string {
 		curLinePos++
 		if node != nil {
-			if cursorPos == node.GetLine() {
+			if cursorPos == node.Line {
 				return "[*] "
 			}
 			return "[ ] "
@@ -34,13 +117,17 @@ func TreeRender(model TreeModel, cursorPos int, filter string) string {
 		return "   "
 	}
 
-	for _, node := range []*treeNode{model.namespaces, model.nodes} {
-		b.WriteString(line(node) + node.GetTitle() + "\n")
-		if node.Expand {
+	namespaces := renderNodeRoot.Children[0]
+	nodes := renderNodeRoot.Children[1]
+	details := renderNodeRoot.Children[2]
+
+	for _, node := range []*renderNode{namespaces, nodes} {
+		b.WriteString(line(node) + node.Node.GetTitle() + "\n")
+		if node.Node.GetExpand() {
 			numOfChildren := len(node.Children)
 			for idx, child := range node.Children {
-				leaf := child.(*treeLeaf)
-				b.WriteString(line(leaf) + " " + grommet(idx == numOfChildren-1, false) + "── " + leaf.Resource.String() + " " + leaf.GetTitle() + "\n")
+				leaf := child.Node.(*treeLeaf)
+				b.WriteString(line(child) + " " + grommet(idx == numOfChildren-1, false) + "── " + leaf.Resource.String() + " " + leaf.GetTitle() + "\n")
 			}
 		} else {
 			b.WriteString(line(nil) + "   ...\n")
@@ -48,30 +135,29 @@ func TreeRender(model TreeModel, cursorPos int, filter string) string {
 		b.WriteString(line(nil) + "\n")
 	}
 
-	b.WriteString(line(model.details) + model.details.Title + "\n")
-	if model.details.Expand {
-		for _, namespaceNode := range model.details.Children {
-			namespaceTreeNode := namespaceNode.(*treeNode)
+	b.WriteString(line(details) + details.Node.GetTitle() + "\n")
+	if details.Node.GetExpand() {
+		for _, namespaceNode := range details.Children {
 
-			if namespaceTreeNode.Expand {
-				b.WriteString(line(namespaceTreeNode) + namespaceTreeNode.Title + "\n")
-				numOfNamespaces := len(namespaceTreeNode.Children)
-				for namespaceIdx, kindNode := range namespaceTreeNode.Children {
-					kindTreeNode := kindNode.(*treeNode)
+			if namespaceNode.Node.GetExpand() {
+				b.WriteString(line(namespaceNode) + namespaceNode.Node.GetTitle() + "\n")
+				numOfNamespaces := len(namespaceNode.Children)
+				for namespaceIdx, kindNode := range namespaceNode.Children {
+					// kindTreeNode := kindNode.(*treeNode)
 
-					if kindTreeNode.Expand {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindTreeNode.Title + "\n")
-						numOfKinds := len(kindTreeNode.Children)
-						for kindIdx, resourceNode := range kindTreeNode.Children {
-							resourceLeafNode := resourceNode.(*treeLeaf)
-							b.WriteString(line(resourceLeafNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, true) + "   " + grommet(kindIdx == numOfKinds-1, false) + "──" + resourceLeafNode.Resource.String() + "\n")
+					if kindNode.Node.GetExpand() {
+						b.WriteString(line(kindNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindNode.Node.GetTitle() + "\n")
+						numOfKinds := len(kindNode.Children)
+						for kindIdx, resourceNode := range kindNode.Children {
+							// resourceLeafNode := resourceNode.(*treeLeaf)
+							b.WriteString(line(resourceNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, true) + "   " + grommet(kindIdx == numOfKinds-1, false) + "──" + resourceNode.Node.(*treeLeaf).Resource.String() + "\n")
 						}
 					} else {
-						b.WriteString(line(kindTreeNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindTreeNode.Title + " { ... }\n")
+						b.WriteString(line(kindNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindNode.Node.GetTitle() + " { ... }\n")
 					}
 				}
 			} else {
-				b.WriteString(line(namespaceTreeNode) + namespaceTreeNode.Title + "{ ... }\n")
+				b.WriteString(line(namespaceNode) + namespaceNode.Node.GetTitle() + "{ ... }\n")
 			}
 
 		}
@@ -80,22 +166,10 @@ func TreeRender(model TreeModel, cursorPos int, filter string) string {
 	}
 	b.WriteString(line(nil) + "\n")
 
-	return strings.Join(FilterAndBoldStrings(filter, strings.Split(b.String(), "\n")), "\n")
-
-	// return b.String()
+	return strings.Join(filterAndBoldStrings(filter, strings.Split(b.String(), "\n")), "\n")
 }
 
-// func filterStrings(filter string, stringsToFilter []string) []string {
-// 	var filteredStrings []string
-// 	for _, str := range stringsToFilter {
-// 		if strings.Contains(str, filter) {
-// 			filteredStrings = append(filteredStrings, str)
-// 		}
-// 	}
-// 	return filteredStrings
-// }
-
-func FilterAndBoldStrings(filter string, stringsToFilter []string) []string {
+func filterAndBoldStrings(filter string, stringsToFilter []string) []string {
 	if filter == "" {
 		return stringsToFilter // Return original slice if filter is empty
 	}

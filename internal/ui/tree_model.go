@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"maps"
 	"slices"
 
@@ -18,8 +17,6 @@ type node interface {
 	Toggle()
 	GetExpand() bool
 	GetUid() string
-	GetLine() int
-	SetLine(line int)
 	GetChildren() []misc.Node
 }
 
@@ -28,7 +25,6 @@ type treeNode struct {
 	Parent   node
 	Children []node
 	Expand   bool
-	Line     int
 	Uid      string
 }
 
@@ -39,8 +35,6 @@ func (tn *treeNode) Toggle()               { tn.Expand = !tn.Expand }
 func (tn *treeNode) GetExpand() bool       { return tn.Expand }
 func (tn *treeNode) ShouldTraverse() bool  { return tn.Expand }
 func (tn *treeNode) GetUid() string        { return tn.Uid }
-func (tn *treeNode) GetLine() int          { return tn.Line }
-func (tn *treeNode) SetLine(l int)         { tn.Line = l }
 func (tn *treeNode) GetChildren() []misc.Node {
 	b := make([]misc.Node, len(tn.Children))
 	for i := range tn.Children {
@@ -64,11 +58,10 @@ type treeLeaf struct {
 	Parent   node
 	Resource types.Resource
 	Expand   bool
-	line     int
 }
 
 func (tl *treeLeaf) GetTitle() string {
-	return tl.Resource.GetName() + fmt.Sprintf(":%d", tl.line)
+	return tl.Resource.GetName()
 }
 func (tl *treeLeaf) GetParent() node          { return tl.Parent }
 func (tl *treeLeaf) SetParent(parent node)    { tl.Parent = parent }
@@ -76,8 +69,6 @@ func (tl *treeLeaf) Toggle()                  { tl.Expand = !tl.Expand }
 func (tl *treeLeaf) GetExpand() bool          { return tl.Expand }
 func (tl *treeLeaf) ShouldTraverse() bool     { return tl.Expand }
 func (tl *treeLeaf) GetUid() string           { return tl.Resource.GetUID() }
-func (tl *treeLeaf) GetLine() int             { return tl.line }
-func (tl *treeLeaf) SetLine(l int)            { tl.line = l }
 func (tl *treeLeaf) GetChildren() []misc.Node { return []misc.Node{} }
 
 type TreeModel struct {
@@ -201,9 +192,6 @@ func (m *TreeModel) UpdateResources(resourceList []types.Resource) {
 	for _, n := range nodesToDelete {
 		m.deleteNode(n)
 	}
-
-	m.renumberNodes()
-
 }
 
 func (m TreeModel) deleteNode(n node) {
@@ -216,24 +204,4 @@ func (m TreeModel) deleteNode(n node) {
 			}
 		}
 	}
-}
-
-func (m TreeModel) renumberNodes() {
-	lineNo := 0
-	misc.TraverseNodeTree(m.root, func(n misc.Node) bool {
-		n.(node).SetLine(lineNo)
-		lineNo++
-		return false
-	})
-}
-
-func (t TreeModel) findNodeAt(pos int) node {
-	ret := misc.TraverseNodeTree(t.root, func(n misc.Node) bool {
-		return n.(node).GetLine() == pos
-	})
-	if ret == nil {
-		return nil
-	}
-
-	return ret.(node)
 }

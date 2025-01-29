@@ -26,11 +26,11 @@ jobs:
       
       - name: Build
         run: >
-          GOOS=linux GOARCH=amd64 go build -o ${{ env.APP_NAME }}_linux_amd64 -v
+          GOOS=linux GOARCH=amd64 go build ./cmd/khronoscope -o ${{ env.APP_NAME }}_linux_amd64 -v
           
-          GOOS=darwin GOARCH=amd64 go build -o ${{ env.APP_NAME }}_darwin_amd64 -v
+          GOOS=darwin GOARCH=amd64 go build ./cmd/khronoscope -o ${{ env.APP_NAME }}_darwin_amd64 -v
           
-          GOOS=windows GOARCH=amd64 go build -o ${{ env.APP_NAME }}_windows_amd64.exe -v
+          GOOS=windows GOARCH=amd64 go build ./cmd/khronoscope -o ${{ env.APP_NAME }}_windows_amd64.exe -v
       
       - name: Print SHA for Homebrew
         run: shasum -a 256 ${{ env.APP_NAME }}_linux_amd64 ${{ env.APP_NAME

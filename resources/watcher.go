@@ -33,14 +33,30 @@ type K8sWatcher struct {
 	onChange   func()
 }
 
-func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO) {
-	watchForDeployments(w, client)
-	watchForDaemonSet(w, client)
-	watchForReplicaSet(w, client)
-	watchForService(w, client)
-	watchForNamespaces(w, client)
-	podWatcher := watchForPods(w, client, dao)
-	watchForNodes(w, client, dao, podWatcher)
+func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO) error {
+	if err := watchForDeployments(w, client); err != nil {
+		return err
+	}
+	if err := watchForDaemonSet(w, client); err != nil {
+		return err
+	}
+	if err := watchForReplicaSet(w, client); err != nil {
+		return err
+	}
+	if err := watchForService(w, client); err != nil {
+		return err
+	}
+	if err := watchForNamespaces(w, client); err != nil {
+		return err
+	}
+	podWatcher, err := watchForPods(w, client, dao)
+	if err != nil {
+		return err
+	}
+	if _, err = watchForNodes(w, client, dao, podWatcher); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Create a new watcher

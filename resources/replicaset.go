@@ -70,11 +70,13 @@ func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	return r
 }
 
-func watchForReplicaSet(watcher *K8sWatcher, k conn.KhronosConn) {
+func watchForReplicaSet(watcher *K8sWatcher, k conn.KhronosConn) error {
 	watchChan, err := k.Client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), ReplicaSetWatcher{})
+
+	return nil
 }

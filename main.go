@@ -38,7 +38,10 @@ func main() {
 		watcher = nil
 	}
 
-	watcher.Watch(client, d)
+	err = watcher.Watch(client, d)
+	if err != nil {
+		panic(err)
+	}
 
 	appModel := app.NewAppModel(watcher, d)
 	p := tea.NewProgram(appModel)

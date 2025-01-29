@@ -47,11 +47,13 @@ func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatServiceDetails(n.convert(obj)), nil)
 }
 
-func watchForService(watcher *K8sWatcher, k conn.KhronosConn) {
+func watchForService(watcher *K8sWatcher, k conn.KhronosConn) error {
 	watchChan, err := k.Client.CoreV1().Services("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), ServiceWatcher{})
+
+	return nil
 }

@@ -28,7 +28,7 @@ func (n DaemonSetWatcher) Tick() {
 }
 
 func (n DaemonSetWatcher) Kind() string {
-	return "DeamonSet"
+	return "DaemonSet"
 }
 
 func (n DaemonSetWatcher) Renderer() ResourceRenderer {
@@ -47,11 +47,13 @@ func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatDaemonSetDetails(n.convert(obj)), nil)
 }
 
-func watchForDaemonSet(watcher *K8sWatcher, k conn.KhronosConn) {
+func watchForDaemonSet(watcher *K8sWatcher, k conn.KhronosConn) error {
 	watchChan, err := k.Client.AppsV1().DaemonSets("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), DaemonSetWatcher{})
+
+	return nil
 }

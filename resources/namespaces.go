@@ -48,11 +48,13 @@ func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatNamespaceDetails(n.convert(obj)), nil)
 }
 
-func watchForNamespaces(watcher *K8sWatcher, k conn.KhronosConn) {
+func watchForNamespaces(watcher *K8sWatcher, k conn.KhronosConn) error {
 	watchChan, err := k.Client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), NamespaceWatcher{})
+
+	return nil
 }

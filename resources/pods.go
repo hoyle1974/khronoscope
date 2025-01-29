@@ -400,14 +400,14 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), pod, ui.FormatPodDetails(pod), extra)
 }
 
-func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO) *PodWatcher {
+func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO) (*PodWatcher, error) {
 	watchChan, err := k.Client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	w := &PodWatcher{k: k, d: d}
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
-	return w
+	return w, nil
 }

@@ -205,15 +205,15 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), node, ui.FormatNodeDetails(node), extra)
 }
 
-func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) *NodeWatcher {
+func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) (*NodeWatcher, error) {
 	watchChan, err := k.Client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	w := &NodeWatcher{k: k, d: d, pwm: pwm}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
-	return w
+	return w, nil
 }

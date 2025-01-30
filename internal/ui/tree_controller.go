@@ -67,6 +67,9 @@ func (t *TreeController) Toggle() {
 }
 
 func (t *TreeController) GetSelected() types.Resource {
+	if t.cursor.Node == nil || t.cursor.Node.Node == nil {
+		return nil
+	}
 	if val, ok := t.cursor.Node.Node.(*treeLeaf); ok {
 		return val.Resource
 	}

@@ -19,7 +19,7 @@ type treeViewCursor struct {
 type TreeController struct {
 	cursor treeViewCursor
 	model  TreeModel
-	filter string
+	search string
 }
 
 func NewTreeView() *TreeController {
@@ -30,7 +30,7 @@ func NewTreeView() *TreeController {
 }
 
 func (t *TreeController) SetFilter(filter string) {
-	t.filter = filter
+	t.search = filter
 }
 
 func (t *TreeController) Up() {
@@ -90,7 +90,7 @@ func (t *TreeController) GetSelectedLine() (int, int) {
 // }
 
 func (t *TreeController) Render() (string, int) {
-	root := CreateRenderTree(t.model, t.filter)
+	root := CreateRenderTree(t.model, t.search)
 
 	ret := misc.TraverseNodeTree(root, func(n misc.Node) bool {
 		return n.(*renderNode).Line == t.cursor.Pos
@@ -100,7 +100,7 @@ func (t *TreeController) Render() (string, int) {
 		t.cursor.Uid = t.cursor.Node.Node.GetUid()
 	}
 
-	return TreeRender(root, t.cursor.Pos, t.filter), t.cursor.Pos
+	return TreeRender(root, t.cursor.Pos, t.search), t.cursor.Pos
 }
 
 func (t *TreeController) UpdateResources(resources []types.Resource) {

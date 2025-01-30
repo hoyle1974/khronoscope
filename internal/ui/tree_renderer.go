@@ -22,13 +22,14 @@ func grommet(is bool, isVertical bool) string {
 
 type renderNode struct {
 	Line     int
-	Filtered bool
+	Visible  bool
 	Node     node
+	Parent   *renderNode
 	Children []*renderNode
 }
 
 func (r *renderNode) ShouldTraverse() bool {
-	return !r.Filtered && r.Node.GetExpand()
+	return r.Visible && r.Node.GetExpand()
 }
 func (r *renderNode) GetChildren() []misc.Node {
 	b := make([]misc.Node, len(r.Children))
@@ -38,26 +39,29 @@ func (r *renderNode) GetChildren() []misc.Node {
 	return b
 }
 
-func buildRenderTree(node node, filter func(node) bool) *renderNode {
+// The render tree represents a subset of the nodes we know about
+// what will be shown to the user
+func buildRenderTree(node node, parent *renderNode, matchSearch func(node) bool) *renderNode {
 	if node == nil {
 		return nil
 	}
 
 	renderNode := &renderNode{
-		Filtered: filter(node),
-		Node:     node,
+		Visible: matchSearch(node),
+		Node:    node,
+		Parent:  parent,
 	}
 
 	// Traverse all children of the current node
 	if node.ShouldTraverse() {
 		for _, child := range node.GetChildren() {
 			if tn, ok := child.(*treeNode); ok {
-				if renderChild := buildRenderTree(tn, filter); renderChild != nil {
+				if renderChild := buildRenderTree(tn, renderNode, matchSearch); renderChild != nil {
 					renderNode.Children = append(renderNode.Children, renderChild)
 				}
 			}
 			if tl, ok := child.(*treeLeaf); ok {
-				if renderChild := buildRenderTree(tl, filter); renderChild != nil {
+				if renderChild := buildRenderTree(tl, renderNode, matchSearch); renderChild != nil {
 					renderNode.Children = append(renderNode.Children, renderChild)
 				}
 			}
@@ -67,30 +71,63 @@ func buildRenderTree(node node, filter func(node) bool) *renderNode {
 	return renderNode
 }
 
-func CreateRenderTree(model TreeModel, filter string) *renderNode {
+func filterTree(root *renderNode) {
+	if root == nil {
+		return
+	}
+
+	nc := []*renderNode{}
+	for _, child := range root.Children {
+		if child.Visible {
+			filterTree(child)
+			nc = append(nc, child)
+		}
+	}
+	root.Children = nc
+}
+
+func CreateRenderTree(model TreeModel, search string) *renderNode {
 	// Before we render we want to traverse the model and add visual data to the nodes
-	// This includes line number and filter state
-	renderNodeRoot := buildRenderTree(model.root, func(node node) bool {
+	// This includes line number and visibility state
+	renderNodeRoot := buildRenderTree(model.root, nil, func(node node) bool {
+		if len(search) == 0 {
+			return true
+		}
 		switch n := node.(type) {
 		case *treeLeaf:
-			match := strings.Contains(n.Resource.String(), filter)
-			if !match && n.Parent != nil {
-				match = strings.Contains(n.Parent.(*treeNode).GetTitle(), filter)
-				if !match && n.Parent.GetParent() != nil {
-					match = strings.Contains(n.Parent.GetParent().(*treeNode).GetTitle(), filter)
-				}
-			}
-			return match
+			return strings.Contains(n.Resource.String(), search)
 		default:
 			return false
 		}
 	})
 
+	// If a child is filtered in the search then make the parents filtered
+	if len(search) != 0 {
+		renderNodeRoot.Visible = true
+		misc.IterateTree(renderNodeRoot, func(n misc.Node) {
+			rn := n.(*renderNode)
+			temp := rn.Parent
+			for temp != nil && rn.Visible {
+				temp.Visible = true
+				temp = temp.Parent
+			}
+			return
+		})
+
+		// Root is always visible
+		renderNodeRoot.Visible = true // Ensure root is visible
+		renderNodeRoot.Children[0].Visible = true
+		renderNodeRoot.Children[1].Visible = true
+		renderNodeRoot.Children[2].Visible = true
+
+		filterTree(renderNodeRoot)
+	}
+
 	// Assign line numbers to nodes
 	lineNo := 0
 	misc.TraverseNodeTree(renderNodeRoot, func(n misc.Node) bool {
 		rn := n.(*renderNode)
-		if !rn.Filtered {
+		if rn.Visible && rn.Node.GetExpand() {
 			rn.Line = lineNo
 			lineNo++
 		} else {
@@ -192,6 +229,8 @@ func filterAndBoldStrings(filter string, stringsToFilter []string) []string {
 			}
 
 			filteredStrings = append(filteredStrings, newStr)
+		} else {
+			filteredStrings = append(filteredStrings, str)
 		}
 	}
 	return filteredStrings

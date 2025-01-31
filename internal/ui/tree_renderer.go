@@ -53,20 +53,20 @@ func buildRenderTree(node node, parent *renderNode, matchSearch func(node) bool)
 	}
 
 	// Traverse all children of the current node
-	if node.ShouldTraverse() {
-		for _, child := range node.GetChildren() {
-			if tn, ok := child.(*treeNode); ok {
-				if renderChild := buildRenderTree(tn, renderNode, matchSearch); renderChild != nil {
-					renderNode.Children = append(renderNode.Children, renderChild)
-				}
+	//if node.ShouldTraverse() {
+	for _, child := range node.GetChildren() {
+		if tn, ok := child.(*treeNode); ok {
+			if renderChild := buildRenderTree(tn, renderNode, matchSearch); renderChild != nil {
+				renderNode.Children = append(renderNode.Children, renderChild)
 			}
-			if tl, ok := child.(*treeLeaf); ok {
-				if renderChild := buildRenderTree(tl, renderNode, matchSearch); renderChild != nil {
-					renderNode.Children = append(renderNode.Children, renderChild)
-				}
+		}
+		if tl, ok := child.(*treeLeaf); ok {
+			if renderChild := buildRenderTree(tl, renderNode, matchSearch); renderChild != nil {
+				renderNode.Children = append(renderNode.Children, renderChild)
 			}
 		}
 	}
+	//}
 
 	return renderNode
 }
@@ -184,7 +184,7 @@ func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string
 				b.WriteString(line(child) + " " + grommet(idx == numOfChildren-1, false) + "── " + leaf.Resource.String() + " " + leaf.GetTitle() + "\n")
 			}
 		} else {
-			b.WriteString(line(node) + node.Node.GetTitle() + "{ ... }\n")
+			b.WriteString(line(node) + node.Node.GetTitle() + " { ... }\n")
 		}
 		b.WriteString("\n")
 	}
@@ -209,12 +209,12 @@ func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string
 					}
 				}
 			} else {
-				b.WriteString(line(namespaceNode) + namespaceNode.Node.GetTitle() + "{ ... }\n")
+				b.WriteString(line(namespaceNode) + namespaceNode.Node.GetTitle() + " { ... }\n")
 			}
 
 		}
 	} else {
-		b.WriteString(line(details) + details.Node.GetTitle() + "{ ... }\n")
+		b.WriteString(line(details) + details.Node.GetTitle() + " { ... }\n")
 	}
 	b.WriteString(line(nil) + "\n")
 

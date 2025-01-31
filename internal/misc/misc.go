@@ -78,7 +78,6 @@ func RenderProgressBar(label string, percent float64) string {
 			bar += emptyStyle.Render(string(percentText[i]))
 		}
 	}
-	// bar += "]"
 
 	// Overlay percentage text
 	return label + " " + bar

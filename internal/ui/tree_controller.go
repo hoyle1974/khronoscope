@@ -84,16 +84,8 @@ func (t *TreeController) GetSelectedLine() (int, int) {
 	return t.cursor.Node.Line, t.cursor.Pos
 }
 
-// func (t *TreeController) updateSelected() {
-// 	t.cursor.Node = nil
-// 	if node := t.model.findNodeAt(t.cursor.Pos); node != nil {
-// 		t.cursor.Uid = node.GetUid()
-// 		t.cursor.Node = node
-// 	}
-// }
-
 func (t *TreeController) Render() (string, int) {
-	root := CreateRenderTree(t.model, t.search)
+	root, max := createRenderTree(t.model, t.search)
 
 	ret := misc.TraverseNodeTree(root, func(n misc.Node) bool {
 		return n.(*renderNode).Line == t.cursor.Pos
@@ -102,8 +94,11 @@ func (t *TreeController) Render() (string, int) {
 		t.cursor.Node = ret.(*renderNode)
 		t.cursor.Uid = t.cursor.Node.Node.GetUid()
 	}
+	if t.cursor.Pos > max-1 {
+		t.cursor.Pos = max - 1
+	}
 
-	return TreeRender(root, t.cursor.Pos, t.search), t.cursor.Pos
+	return treeRender(root, t.cursor.Pos, t.search), t.cursor.Pos
 }
 
 func (t *TreeController) UpdateResources(resources []types.Resource) {

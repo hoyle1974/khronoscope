@@ -86,7 +86,7 @@ func filterTree(root *renderNode) {
 	root.Children = nc
 }
 
-func CreateRenderTree(model TreeModel, search string) *renderNode {
+func createRenderTree(model TreeModel, search string) (*renderNode, int) {
 	// Before we render we want to traverse the model and add visual data to the nodes
 	// This includes line number and visibility state
 	renderNodeRoot := buildRenderTree(model.root, nil, func(node node) bool {
@@ -123,7 +123,12 @@ func CreateRenderTree(model TreeModel, search string) *renderNode {
 		filterTree(renderNodeRoot)
 	}
 
-	// Assign line numbers to nodes
+	max := renumber(renderNodeRoot)
+
+	return renderNodeRoot, max
+}
+
+func renumber(renderNodeRoot *renderNode) int {
 	lineNo := 0
 	misc.TraverseNodeTree(renderNodeRoot, func(n misc.Node) bool {
 		rn := n.(*renderNode)
@@ -135,11 +140,10 @@ func CreateRenderTree(model TreeModel, search string) *renderNode {
 		}
 		return false
 	})
-
-	return renderNodeRoot
+	return lineNo
 }
 
-func TreeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string {
+func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string {
 	b := strings.Builder{}
 
 	curLinePos := -1

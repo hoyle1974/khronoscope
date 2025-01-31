@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/types"
 )
 
 func grommet(is bool, isVertical bool) string {
@@ -26,6 +27,7 @@ type renderNode struct {
 	Node     node
 	Parent   *renderNode
 	Children []*renderNode
+	Mark     string
 }
 
 func (r *renderNode) ShouldTraverse() bool {
@@ -50,6 +52,10 @@ func buildRenderTree(node node, parent *renderNode, matchSearch func(node) bool)
 		Visible: matchSearch(node),
 		Node:    node,
 		Parent:  parent,
+	}
+
+	if marked, ok := node.(types.Marked); ok {
+		renderNode.Mark = marked.GetMark()
 	}
 
 	// Traverse all children of the current node
@@ -156,19 +162,31 @@ func renumber(renderNodeRoot *renderNode) int {
 	return lineNo
 }
 
-func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string {
+type Logger interface {
+	IsLogging(uid string) bool
+}
+
+func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string, lc Logger) string {
 	b := strings.Builder{}
+
+	cms := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF22")).Bold(true)
+	red := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF1111")).Bold(true)
 
 	curLinePos := -1
 	line := func(node *renderNode) string {
+		l := " "
+		if node != nil && node.Node != nil && lc.IsLogging(node.Node.GetUid()) {
+			l = red.Render("◉")
+		}
+
 		curLinePos++
 		if node != nil {
 			if cursorPos == node.Line {
-				return "[*] "
+				return cms.Render("»") + l + " "
 			}
-			return "[ ] "
+			return " " + l + " "
 		}
-		return "   "
+		return " "
 	}
 
 	namespaces := renderNodeRoot.Children[0]

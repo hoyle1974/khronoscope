@@ -33,6 +33,7 @@ func main() {
 		d = dao.NewFromFile(filename)
 	}
 	var watcher = resources.NewK8sWatcher(d)
+	var logCollector = resources.NewLogCollector()
 
 	if len(filename) > 0 {
 		watcher = nil
@@ -43,7 +44,7 @@ func main() {
 		panic(err)
 	}
 
-	appModel := khronoscope.NewProgram(watcher, d)
+	appModel := khronoscope.NewProgram(watcher, d, logCollector)
 	p := tea.NewProgram(appModel)
 
 	appModel.VCR = ui.NewTimeController(d, func() {

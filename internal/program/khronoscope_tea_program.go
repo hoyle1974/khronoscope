@@ -32,6 +32,7 @@ type KhronoscopeTeaProgram struct {
 	search            bool
 	searchFilter      string
 	searchInput       textinput.Model
+	logCollector      *resources.LogCollector
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -119,11 +120,12 @@ func (m *KhronoscopeTeaProgram) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
-func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore) *KhronoscopeTeaProgram {
+func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector) *KhronoscopeTeaProgram {
 	am := &KhronoscopeTeaProgram{
-		watcher: watcher,
-		data:    d,
-		tv:      ui.NewTreeView(),
+		watcher:      watcher,
+		data:         d,
+		tv:           ui.NewTreeView(),
+		logCollector: l,
 	}
 
 	return am
@@ -143,7 +145,7 @@ func (m *KhronoscopeTeaProgram) View() string {
 	currentLabel := m.data.GetLabel(timeToUse)
 
 	m.tv.SetFilter(m.searchFilter)
-	treeContent, focusLine := m.tv.Render()
+	treeContent, focusLine := m.tv.Render(m.logCollector)
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
 	m.treeView.SetContent(treeContent)
 	m.treeView.YOffset = focusLine - (m.treeView.Height / 2)
@@ -299,6 +301,8 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "l":
+			m.logCollector.ToggleLogs(m.tv.GetSelected())
 		case "/":
 			m.searchInput = textinput.New()
 			m.searchInput.Placeholder = ""
@@ -311,7 +315,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "1":
 			m.SetPopup(ui.NewMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
 			return m, nil
-		case "l":
+		case "m":
 			m.VCR.Pause()
 			m.SetPopup(ui.NewLabelPopup(m))
 		case "tab":

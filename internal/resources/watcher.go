@@ -122,7 +122,6 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 
 	ticker := time.NewTicker(WATCHER_STEP)
 	defer ticker.Stop()
-	resourceEventWatcher.Tick()
 
 	for {
 		select {

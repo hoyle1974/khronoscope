@@ -268,6 +268,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 
 		s = bar + s
 		s += fmt.Sprintf(" %v", extra.Uptime)
+
 		out = append(out, s)
 	}
 

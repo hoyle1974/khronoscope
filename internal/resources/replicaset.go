@@ -29,7 +29,7 @@ func (r ReplicaSetRenderer) Render(resource Resource, details bool) []string {
 	}
 
 	extra := resource.Extra.(ReplicaSetExtra)
-	return []string{fmt.Sprintf("%s - Replicas:%d Available:%d Ready:%d FullyLabeledReplicas:%d", resource.Name, extra.Replicas, extra.AvailableReplicas, extra.ReadyReplicas, extra.FullyLabeledReplicas)}
+	return []string{fmt.Sprintf("%s - %d/%d/%d/%d", resource.Name, extra.Replicas, extra.AvailableReplicas, extra.ReadyReplicas, extra.FullyLabeledReplicas)}
 
 }
 

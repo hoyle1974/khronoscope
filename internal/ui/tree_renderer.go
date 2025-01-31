@@ -128,11 +128,24 @@ func createRenderTree(model TreeModel, search string) (*renderNode, int) {
 	return renderNodeRoot, max
 }
 
+func hasCollapsedParent(node *renderNode) bool {
+	parent := node.Parent
+
+	for parent != nil {
+		if !parent.Node.GetExpand() {
+			return true
+		}
+		parent = parent.Parent
+	}
+
+	return false
+}
+
 func renumber(renderNodeRoot *renderNode) int {
 	lineNo := 0
 	misc.TraverseNodeTree(renderNodeRoot, func(n misc.Node) bool {
 		rn := n.(*renderNode)
-		if rn.Visible && rn.Node.GetExpand() {
+		if rn.Visible && !hasCollapsedParent(rn) {
 			rn.Line = lineNo
 			lineNo++
 		} else {
@@ -163,34 +176,32 @@ func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string
 	details := renderNodeRoot.Children[2]
 
 	for _, node := range []*renderNode{namespaces, nodes} {
-		b.WriteString(line(node) + node.Node.GetTitle() + "\n")
 		if node.Node.GetExpand() {
+			b.WriteString(line(node) + node.Node.GetTitle() + "\n")
 			numOfChildren := len(node.Children)
 			for idx, child := range node.Children {
 				leaf := child.Node.(*treeLeaf)
 				b.WriteString(line(child) + " " + grommet(idx == numOfChildren-1, false) + "── " + leaf.Resource.String() + " " + leaf.GetTitle() + "\n")
 			}
 		} else {
-			b.WriteString(line(nil) + "   ...\n")
+			b.WriteString(line(node) + node.Node.GetTitle() + "{ ... }\n")
 		}
-		b.WriteString(line(nil) + "\n")
+		b.WriteString("\n")
 	}
 
-	b.WriteString(line(details) + details.Node.GetTitle() + "\n")
 	if details.Node.GetExpand() {
+		b.WriteString(line(details) + details.Node.GetTitle() + "\n\n")
 		for _, namespaceNode := range details.Children {
 
 			if namespaceNode.Node.GetExpand() {
 				b.WriteString(line(namespaceNode) + namespaceNode.Node.GetTitle() + "\n")
 				numOfNamespaces := len(namespaceNode.Children)
 				for namespaceIdx, kindNode := range namespaceNode.Children {
-					// kindTreeNode := kindNode.(*treeNode)
 
 					if kindNode.Node.GetExpand() {
 						b.WriteString(line(kindNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, false) + "── " + kindNode.Node.GetTitle() + "\n")
 						numOfKinds := len(kindNode.Children)
 						for kindIdx, resourceNode := range kindNode.Children {
-							// resourceLeafNode := resourceNode.(*treeLeaf)
 							b.WriteString(line(resourceNode) + "  " + grommet(namespaceIdx == numOfNamespaces-1, true) + "   " + grommet(kindIdx == numOfKinds-1, false) + "──" + resourceNode.Node.(*treeLeaf).Resource.String() + "\n")
 						}
 					} else {
@@ -203,7 +214,7 @@ func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string
 
 		}
 	} else {
-		b.WriteString(line(nil) + "   ...\n")
+		b.WriteString(line(details) + details.Node.GetTitle() + "{ ... }\n")
 	}
 	b.WriteString(line(nil) + "\n")
 

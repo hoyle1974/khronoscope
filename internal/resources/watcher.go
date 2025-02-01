@@ -33,7 +33,7 @@ type K8sWatcher struct {
 	onChange   func()
 }
 
-func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO) error {
+func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector) error {
 	if err := watchForDeployments(w, client); err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO) error {
 	if err := watchForNamespaces(w, client); err != nil {
 		return err
 	}
-	podWatcher, err := watchForPods(w, client, dao)
+	podWatcher, err := watchForPods(w, client, dao, lc)
 	if err != nil {
 		return err
 	}

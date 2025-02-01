@@ -39,7 +39,7 @@ func main() {
 		watcher = nil
 	}
 
-	err = watcher.Watch(client, d)
+	err = watcher.Watch(client, d, logCollector)
 	if err != nil {
 		panic(err)
 	}

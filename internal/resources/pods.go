@@ -36,6 +36,7 @@ type PodExtra struct {
 	Containers  map[string]ContainerInfo
 	Labels      []string
 	Annotations []string
+	Logs        []string
 }
 
 func (p PodExtra) Copy() PodExtra {
@@ -48,33 +49,9 @@ func (p PodExtra) Copy() PodExtra {
 		Containers:  misc.DeepCopyMap(p.Containers),
 		Labels:      p.Labels,
 		Annotations: p.Annotations,
+		Logs:        p.Logs,
 	}
 }
-
-/*
-
-func getPodLogs(client kubernetes.Interface, namespace, podName string) (string, error) {
-	return "", nil
-
-		lines := int64(15)
-		req := client.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
-			TailLines: &lines,
-		})
-		podLogs, err := req.Stream(context.Background())
-		if err != nil {
-			return "", fmt.Errorf("error opening stream: %w", err)
-		}
-		defer podLogs.Close()
-
-		buf := new(bytes.Buffer)
-		_, err = io.Copy(buf, podLogs)
-		if err != nil {
-			return "", fmt.Errorf("error copying logs: %w", err)
-		}
-
-		return buf.String(), nil
-}
-*/
 
 type PodRenderer struct {
 	d DAO
@@ -276,8 +253,9 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 }
 
 type PodWatcher struct {
-	k conn.KhronosConn
-	d DAO
+	k  conn.KhronosConn
+	d  DAO
+	lc *LogCollector
 
 	lastPodMetrics atomic.Pointer[v1beta1.PodMetricsList]
 }
@@ -326,18 +304,25 @@ func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric
 	return metricsExtra
 }
 
-func (n *PodWatcher) updateResourceMetrics(resource Resource) {
+func (n *PodWatcher) updateResourceMetrics(resource Resource, logs []string) {
 	extra := resource.Extra.(PodExtra).Copy()
 
 	metricsExtra := n.getPodMetricsForPod(resource)
 	if len(metricsExtra) > 0 {
-
 		extra.Metrics = metricsExtra
+		extra.Logs = logs
 		extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
 		resource.Timestamp = serializable.Time{Time: time.Now()}
 		resource.Extra = extra
-
 		n.d.UpdateResource(resource)
+	} else {
+		if len(logs) > 0 {
+			extra.Logs = logs
+			extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
+			resource.Timestamp = serializable.Time{Time: time.Now()}
+			resource.Extra = extra
+			n.d.UpdateResource(resource)
+		}
 	}
 }
 
@@ -351,10 +336,16 @@ func (n *PodWatcher) Tick() {
 	}
 	n.lastPodMetrics.Store(m)
 
+	// Are we collecting logs, if so, let's grab them and throw them in the resource for now.
+
 	// // Get the current resources
 	resources := n.d.GetResourcesAt(time.Now(), "Pod", "")
 	for _, resource := range resources {
-		n.updateResourceMetrics(resource)
+		logs := []string{}
+		if n.lc.IsLogging(resource.GetUID()) {
+			logs = n.lc.GetLogs(resource.GetUID())
+		}
+		n.updateResourceMetrics(resource, logs)
 	}
 }
 
@@ -401,13 +392,13 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), pod, ui.FormatPodDetails(pod), extra)
 }
 
-func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO) (*PodWatcher, error) {
+func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO, lc *LogCollector) (*PodWatcher, error) {
 	watchChan, err := k.Client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	w := &PodWatcher{k: k, d: d}
+	w := &PodWatcher{k: k, d: d, lc: lc}
 	go watcher.registerEventWatcher(watchChan.ResultChan(), w)
 
 	return w, nil

@@ -136,10 +136,10 @@ func (s *KhronoscopeTeaProgram) Init() tea.Cmd { return nil }
 
 func (m *KhronoscopeTeaProgram) View() string {
 	timeToUse := m.VCR.GetTimeToUse()
-	resources := m.data.GetResourcesAt(timeToUse, "", "")
-	convResources := make([]types.Resource, len(resources))
-	for i := 0; i < len(resources); i++ {
-		convResources[i] = resources[i]
+	resourcesNow := m.data.GetResourcesAt(timeToUse, "", "")
+	convResources := make([]types.Resource, len(resourcesNow))
+	for i := 0; i < len(resourcesNow); i++ {
+		convResources[i] = resourcesNow[i]
 	}
 	m.tv.UpdateResources(convResources)
 
@@ -156,8 +156,9 @@ func (m *KhronoscopeTeaProgram) View() string {
 
 	resource := m.tv.GetSelected()
 	if resource != nil {
-		if m.tab == 1 && m.logCollector.IsLogging(resource.GetUID()) {
-			m.detailView.SetContent(strings.Join(m.logCollector.GetLogs(resource.GetUID()), "\n"))
+		if m.tab == 1 && resource.GetKind() == "Pod" {
+			logs := resource.(resources.Resource).Extra.(resources.PodExtra).Logs
+			m.detailView.SetContent(strings.Join(logs, "\n"))
 		} else {
 			detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")
 			detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)

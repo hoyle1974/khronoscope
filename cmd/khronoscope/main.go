@@ -33,7 +33,7 @@ func main() {
 		d = dao.NewFromFile(filename)
 	}
 	var watcher = resources.NewK8sWatcher(d)
-	var logCollector = resources.NewLogCollector()
+	var logCollector = resources.NewLogCollector(client)
 
 	if len(filename) > 0 {
 		watcher = nil

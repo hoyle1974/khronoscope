@@ -155,9 +155,14 @@ func (m *KhronoscopeTeaProgram) View() string {
 
 	resource := m.tv.GetSelected()
 	if resource != nil {
-		detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")
-		detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)
-		m.detailView.SetContent(detailContent)
+		if m.logCollector.IsLogging(resource.GetUID()) {
+			m.detailView.SetContent(strings.Join(m.logCollector.GetLogs(resource.GetUID()), "\n"))
+		} else {
+			detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")
+			detailContent = lipgloss.NewStyle().Width(m.detailView.Width).Render(detailContent)
+			m.detailView.SetContent(detailContent)
+		}
+
 	} else {
 		m.detailView.SetContent("")
 	}

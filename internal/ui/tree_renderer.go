@@ -117,7 +117,6 @@ func createRenderTree(model TreeModel, search string) (*renderNode, int) {
 				temp.Visible = true
 				temp = temp.Parent
 			}
-			return
 		})
 
 		// Root is always visible

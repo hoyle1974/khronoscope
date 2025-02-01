@@ -33,6 +33,7 @@ type KhronoscopeTeaProgram struct {
 	searchFilter      string
 	searchInput       textinput.Model
 	logCollector      *resources.LogCollector
+	tab               int
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -155,7 +156,7 @@ func (m *KhronoscopeTeaProgram) View() string {
 
 	resource := m.tv.GetSelected()
 	if resource != nil {
-		if m.logCollector.IsLogging(resource.GetUID()) {
+		if m.tab == 1 && m.logCollector.IsLogging(resource.GetUID()) {
 			m.detailView.SetContent(strings.Join(m.logCollector.GetLogs(resource.GetUID()), "\n"))
 		} else {
 			detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")
@@ -306,8 +307,15 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "1":
+			m.tab = 0
+			return m, nil
+		case "2":
+			m.tab = 1
+			return m, nil
 		case "l":
 			m.logCollector.ToggleLogs(m.tv.GetSelected())
+			return m, nil
 		case "/":
 			m.searchInput = textinput.New()
 			m.searchInput.Placeholder = ""
@@ -315,14 +323,14 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchInput.CharLimit = 156
 			m.searchInput.Width = 20
 			m.search = true
+			return m, nil
 		case "s":
 			m.data.Save("temp.dat")
-		case "1":
-			m.SetPopup(ui.NewMessagePopup("Hello World!\nThis is a popup\nYay!", "esc"))
 			return m, nil
 		case "m":
 			m.VCR.Pause()
 			m.SetPopup(ui.NewLabelPopup(m))
+			return m, nil
 		case "tab":
 			m.viewMode++
 			m.viewMode %= 2

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
-	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,7 +44,7 @@ func (n DaemonSetWatcher) convert(obj runtime.Object) *appsv1.DaemonSet {
 }
 
 func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatDaemonSetDetails(n.convert(obj)), nil)
+	return NewK8sResource(n.Kind(), n.convert(obj), format.FormatDaemonSetDetails(n.convert(obj)), nil)
 }
 
 func watchForDaemonSet(watcher *K8sWatcher, k conn.KhronosConn) error {

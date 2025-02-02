@@ -48,6 +48,7 @@ func (r Resource) GetKind() string         { return r.Kind }
 func (r Resource) GetNamespace() string    { return r.Namespace }
 func (r Resource) GetName() string         { return r.Name }
 func (r Resource) GetTimestamp() time.Time { return r.Timestamp.Time }
+func (r Resource) GetExtra() any           { return r.Extra }
 
 func NewK8sResource(kind string, obj K8sResource, details []string, extra any) Resource {
 	r := Resource{

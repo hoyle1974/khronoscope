@@ -12,8 +12,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
-	"github.com/hoyle1974/khronoscope/internal/ui"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +37,10 @@ type PodExtra struct {
 	Labels      []string
 	Annotations []string
 	Logs        []string
+	Logging     bool
 }
+
+func (r PodExtra) GetValue(key string) any { return nil }
 
 func (p PodExtra) Copy() PodExtra {
 	return PodExtra{
@@ -50,6 +53,7 @@ func (p PodExtra) Copy() PodExtra {
 		Labels:      p.Labels,
 		Annotations: p.Annotations,
 		Logs:        p.Logs,
+		Logging:     p.Logging,
 	}
 }
 
@@ -304,26 +308,19 @@ func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric
 	return metricsExtra
 }
 
-func (n *PodWatcher) updateResourceMetrics(resource Resource, logs []string) {
+// func (n *PodWatcher) SetLogging()
+
+func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 	extra := resource.Extra.(PodExtra).Copy()
 
 	metricsExtra := n.getPodMetricsForPod(resource)
 	if len(metricsExtra) > 0 {
 		extra.Metrics = metricsExtra
-		extra.Logs = logs
-		extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
-		resource.Timestamp = serializable.Time{Time: time.Now()}
-		resource.Extra = extra
-		n.d.UpdateResource(resource)
-	} else {
-		if len(logs) > 0 {
-			extra.Logs = logs
-			extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
-			resource.Timestamp = serializable.Time{Time: time.Now()}
-			resource.Extra = extra
-			n.d.UpdateResource(resource)
-		}
 	}
+	extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
+	resource.Timestamp = serializable.Time{Time: time.Now()}
+	resource.Extra = extra
+	n.d.UpdateResource(resource)
 }
 
 func (n *PodWatcher) Tick() {
@@ -336,16 +333,10 @@ func (n *PodWatcher) Tick() {
 	}
 	n.lastPodMetrics.Store(m)
 
-	// Are we collecting logs, if so, let's grab them and throw them in the resource for now.
-
 	// // Get the current resources
 	resources := n.d.GetResourcesAt(time.Now(), "Pod", "")
 	for _, resource := range resources {
-		logs := []string{}
-		if n.lc.IsLogging(resource.GetUID()) {
-			logs = n.lc.GetLogs(resource.GetUID())
-		}
-		n.updateResourceMetrics(resource, logs)
+		n.updateResourceMetrics(resource)
 	}
 }
 
@@ -389,7 +380,7 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 		Annotations: misc.RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
 	}
 
-	return NewK8sResource(n.Kind(), pod, ui.FormatPodDetails(pod), extra)
+	return NewK8sResource(n.Kind(), pod, format.FormatPodDetails(pod), extra)
 }
 
 func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO, lc *LogCollector) (*PodWatcher, error) {

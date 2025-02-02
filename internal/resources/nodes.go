@@ -9,8 +9,8 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
-	"github.com/hoyle1974/khronoscope/internal/ui"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 
@@ -27,6 +27,8 @@ type NodeExtra struct {
 	Uptime                time.Duration
 	PodMetrics            map[string]map[string]PodMetric
 }
+
+func (r NodeExtra) GetValue(key string) any { return nil }
 
 func (n NodeExtra) Copy() NodeExtra {
 	return NodeExtra{
@@ -202,7 +204,7 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 		Uptime:                time.Since(node.CreationTimestamp.Time).Truncate(time.Second),
 	}
 
-	return NewK8sResource(n.Kind(), node, ui.FormatNodeDetails(node), extra)
+	return NewK8sResource(n.Kind(), node, format.FormatNodeDetails(node), extra)
 }
 
 func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) (*NodeWatcher, error) {

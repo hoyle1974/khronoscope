@@ -60,11 +60,14 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector) e
 }
 
 // Create a new watcher
+var _watcher *K8sWatcher
+
 func NewK8sWatcher(data DAO) *K8sWatcher {
 	w := &K8sWatcher{
 		lastChange: time.Now(),
 		data:       data,
 	}
+	_watcher = w
 	return w
 }
 

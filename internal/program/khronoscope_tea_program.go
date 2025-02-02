@@ -146,7 +146,7 @@ func (m *KhronoscopeTeaProgram) View() string {
 	currentLabel := m.data.GetLabel(timeToUse)
 
 	m.tv.SetFilter(m.searchFilter)
-	treeContent, focusLine := m.tv.Render(m.logCollector)
+	treeContent, focusLine := m.tv.Render()
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
 	m.treeView.SetContent(treeContent)
 	m.treeView.YOffset = focusLine - (m.treeView.Height / 2)
@@ -315,7 +315,12 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tab = 1
 			return m, nil
 		case "l":
-			m.logCollector.ToggleLogs(m.tv.GetSelected())
+			if m.VCR.IsEnabled() {
+				return m, nil // Can't toggle logs while in VCR mode
+			}
+			if sel := m.tv.GetSelected(); sel != nil {
+				resources.ToggleLogs(sel)
+			}
 			return m, nil
 		case "/":
 			m.searchInput = textinput.New()

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
-	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,7 +15,7 @@ type ServiceRenderer struct {
 
 func (r ServiceRenderer) Render(resource Resource, obj any, details bool) []string {
 	if details {
-		return ui.FormatServiceDetails(obj.(*corev1.Service))
+		return format.FormatServiceDetails(obj.(*corev1.Service))
 	}
 
 	return []string{resource.Key()}
@@ -44,7 +44,7 @@ func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 }
 
 func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatServiceDetails(n.convert(obj)), nil)
+	return NewK8sResource(n.Kind(), n.convert(obj), format.FormatServiceDetails(n.convert(obj)), nil)
 }
 
 func watchForService(watcher *K8sWatcher, k conn.KhronosConn) error {

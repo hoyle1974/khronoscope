@@ -60,9 +60,7 @@ type treeLeaf struct {
 	Expand   bool
 }
 
-func (tl *treeLeaf) GetTitle() string {
-	return tl.Resource.GetName()
-}
+func (tl *treeLeaf) GetTitle() string         { return tl.Resource.GetName() }
 func (tl *treeLeaf) GetParent() node          { return tl.Parent }
 func (tl *treeLeaf) SetParent(parent node)    { tl.Parent = parent }
 func (tl *treeLeaf) Toggle()                  { tl.Expand = !tl.Expand }

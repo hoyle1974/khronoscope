@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
-	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,7 +45,7 @@ func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 }
 
 func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
-	return NewK8sResource(n.Kind(), n.convert(obj), ui.FormatNamespaceDetails(n.convert(obj)), nil)
+	return NewK8sResource(n.Kind(), n.convert(obj), format.FormatNamespaceDetails(n.convert(obj)), nil)
 }
 
 func watchForNamespaces(watcher *K8sWatcher, k conn.KhronosConn) error {

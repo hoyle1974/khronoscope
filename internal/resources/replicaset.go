@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
-	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +17,8 @@ type ReplicaSetExtra struct {
 	ReadyReplicas        int32
 	FullyLabeledReplicas int32
 }
+
+func (r ReplicaSetExtra) GetValue(key string) any { return nil }
 
 type ReplicaSetRenderer struct {
 	// n *ReplicaSetWatcher
@@ -65,7 +67,7 @@ func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 		FullyLabeledReplicas: rs.Status.FullyLabeledReplicas,
 	}
 
-	r := NewK8sResource(n.Kind(), rs, ui.FormatReplicaSetDetails(rs), extra)
+	r := NewK8sResource(n.Kind(), rs, format.FormatReplicaSetDetails(rs), extra)
 
 	return r
 }

@@ -18,7 +18,9 @@ type ReplicaSetExtra struct {
 	FullyLabeledReplicas int32
 }
 
-func (r ReplicaSetExtra) GetValue(key string) any { return nil }
+func (n ReplicaSetExtra) Copy() Copyable {
+	return n
+}
 
 type ReplicaSetRenderer struct {
 	// n *ReplicaSetWatcher

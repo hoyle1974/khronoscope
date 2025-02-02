@@ -42,7 +42,7 @@ type PodExtra struct {
 
 func (r PodExtra) GetValue(key string) any { return nil }
 
-func (p PodExtra) Copy() PodExtra {
+func (p PodExtra) Copy() Copyable {
 	return PodExtra{
 		Phase:       p.Phase,
 		Node:        p.Node,
@@ -311,7 +311,7 @@ func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric
 // func (n *PodWatcher) SetLogging()
 
 func (n *PodWatcher) updateResourceMetrics(resource Resource) {
-	extra := resource.Extra.(PodExtra).Copy()
+	extra := resource.Extra.Copy().(PodExtra)
 
 	metricsExtra := n.getPodMetricsForPod(resource)
 	if len(metricsExtra) > 0 {

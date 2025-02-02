@@ -30,7 +30,7 @@ type NodeExtra struct {
 
 func (r NodeExtra) GetValue(key string) any { return nil }
 
-func (n NodeExtra) Copy() NodeExtra {
+func (n NodeExtra) Copy() Copyable {
 	return NodeExtra{
 		Metrics:               misc.DeepCopyMap(n.Metrics),
 		NodeCreationTimestamp: n.NodeCreationTimestamp,
@@ -132,7 +132,7 @@ func (n *NodeWatcher) getMetricsForNode(resource Resource) map[string]string {
 
 func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 
-	e := resource.Extra.(NodeExtra).Copy()
+	e := resource.Extra.Copy().(NodeExtra)
 	resource.Timestamp = serializable.Time{Time: time.Now()}
 
 	metricsExtra := n.getMetricsForNode(resource)

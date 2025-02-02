@@ -42,7 +42,7 @@ func IsLogging(r types.Resource) bool {
 func ToggleLogs(r types.Resource) {
 	if extra, ok := toPodExtra(r); ok {
 		if rs, ok := r.(Resource); ok {
-			extra = extra.Copy()
+			extra = extra.Copy().(PodExtra)
 			extra.Logging = !extra.Logging
 			if !extra.Logging {
 				extra.Logs = []string{}
@@ -57,8 +57,7 @@ func ToggleLogs(r types.Resource) {
 					// Get the latest resource
 					for _, rs := range _watcher.data.GetResourcesAt(time.Now(), "Pod", r.GetNamespace()) {
 						if rs.GetUID() == r.GetUID() {
-							extra := rs.Extra.(PodExtra)
-							extra = extra.Copy()
+							extra = rs.Extra.Copy().(PodExtra)
 							extra.Logs = append(extra.Logs, strings.Split(logs, "\n")...)
 							rs.Extra = extra
 							rs.Timestamp = serializable.Time{Time: time.Now()}

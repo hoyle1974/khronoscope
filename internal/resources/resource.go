@@ -33,13 +33,17 @@ type K8sResource interface {
 	GetObjectMeta() v1.Object
 }
 
+type Copyable interface {
+	Copy() Copyable
+}
+
 type Resource struct {
 	Uid       string            // The Uid of the k8s object
 	Timestamp serializable.Time // The timestamp that this resource is valid for
 	Kind      string            // The k8s kind of resource
 	Namespace string            // The k8s namespace, may be empty for things like namespace and node resources
 	Name      string            // The name of the resource
-	Extra     any               // This should be a custom, gob registered and serializable object if used
+	Extra     Copyable          // This should be a custom, gob registered and serializable object if used
 	Details   []string
 }
 
@@ -50,7 +54,7 @@ func (r Resource) GetName() string         { return r.Name }
 func (r Resource) GetTimestamp() time.Time { return r.Timestamp.Time }
 func (r Resource) GetExtra() any           { return r.Extra }
 
-func NewK8sResource(kind string, obj K8sResource, details []string, extra any) Resource {
+func NewK8sResource(kind string, obj K8sResource, details []string, extra Copyable) Resource {
 	r := Resource{
 		Uid:       string(obj.GetObjectMeta().GetUID()),
 		Timestamp: serializable.Time{Time: time.Now()},

@@ -67,7 +67,7 @@ var (
 )
 
 func GetK8sWatcher(data DAO) *K8sWatcher {
-	onceLogCollector.Do(func() {
+	onceWatcher.Do(func() {
 		_watcher = &K8sWatcher{
 			lastChange: time.Now(),
 			data:       data,

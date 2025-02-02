@@ -146,7 +146,7 @@ func (m *KhronoscopeTeaProgram) View() string {
 	currentLabel := m.data.GetLabel(timeToUse)
 
 	m.tv.SetFilter(m.searchFilter)
-	treeContent, focusLine := m.tv.Render()
+	treeContent, focusLine := m.tv.Render(m.VCR.IsEnabled())
 	treeContent = lipgloss.NewStyle().Width(m.treeView.Width).Render(treeContent)
 	m.treeView.SetContent(treeContent)
 	m.treeView.YOffset = focusLine - (m.treeView.Height / 2)

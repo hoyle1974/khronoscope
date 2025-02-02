@@ -154,11 +154,14 @@ func renumber(renderNodeRoot *renderNode) int {
 	return lineNo
 }
 
-func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string {
+func treeRender(renderNodeRoot *renderNode, vcrEnabled bool, cursorPos int, filter string) string {
 	b := strings.Builder{}
 
 	cms := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF22")).Bold(true)
-	red := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF1111")).Bold(true)
+	loggingColor := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF1111")).Bold(true)
+	if vcrEnabled {
+		loggingColor = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
+	}
 
 	curLinePos := -1
 	line := func(node *renderNode) string {
@@ -166,7 +169,7 @@ func treeRender(renderNodeRoot *renderNode, cursorPos int, filter string) string
 		if node != nil && node.Node != nil {
 			if tl, ok := node.Node.(*treeLeaf); ok {
 				if resources.IsLogging(tl.Resource) {
-					l = red.Render("◉")
+					l = loggingColor.Render("◉")
 				}
 			}
 		}

@@ -143,38 +143,11 @@ func (plc *podLogCollector) Stop() {
 	plc.wg.Wait()
 }
 
-// func (plc *podLogCollector) Logs() []string {
-// 	plc.mu.Lock()
-// 	defer plc.mu.Unlock()
-// 	return append([]string{}, plc.logs...) // Return a copy to avoid race conditions
-// }
-
 type LogCollector struct {
 	lock       sync.RWMutex
 	client     conn.KhronosConn
 	collectors map[string]*podLogCollector
 }
-
-/*
-func (l *LogCollector) ToggleLogs(r types.Resource) bool {
-	if r == nil || r.GetKind() != "Pod" {
-		return false // Ignore things that are not pods
-	}
-
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
-	plc, ok := l.collectors[r.GetUID()]
-	if ok {
-		go plc.Stop()
-		delete(l.collectors, r.GetUID())
-		return false
-	}
-
-	l.collectors[r.GetUID()] = NewPodLogCollector(l.client.Client, r.GetNamespace(), r.GetName())
-	return true
-}
-*/
 
 func (l *LogCollector) start(r types.Resource, onLog func(logs string)) {
 	l.lock.Lock()
@@ -194,32 +167,18 @@ func (l *LogCollector) stop(uid string) {
 	}
 }
 
-// func (l *LogCollector) IsLogging(uid string) bool {
-// 	l.lock.RLock()
-// 	defer l.lock.RUnlock()
+var (
+	_logCollector    *LogCollector
+	onceLogCollector sync.Once
+)
 
-// 	_, ok := l.collectors[uid]
-// 	return ok
-// }
+func GetLogCollector(client conn.KhronosConn) *LogCollector {
+	onceLogCollector.Do(func() {
+		_logCollector = &LogCollector{
+			client:     client,
+			collectors: map[string]*podLogCollector{},
+		}
+	})
 
-// func (l *LogCollector) GetLogs(uid string) []string {
-// 	l.lock.RLock()
-// 	defer l.lock.RUnlock()
-
-// 	c, ok := l.collectors[uid]
-// 	if ok {
-// 		return c.Logs()
-// 	}
-
-// 	return []string{}
-// }
-
-var _logCollector *LogCollector
-
-func NewLogCollector(client conn.KhronosConn) *LogCollector {
-	_logCollector = &LogCollector{
-		client:     client,
-		collectors: map[string]*podLogCollector{},
-	}
 	return _logCollector
 }

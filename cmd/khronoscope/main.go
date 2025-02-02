@@ -32,8 +32,8 @@ func main() {
 	if len(filename) > 0 {
 		d = dao.NewFromFile(filename)
 	}
-	var watcher = resources.NewK8sWatcher(d)
-	var logCollector = resources.NewLogCollector(client)
+	var watcher = resources.GetK8sWatcher(d)
+	var logCollector = resources.GetLogCollector(client)
 
 	if len(filename) > 0 {
 		watcher = nil

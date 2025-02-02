@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
@@ -60,15 +61,19 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector) e
 }
 
 // Create a new watcher
-var _watcher *K8sWatcher
+var (
+	_watcher    *K8sWatcher
+	onceWatcher sync.Once
+)
 
-func NewK8sWatcher(data DAO) *K8sWatcher {
-	w := &K8sWatcher{
-		lastChange: time.Now(),
-		data:       data,
-	}
-	_watcher = w
-	return w
+func GetK8sWatcher(data DAO) *K8sWatcher {
+	onceLogCollector.Do(func() {
+		_watcher = &K8sWatcher{
+			lastChange: time.Now(),
+			data:       data,
+		}
+	})
+	return _watcher
 }
 
 // Set the onChange callback

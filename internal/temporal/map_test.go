@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"bytes"
 	"testing"
 	"time"
 )
@@ -10,14 +11,14 @@ func createTestMap() (start, end, t1, t2, t3 time.Time, m Map) {
 
 	start = time.Now().Add(-time.Second)
 	t1 = time.Now()
-	m.Add(t1, "key1", "key1value1")
+	m.Add(t1, "key1", []byte("key1value1"))
 
 	t2 = time.Now()
-	m.Add(t2, "key1", "key1value2")
-	m.Add(t2, "key2", "key2value1")
+	m.Add(t2, "key1", []byte("key1value2"))
+	m.Add(t2, "key2", []byte("key2value1"))
 
 	t3 = time.Now()
-	m.Add(t3, "key1", "key1value3")
+	m.Add(t3, "key1", []byte("key1value3"))
 
 	end = time.Now().Add(time.Second)
 
@@ -42,19 +43,19 @@ func validateMap(t *testing.T, start, end, t1, t2, t3 time.Time, m Map) {
 		t.Fatalf("Expected empty map")
 	}
 
-	if a := m.GetStateAtTime(t1); a["key1"] != "key1value1" {
+	if a := m.GetStateAtTime(t1); bytes.Compare(a["key1"], []byte("key1value1")) != 0 {
 		t.Fatalf("Unexpected value for key1 at t1")
 	}
 
-	if a := m.GetStateAtTime(t2); a["key1"] != "key1value2" || a["key2"] != "key2value1" {
+	if a := m.GetStateAtTime(t2); bytes.Compare(a["key1"], []byte("key1value2")) != 0 || bytes.Compare(a["key2"], []byte("key2value1")) != 0 {
 		t.Fatalf("Unexpected value for key1 at t2 or key2 at t2")
 	}
 
-	if a := m.GetStateAtTime(t3); a["key1"] != "key1value3" || a["key2"] != "key2value1" {
+	if a := m.GetStateAtTime(t3); bytes.Compare(a["key1"], []byte("key1value3")) != 0 || bytes.Compare(a["key2"], []byte("key2value1")) != 0 {
 		t.Fatalf("Unexpected value for key1 at t3 or key2 at t3")
 	}
 
-	if a := m.GetStateAtTime(end); a["key1"] != "key1value3" || a["key2"] != "key2value1" {
+	if a := m.GetStateAtTime(end); bytes.Compare(a["key1"], []byte("key1value3")) != 0 || bytes.Compare(a["key2"], []byte("key2value1")) != 0 {
 		t.Fatalf("Unexpected value for key1 at end or key2 at end")
 	}
 }

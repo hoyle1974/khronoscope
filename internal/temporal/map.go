@@ -3,65 +3,64 @@ package temporal
 import (
 	"bytes"
 	"encoding/gob"
-	"sort"
 	"sync"
 	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
 
-// TemporalMap acts like a map with the added ability to rewind and see a snapshot of the state of the map given a time.Time
-// Internally it is implemented as a map[string]*TemporalValue where TemporalValue a sorted array of TemporalValuePairs.
-// Once a key/value is inserted into a TemporalMap it can never truly be deleted. It's just inserted as a new temporalValuePair
+// TemporalMap acts like a map with the added ability to rewind and see a snapshot of the state of
+// the map given a time.Time.  Internally it is implemented as a map[string]*TemporalValue where
+// TemporalValue a sorted array of TemporalValuePairs. Once a key/value is inserted into a TemporalMap
+// it can never truly be deleted. It's just inserted as a new temporalValuePair
 // with an updated timestamp and a value of nil.
 //
 // TemporalMap is threadsafe.
+//
 
-type temporalValue struct {
-	History []temporalValuePair
+/*
+New Definition of Temporal Map
+
+TemporalMap is a thread safe map like data structure with this interface:
+
+type Map interface {
+	ToBytes() []byte // Serialize using GOB
+	GetTimeRange() (time.Time, time.Time) // Reports back the minimum and maximum time range within the map
+	Add(timestamp time.Time, key string, value any) // Add or updates a key/value pair to the map along with the timestamp of when that value was written
+	GetItem(timestamp time.Time, key string) any // Gets the value of a key at a specific time
+	Remove(timestamp time.Time, key string) // Deletes a key at a specific point in time.
+	GetStateAtTime(timestamp time.Time) map[string]any // Returns a snapshot of the map as it looked at a specific point in time.
 }
 
-type temporalValuePair struct {
-	Timestamp serializable.Time
-	Value     any
-}
+Basically I can write values to the map, even delete them and provide time stamps for when those values are valid.
+I can then read the state of the map at any point in time.
 
-// Set the value at the specific time, maintaining chronological order.
-func (i *temporalValue) Set(timestamp time.Time, value any) {
-	// Find the insertion point to maintain chronological order.
-	index := sort.Search(len(i.History), func(j int) bool {
-		return i.History[j].Timestamp.Time.After(timestamp)
-	})
+For efficiency sake I will provide 2 extra functions
 
-	// Insert the new value at the correct position.
-	i.History = append(i.History[:index], append([]temporalValuePair{{Timestamp: serializable.Time{Time: timestamp}, Value: value}}, i.History[index:]...)...)
-}
+GenerateDiff(a any, b any) Diff // Generate a binary diff between any 2 objects that can be serialized via GOB
+ApplyDiff(a any, diff Diff) any // Applies a diff to an object and returns a new object
 
-// Get the value at a specific time.
-func (i *temporalValue) Get(timestamp time.Time) any {
-	// Find the most recent value before or at the given timestamp
-	for j := len(i.History) - 1; j >= 0; j-- {
-		if i.History[j].Timestamp.Time.Before(timestamp) || i.History[j].Timestamp.Time.Equal(timestamp) {
-			return i.History[j].Value
-		}
-	}
-	return nil // No value found before or at the given timestamp
-}
+Use these functions to more efficiently store the changes of values for a given key in this structure.
+
+One suggestion is to store "keyframes" along with diffs so that we can store things efficiently but also play back to any point in time quickly.const
+
+Do you have any questions?
+*/
 
 type Map interface {
 	ToBytes() []byte
 	GetTimeRange() (time.Time, time.Time)
-	Add(timestamp time.Time, key string, value interface{})
-	GetItem(timestamp time.Time, key string) any
-	Update(timestamp time.Time, key string, value interface{})
+	Add(timestamp time.Time, key string, value []byte)
+	GetItem(timestamp time.Time, key string) []byte
+	Update(timestamp time.Time, key string, value []byte)
 	Remove(timestamp time.Time, key string)
-	GetStateAtTime(timestamp time.Time) map[string]interface{}
+	GetStateAtTime(timestamp time.Time) map[string][]byte
 }
 
 // Map represents a map-like data structure with time-ordered items.
 type mapImpl struct {
 	lock    sync.RWMutex
-	Items   map[string]*temporalValue
+	Items   map[string]*TimeValueStore
 	MinTime serializable.Time
 	MaxTime serializable.Time
 }
@@ -69,7 +68,7 @@ type mapImpl struct {
 // New creates a new empty TimedMap.
 func New() Map {
 	return &mapImpl{
-		Items: map[string]*temporalValue{},
+		Items: map[string]*TimeValueStore{},
 	}
 }
 
@@ -114,7 +113,7 @@ func (tm *mapImpl) updateTimeRange(timestamp time.Time) {
 }
 
 // Add adds an item to the TimedMap with the given timestamp, key, and value.
-func (tm *mapImpl) Add(timestamp time.Time, key string, value interface{}) {
+func (tm *mapImpl) Add(timestamp time.Time, key string, value []byte) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -122,25 +121,25 @@ func (tm *mapImpl) Add(timestamp time.Time, key string, value interface{}) {
 
 	v, ok := tm.Items[key]
 	if !ok {
-		v = &temporalValue{}
+		v = NewTimeValueStore()
 	}
-	v.Set(timestamp, value)
+	v.AddValue(timestamp, value)
 	tm.Items[key] = v
 }
 
-func (tm *mapImpl) GetItem(timestamp time.Time, key string) any {
+func (tm *mapImpl) GetItem(timestamp time.Time, key string) []byte {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
 	if item, ok := tm.Items[key]; ok {
-		return item.Get(time.Now())
+		return item.QueryValue(timestamp)
 	}
 
 	return nil
 }
 
 // Update updates the value of an item with the given timestamp and key.
-func (tm *mapImpl) Update(timestamp time.Time, key string, value interface{}) {
+func (tm *mapImpl) Update(timestamp time.Time, key string, value []byte) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -148,10 +147,10 @@ func (tm *mapImpl) Update(timestamp time.Time, key string, value interface{}) {
 
 	v, ok := tm.Items[key]
 	if !ok {
-		v = &temporalValue{}
+		v = NewTimeValueStore()
 	}
-	if v.Get(timestamp) != nil {
-		v.Set(timestamp, value)
+	if v.QueryValue(timestamp) != nil {
+		v.AddValue(timestamp, value)
 		tm.Items[key] = v
 	}
 }
@@ -165,20 +164,20 @@ func (tm *mapImpl) Remove(timestamp time.Time, key string) {
 
 	v, ok := tm.Items[key]
 	if !ok {
-		v = &temporalValue{}
+		v = NewTimeValueStore()
 	}
-	v.Set(timestamp, nil)
+	v.AddValue(timestamp, nil)
 	tm.Items[key] = v
 }
 
 // GetStateAtTime returns a map of key-value pairs at the given timestamp.
-func (tm *mapImpl) GetStateAtTime(timestamp time.Time) map[string]interface{} {
+func (tm *mapImpl) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 
-	state := make(map[string]interface{})
+	state := make(map[string][]byte)
 	for key, item := range tm.Items {
-		value := item.Get(timestamp)
+		value := item.QueryValue(timestamp)
 		if value != nil {
 			state[key] = value
 		}

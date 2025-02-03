@@ -46,8 +46,10 @@ func (frame *keyFrame) queryValue(timestamp time.Time) []byte {
 	return cur
 }
 
+const KEYFRAME_RATE = 10
+
 func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
-	if len(frame.DiffFrames) == 10 {
+	if len(frame.DiffFrames) == KEYFRAME_RATE {
 		if len(frame.DiffFrames) > 0 && frame.DiffFrames[len(frame.DiffFrames)-1].Timestamp.Time.Before(timestamp) {
 			return false // We have enough frames, and adding at the end
 		}
@@ -84,7 +86,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 	}
 	newDiffFrame := diffFrame{Timestamp: serializable.Time{Time: timestamp}, Diff: diff}
 
-	if len(frame.DiffFrames) == 10 {
+	if len(frame.DiffFrames) == KEYFRAME_RATE {
 		if index < len(frame.DiffFrames) {
 			frame.DiffFrames = append(frame.DiffFrames[:index], append([]diffFrame{newDiffFrame}, frame.DiffFrames[index+1:]...)...)
 		} else { // if it is full and we are inserting at the end.

@@ -153,9 +153,34 @@ func (d *dataModelImpl) AddResource(resource resources.Resource) {
 	d.resources.Add(resource.Timestamp.Time, resource.Key(), resource)
 }
 
+// func EncodeToBytes(data interface{}) ([]byte, error) {
+// 	var buf bytes.Buffer
+// 	enc := gob.NewEncoder(&buf)
+// 	err := enc.Encode(data)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return buf.Bytes(), nil
+// }
+
+// var sizes1 int
+// var sizes2 int
+
 func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+
+	// last := d.resources.GetItem(time.Now(), resource.Key())
+	// if last != nil {
+	// 	aa, _ := EncodeToBytes(last)
+	// 	bb, _ := EncodeToBytes(resource)
+
+	// 	d1, _ := resources.GenerateDiff(aa, bb)
+	// 	d2, _ := resources.GenerateDiff2(aa, bb)
+
+	// 	sizes1 += len(d1)
+	// 	sizes2 += len(d2)
+	// }
 
 	d.resources.Update(resource.Timestamp.Time, resource.Key(), resource)
 

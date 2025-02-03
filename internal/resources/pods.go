@@ -21,6 +21,11 @@ import (
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
+type PodMetric struct {
+	CPUPercentage    float64
+	MemoryPercentage float64
+}
+
 type ContainerInfo struct {
 	Image       string
 	CPULimit    int64
@@ -269,11 +274,6 @@ func calculatePercentage(usage int64, limit int64) float64 {
 		return 0
 	}
 	return (float64(usage) / float64(limit)) * 100
-}
-
-type PodMetric struct {
-	CPUPercentage    float64
-	MemoryPercentage float64
 }
 
 func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric {

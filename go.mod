@@ -11,7 +11,10 @@ require (
 
 require github.com/charmbracelet/bubbles v0.20.0
 
-require github.com/atotto/clipboard v0.1.4 // indirect
+require (
+	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
+)
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -22,6 +25,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
+	github.com/gabstv/go-bsdiff v1.0.5
 	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect

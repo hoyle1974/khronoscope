@@ -52,6 +52,7 @@ type Map interface {
 	ToBytes() []byte
 	GetTimeRange() (time.Time, time.Time)
 	Add(timestamp time.Time, key string, value interface{})
+	GetItem(timestamp time.Time, key string) any
 	Update(timestamp time.Time, key string, value interface{})
 	Remove(timestamp time.Time, key string)
 	GetStateAtTime(timestamp time.Time) map[string]interface{}
@@ -125,6 +126,17 @@ func (tm *mapImpl) Add(timestamp time.Time, key string, value interface{}) {
 	}
 	v.Set(timestamp, value)
 	tm.Items[key] = v
+}
+
+func (tm *mapImpl) GetItem(timestamp time.Time, key string) any {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	if item, ok := tm.Items[key]; ok {
+		return item.Get(time.Now())
+	}
+
+	return nil
 }
 
 // Update updates the value of an item with the given timestamp and key.

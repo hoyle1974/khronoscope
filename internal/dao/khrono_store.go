@@ -2,7 +2,9 @@ package dao
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
@@ -131,13 +133,13 @@ func (d *dataModelImpl) Save(filename string) {
 }
 
 func (d *dataModelImpl) SetLabel(time time.Time, label string) {
-	d.meta.Add(time, "Meta.Label", label)
+	d.meta.Add(time, "Meta.Label", []byte(label))
 }
 
 func (d *dataModelImpl) GetLabel(time time.Time) string {
 	currentLabel := ""
 	if temp, ok := d.meta.GetStateAtTime(time)["Meta.Label"]; ok {
-		currentLabel = temp.(string)
+		currentLabel = string(temp)
 	}
 	return currentLabel
 }
@@ -150,7 +152,12 @@ func (d *dataModelImpl) AddResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	d.resources.Add(resource.Timestamp.Time, resource.Key(), resource)
+	data, err := temporal.EncodeToBytes(resource)
+	if err != nil {
+		panic(err)
+	}
+
+	d.resources.Add(resource.Timestamp.Time, resource.Key(), data)
 }
 
 // func EncodeToBytes(data interface{}) ([]byte, error) {
@@ -170,19 +177,12 @@ func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	// last := d.resources.GetItem(time.Now(), resource.Key())
-	// if last != nil {
-	// 	aa, _ := EncodeToBytes(last)
-	// 	bb, _ := EncodeToBytes(resource)
+	data, err := temporal.EncodeToBytes(resource)
+	if err != nil {
+		panic(err)
+	}
 
-	// 	d1, _ := resources.GenerateDiff(aa, bb)
-	// 	d2, _ := resources.GenerateDiff2(aa, bb)
-
-	// 	sizes1 += len(d1)
-	// 	sizes2 += len(d2)
-	// }
-
-	d.resources.Update(resource.Timestamp.Time, resource.Key(), resource)
+	d.resources.Update(resource.Timestamp.Time, resource.Key(), data)
 
 }
 
@@ -193,6 +193,13 @@ func (d *dataModelImpl) DeleteResource(resource resources.Resource) {
 	d.resources.Remove(resource.Timestamp.Time, resource.Key())
 }
 
+func decodeFromBytes(data []byte, resource *resources.Resource) error {
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(resource)
+	return err
+}
+
 func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -201,7 +208,11 @@ func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespa
 	// Create a slice of keys
 	values := make([]resources.Resource, 0, len(m))
 	for _, v := range m {
-		r := v.(resources.Resource)
+		var r resources.Resource
+		err := decodeFromBytes(v, &r)
+		if err != nil {
+			panic(err)
+		}
 		if kind != "" && kind != r.Kind {
 			continue
 		}

@@ -75,7 +75,7 @@ func New() Map {
 func FromBytes(b []byte) Map {
 	dec := gob.NewDecoder(bytes.NewReader(b))
 
-	tm := New()
+	tm := New().(*mapImpl)
 	err := dec.Decode(&tm)
 	if err != nil {
 		panic(err)

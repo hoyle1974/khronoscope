@@ -61,6 +61,7 @@ func validateMap(t *testing.T, start, end, t1, t2, t3 time.Time, m Map) {
 }
 
 func TestBasicSerialization(t *testing.T) {
+
 	start, end, t1, t2, t3, m := createTestMap()
 	validateMap(t, start, end, t1, t2, t3, m)
 

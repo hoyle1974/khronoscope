@@ -1,11 +1,19 @@
 package temporal
 
 import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
 	"sort"
+	"strings"
 	"time"
 
+	"github.com/go-test/deep"
+	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
+
+const KEYFRAME_RATE = 16
 
 func NewTimeValueStore() *TimeValueStore {
 	store := &TimeValueStore{
@@ -25,6 +33,29 @@ type keyFrame struct {
 	Timestamp  serializable.Time
 	Value      []byte
 	DiffFrames []diffFrame
+	Last       []byte
+}
+
+func decodeFromBytes(data []byte, resource *resources.Resource) error {
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(resource)
+	return err
+}
+
+func (frame *keyFrame) check() {
+	var r resources.Resource
+	orig := frame.queryValue(frame.Timestamp.Time)
+	decodeFromBytes(orig, &r)
+	fmt.Printf("------------------ ORIG\n%s\n", strings.Join(r.GetDetails(), "\n"))
+
+	for idx, d := range frame.DiffFrames {
+		b := frame.queryValue(d.Timestamp.Time)
+
+		decodeFromBytes(b, &r)
+		fmt.Printf("------------------ %d\n%s\n", idx, strings.Join(r.GetDetails(), "\n"))
+
+	}
 }
 
 // This keyFrame is expected to hold this value.  Query it and it's diffs to find the
@@ -42,13 +73,140 @@ func (frame *keyFrame) queryValue(timestamp time.Time) []byte {
 	cur := frame.Value
 	for i := 0; i < index; i++ {
 		cur, _ = applyDiff(cur, frame.DiffFrames[i].Diff)
+		if bytes.Compare(cur, frame.DiffFrames[i].Original) != 0 {
+			var r1, r2 resources.Resource
+			decodeFromBytes(cur, &r1)
+			decodeFromBytes(frame.DiffFrames[i].Original, &r2)
+
+			fmt.Printf("------------------\n%s\n", strings.Join(r2.GetDetails(), "\n"))
+
+			diff := deep.Equal(r1, r2)
+			fmt.Println(strings.Join(diff, "\n"))
+
+			// file, err := os.OpenFile("output.txt", os.O_CREATE|os.O_WRONLY, 0644)
+			// if err != nil {
+			// 	log.Fatal(err)
+			// }
+			// defer file.Close()
+
+			// b, e := EncodeToBytes(frame)
+			// if e != nil {
+			// 	fmt.Println(e)
+			// }
+			// file.Write(b)
+
+			// HELP! Why does this compare sometimes fail?
+			/*
+				var r1, r2 resources.Resource
+				decodeFromBytes(cur, &r1)
+				decodeFromBytes(frame.DiffFrames[i].Original, &r2)
+
+				file, err := os.OpenFile("output.txt", os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer file.Close()
+
+				file.WriteString(fmt.Sprintf("i=%d\n", i))
+				file.WriteString(fmt.Sprintf("Diff Frames: %d\n", len(frame.DiffFrames)))
+				for idx, d := range frame.DiffFrames {
+					file.WriteString(
+						fmt.Sprintf("%d) %d\n", idx, len(d.Diff)),
+					)
+				}
+
+				file.WriteString("-------------------------")
+				file.WriteString(r1.GetUID() + " ")
+				file.WriteString(r1.GetTimestamp().String() + "\n")
+				file.WriteString(fmt.Sprintf(" Cur:\n%s\n", strings.Join(r1.GetDetails(), "\n")))
+				file.WriteString("-------------------------")
+				file.WriteString(r2.GetUID() + " ")
+				file.WriteString(r2.GetTimestamp().String() + "\n")
+				file.WriteString(fmt.Sprintf("Orig:\n%s\n", strings.Join(r2.GetDetails(), "\n")))
+				file.WriteString("-------------------------")
+			*/
+
+			panic("Original did not match diffed version")
+		}
 	}
 	return cur
 }
 
-const KEYFRAME_RATE = 10
-
 func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
+	if len(frame.DiffFrames) == KEYFRAME_RATE {
+		if len(frame.DiffFrames) > 0 && frame.DiffFrames[len(frame.DiffFrames)-1].Timestamp.Time.Before(timestamp) {
+			return false // We have enough frames, and adding at the end
+		}
+	}
+
+	if len(frame.DiffFrames) == 0 || (len(frame.DiffFrames) > 0 && frame.DiffFrames[len(frame.DiffFrames)-1].Timestamp.Time.Before(timestamp)) {
+		diff, err := generateDiff(frame.Last, value) // Diff against full last value
+		if err != nil {
+			return false
+		}
+
+		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
+			Timestamp: serializable.Time{Time: timestamp},
+			Diff:      diff,
+			Original:  value,
+		})
+
+		frame.Last = value // Update stored full value for next append
+		return true
+	}
+
+	// Decompress all frames
+	curr := frame.Value
+	times := make([]serializable.Time, len(frame.DiffFrames))
+	original := make([][]byte, len(frame.DiffFrames))
+	for idx, diffFrame := range frame.DiffFrames {
+		actual, err := applyDiff(curr, diffFrame.Diff)
+		if err != nil {
+			return false // Stop if any diff application fails
+		}
+		original[idx] = actual
+		times[idx] = diffFrame.Timestamp
+		curr = actual
+	}
+
+	index := sort.Search(len(times), func(j int) bool {
+		return times[j].Time.After(timestamp)
+	})
+
+	original = append(original, nil)           // Extend the slice by one
+	times = append(times, serializable.Time{}) // Extend the slice by one
+
+	copy(original[index+1:], original[index:]) // Shift elements to the right
+	copy(times[index+1:], times[index:])       // Shift elements to the right
+
+	original[index] = value
+	times[index] = serializable.Time{Time: timestamp}
+
+	frame.DiffFrames = []diffFrame{}
+
+	last := frame.Value
+	for idx := 0; idx < len(original); idx++ {
+		diff, err := generateDiff(last, original[idx])
+		if err != nil {
+			panic(err)
+		}
+		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
+			Timestamp: times[idx],
+			Diff:      diff,
+			Original:  original[idx],
+		})
+
+		last = original[idx]
+	}
+
+	return true
+}
+
+/*
+func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
+	originalCopy := make([]byte, len(value))
+	copy(originalCopy, value)
+
 	if len(frame.DiffFrames) == KEYFRAME_RATE {
 		if len(frame.DiffFrames) > 0 && frame.DiffFrames[len(frame.DiffFrames)-1].Timestamp.Time.Before(timestamp) {
 			return false // We have enough frames, and adding at the end
@@ -76,7 +234,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		if err != nil {
 			return false
 		}
-		frame.DiffFrames = append(frame.DiffFrames, diffFrame{Timestamp: serializable.Time{Time: timestamp}, Diff: diff})
+		frame.DiffFrames = append(frame.DiffFrames, diffFrame{Timestamp: serializable.Time{Time: timestamp}, Diff: diff, Original: originalCopy})
 		return true
 	}
 
@@ -84,7 +242,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 	if err != nil {
 		return false
 	}
-	newDiffFrame := diffFrame{Timestamp: serializable.Time{Time: timestamp}, Diff: diff}
+	newDiffFrame := diffFrame{Timestamp: serializable.Time{Time: timestamp}, Diff: diff, Original: originalCopy}
 
 	if len(frame.DiffFrames) == KEYFRAME_RATE {
 		if index < len(frame.DiffFrames) {
@@ -107,6 +265,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 
 	return true
 }
+*/
 
 func max(a, b int) int {
 	if a > b {
@@ -118,6 +277,7 @@ func max(a, b int) int {
 type diffFrame struct {
 	Timestamp serializable.Time
 	Diff      Diff
+	Original  []byte
 }
 
 // Add a value that is valid @timestamp and after
@@ -130,8 +290,10 @@ func (store *TimeValueStore) AddValue(timestamp time.Time, value []byte) {
 
 	if len(store.Keyframes) == 0 {
 		store.Keyframes = append(store.Keyframes, keyFrame{
-			Timestamp: serializable.Time{Time: timestamp},
-			Value:     value,
+			Timestamp:  serializable.Time{Time: timestamp},
+			Value:      value,
+			DiffFrames: make([]diffFrame, 0, KEYFRAME_RATE),
+			Last:       value,
 		})
 		return
 	}
@@ -142,7 +304,12 @@ func (store *TimeValueStore) AddValue(timestamp time.Time, value []byte) {
 	}
 
 	// Insert the new value at the correct position.
-	store.Keyframes = append(store.Keyframes[:index], append([]keyFrame{{Timestamp: serializable.Time{Time: timestamp}, Value: value}}, store.Keyframes[index:]...)...)
+	store.Keyframes = append(store.Keyframes[:index], append([]keyFrame{{
+		Timestamp:  serializable.Time{Time: timestamp},
+		Value:      value,
+		DiffFrames: make([]diffFrame, 0, KEYFRAME_RATE),
+		Last:       value,
+	}}, store.Keyframes[index:]...)...)
 
 }
 

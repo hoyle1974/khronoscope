@@ -9,7 +9,7 @@ import (
 // Time wraps time.Time and implements GobEncoder and GobDecoder
 type Time struct {
 	Time     time.Time
-	Location string
+	Location string `deep:"-"`
 }
 
 // GobEncode implements the gob.GobEncoder interface

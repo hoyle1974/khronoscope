@@ -47,11 +47,33 @@ func Test_TwoValue(t *testing.T) {
 	}
 }
 
+func Test_ThreeValue(t *testing.T) {
+	store := NewTimeValueStore()
+
+	t1 := time.Now()
+	store.AddValue(t1.Add(time.Second), []byte{1, 2, 3})
+	store.AddValue(t1.Add(time.Second*5), []byte{2, 3, 4})
+	store.AddValue(t1.Add(time.Second*10), []byte{3, 4, 5})
+
+	if store.QueryValue(t1) != nil {
+		t.Fatalf("Expected nil value")
+	}
+	if bytes.Compare(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) != 0 {
+		t.Fatalf("Expected a value")
+	}
+	if bytes.Compare(store.QueryValue(t1.Add(time.Second*6)), []byte{2, 3, 4}) != 0 {
+		t.Fatalf("Expected a value")
+	}
+	if bytes.Compare(store.QueryValue(t1.Add(time.Second*11)), []byte{3, 4, 5}) != 0 {
+		t.Fatalf("Expected a value")
+	}
+}
+
 func Test_ManyValues(t *testing.T) {
 	store := NewTimeValueStore()
 
 	t1 := time.Now()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		store.AddValue(t1.Add(time.Second+(time.Duration(i)*time.Second)), []byte{byte(i)})
 	}
 
@@ -66,3 +88,44 @@ func Test_ManyValues(t *testing.T) {
 		}
 	}
 }
+
+// func Test_Crash(t *testing.T) {
+// 	gob.Register(resources.PodExtra{})
+// 	resources.RegisterResourceRenderer("Pod", resources.PodRenderer{})
+
+// 	// Read the file into a byte array
+// 	data, err := ioutil.ReadFile("/Users/jstrohm/code/khronoscope/keyframe.bin")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	var k keyFrame
+// 	buf := bytes.NewBuffer(data)
+// 	dec := gob.NewDecoder(buf)
+// 	err = dec.Decode(&k)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	nk := keyFrame{
+// 		k.Timestamp,
+// 		k.Value,
+// 		[]diffFrame{},
+// 	}
+
+// 	for t := 0; t < len(k.DiffFrames); t += 2 {
+// 		nk.addDiffFrame(k.DiffFrames[t].Timestamp.Time, k.DiffFrames[t].Original)
+// 	}
+// 	for t := 1; t < len(k.DiffFrames); t += 2 {
+// 		nk.addDiffFrame(k.DiffFrames[t].Timestamp.Time, k.DiffFrames[t].Original)
+// 	}
+
+// 	nk.check()
+
+// 	/*
+// 		k.check()
+
+// 		fmt.Println(k)
+// 	*/
+
+// }

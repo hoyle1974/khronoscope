@@ -37,7 +37,7 @@ type PodExtra struct {
 	Node        string
 	Metrics     map[string]PodMetric
 	Uptime      time.Duration
-	StartTime   time.Time
+	StartTime   serializable.Time
 	Containers  map[string]ContainerInfo
 	Labels      []string
 	Annotations []string
@@ -63,7 +63,6 @@ func (p PodExtra) Copy() Copyable {
 }
 
 type PodRenderer struct {
-	d DAO
 }
 
 /*
@@ -317,7 +316,7 @@ func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 	if len(metricsExtra) > 0 {
 		extra.Metrics = metricsExtra
 	}
-	extra.Uptime = time.Since(extra.StartTime).Truncate(time.Second)
+	extra.Uptime = time.Since(extra.StartTime.Time).Truncate(time.Second)
 	resource.Timestamp = serializable.Time{Time: time.Now()}
 	resource.Extra = extra
 	n.d.UpdateResource(resource)
@@ -345,7 +344,7 @@ func (n *PodWatcher) Kind() string {
 }
 
 func (n *PodWatcher) Renderer() ResourceRenderer {
-	return PodRenderer{n.d}
+	return PodRenderer{}
 }
 
 func (n *PodWatcher) convert(obj runtime.Object) *corev1.Pod {
@@ -375,7 +374,7 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 		Phase:       fmt.Sprintf("%v", pod.Status.Phase),
 		Node:        pod.Spec.NodeName,
 		Containers:  containerLimits,
-		StartTime:   pod.CreationTimestamp.Time,
+		StartTime:   serializable.Time{Time: pod.CreationTimestamp.Time},
 		Labels:      misc.RenderMapOfStrings("Labels:", pod.GetLabels()),
 		Annotations: misc.RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
 	}

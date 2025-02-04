@@ -19,7 +19,7 @@ type treeViewCursor struct {
 type TreeController struct {
 	cursor treeViewCursor
 	model  TreeModel
-	search string
+	filter Filter
 }
 
 func NewTreeView() *TreeController {
@@ -29,8 +29,8 @@ func NewTreeView() *TreeController {
 	}
 }
 
-func (t *TreeController) SetFilter(filter string) {
-	t.search = filter
+func (t *TreeController) SetFilter(filter Filter) {
+	t.filter = filter
 }
 
 func (t *TreeController) Up() {
@@ -40,15 +40,11 @@ func (t *TreeController) Up() {
 	t.cursor.Uid = ""
 	t.cursor.Node = nil
 	t.cursor.Pos--
-
-	// t.updateSelected()
 }
 func (t *TreeController) Down() {
 	t.cursor.Pos++
 	t.cursor.Node = nil
 	t.cursor.Uid = ""
-
-	// t.updateSelected()
 }
 func (t *TreeController) PageUp() {
 	for idx := 0; idx < 10; idx++ {
@@ -85,7 +81,7 @@ func (t *TreeController) GetSelectedLine() (int, int) {
 }
 
 func (t *TreeController) Render(vcrEnabled bool) (string, int) {
-	root, max := createRenderTree(t.model, t.search)
+	root, max := createRenderTree(t.model, t.filter)
 
 	ret := misc.TraverseNodeTree(root, func(n misc.Node) bool {
 		return n.(*renderNode).Line == t.cursor.Pos
@@ -98,7 +94,7 @@ func (t *TreeController) Render(vcrEnabled bool) (string, int) {
 		t.cursor.Pos = max - 1
 	}
 
-	return treeRender(root, vcrEnabled, t.cursor.Pos, t.search), t.cursor.Pos
+	return treeRender(root, vcrEnabled, t.cursor.Pos, t.filter), t.cursor.Pos
 }
 
 func (t *TreeController) UpdateResources(resources []types.Resource) {

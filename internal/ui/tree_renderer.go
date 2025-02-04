@@ -1,12 +1,20 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
+	"github.com/hoyle1974/khronoscope/internal/types"
 )
+
+type Filter interface {
+	Matches(types.Resource) bool
+	Description() string
+	Highlight() string
+}
 
 func grommet(is bool, isVertical bool) string {
 	if isVertical {
@@ -85,23 +93,26 @@ func filterTree(root *renderNode) {
 	root.Children = nc
 }
 
-func createRenderTree(model TreeModel, search string) (*renderNode, int) {
+func createRenderTree(model TreeModel, filter Filter) (*renderNode, int) {
 	// Before we render we want to traverse the model and add visual data to the nodes
 	// This includes line number and visibility state
 	renderNodeRoot := buildRenderTree(model.root, nil, func(node node) bool {
-		if len(search) == 0 {
+		if filter == nil {
 			return true
 		}
 		switch n := node.(type) {
 		case *treeLeaf:
-			return strings.Contains(n.Resource.String(), search)
+			temp := n.Resource.String()
+			fmt.Sprintf(temp)
+			m := filter.Matches(n.Resource)
+			return m //strings.Contains(n.Resource.String(), search)
 		default:
 			return false
 		}
 	})
 
 	// If a child is filtered in the search then make the parents filtered
-	if len(search) != 0 {
+	if filter != nil {
 		renderNodeRoot.Visible = true
 		misc.IterateTree(renderNodeRoot, func(n misc.Node) {
 			rn := n.(*renderNode)
@@ -154,7 +165,7 @@ func renumber(renderNodeRoot *renderNode) int {
 	return lineNo
 }
 
-func treeRender(renderNodeRoot *renderNode, vcrEnabled bool, cursorPos int, filter string) string {
+func treeRender(renderNodeRoot *renderNode, vcrEnabled bool, cursorPos int, filter Filter) string {
 	b := strings.Builder{}
 
 	cms := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF22")).Bold(true)
@@ -234,8 +245,8 @@ func treeRender(renderNodeRoot *renderNode, vcrEnabled bool, cursorPos int, filt
 	return strings.Join(filterAndBoldStrings(filter, strings.Split(b.String(), "\n")), "\n")
 }
 
-func filterAndBoldStrings(filter string, stringsToFilter []string) []string {
-	if filter == "" {
+func filterAndBoldStrings(filter Filter, stringsToFilter []string) []string {
+	if filter == nil || filter.Highlight() == "" {
 		return stringsToFilter // Return original slice if filter is empty
 	}
 
@@ -243,8 +254,8 @@ func filterAndBoldStrings(filter string, stringsToFilter []string) []string {
 	boldStyle := lipgloss.NewStyle().Bold(true)
 
 	for _, str := range stringsToFilter {
-		if strings.Contains(str, filter) {
-			indices := findFilterIndices(str, filter)
+		if strings.Contains(str, filter.Highlight()) {
+			indices := findFilterIndices(str, filter.Description())
 			newStr := ""
 			lastIndex := 0
 			for _, indexPair := range indices {

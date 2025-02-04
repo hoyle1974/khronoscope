@@ -30,7 +30,7 @@ type KhronoscopeTeaProgram struct {
 	VCR               *ui.PlaybackController
 	popup             ui.Popup
 	search            bool
-	searchFilter      string
+	searchFilter      ui.Filter
 	searchInput       textinput.Model
 	logCollector      *resources.LogCollector
 	tab               int
@@ -102,8 +102,8 @@ func (m *KhronoscopeTeaProgram) headerView(label string) string {
 	if len(label) > 0 {
 		label = "[" + label + "]"
 	}
-	if len(m.searchFilter) > 0 {
-		label += " " + m.searchFilter
+	if m.searchFilter != nil {
+		label += " " + m.searchFilter.Description()
 	}
 
 	title := lipgloss.NewStyle().Render(fmt.Sprintf("Khronoscope %s - %s %s ",
@@ -273,6 +273,35 @@ func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
 	}
 }
 
+type searchFilter struct {
+	value string
+}
+
+func (f searchFilter) Matches(r types.Resource) bool {
+	return strings.Contains(r.String(), f.value)
+}
+
+func (f searchFilter) Description() string { return f.value }
+func (f searchFilter) Highlight() string   { return f.value }
+
+type logFilter struct {
+}
+
+func (f logFilter) Matches(r types.Resource) bool {
+	if r.GetKind() != "Pod" {
+		return false
+	}
+	if r.GetExtra() != nil {
+		if pe, ok := r.GetExtra().(resources.PodExtra); ok {
+			return pe.Logging
+		}
+	}
+	return false
+}
+
+func (f logFilter) Description() string { return "Logging" }
+func (f logFilter) Highlight() string   { return "" }
+
 func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -295,7 +324,12 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case tea.KeyEnter:
 				// Save the label
-				m.searchFilter = m.searchInput.Value()
+				if m.searchInput.Value() == "" {
+					m.searchFilter = nil
+				} else {
+					m.searchFilter = searchFilter{m.searchInput.Value()}
+				}
+
 				m.search = false
 				return m, nil
 			}
@@ -313,6 +347,13 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "2":
 			m.tab = 1
+			return m, nil
+		case "L":
+			if m.searchFilter == nil {
+				m.searchFilter = logFilter{}
+			} else {
+				m.searchFilter = nil
+			}
 			return m, nil
 		case "l":
 			if m.VCR.IsEnabled() {

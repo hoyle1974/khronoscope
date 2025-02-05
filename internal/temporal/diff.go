@@ -3,7 +3,6 @@ package temporal
 import (
 	"bytes"
 	"compress/zlib"
-	"encoding/gob"
 	"io"
 
 	"github.com/gabstv/go-bsdiff/pkg/bsdiff"
@@ -12,15 +11,15 @@ import (
 
 type Diff []byte
 
-func EncodeToBytes(data interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(data)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
+// func EncodeToBytes(data interface{}) ([]byte, error) {
+// 	var buf bytes.Buffer
+// 	enc := gob.NewEncoder(&buf)
+// 	err := enc.Encode(data)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return buf.Bytes(), nil
+// }
 
 func generateDiff(a, b []byte) (Diff, error) {
 	patch, err := bsdiff.Bytes(a, b)

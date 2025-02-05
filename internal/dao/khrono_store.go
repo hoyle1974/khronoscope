@@ -2,15 +2,14 @@ package dao
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/temporal"
 )
@@ -152,7 +151,7 @@ func (d *dataModelImpl) AddResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	data, err := temporal.EncodeToBytes(resource)
+	data, err := misc.EncodeToBytes(resource)
 	if err != nil {
 		panic(err)
 	}
@@ -160,24 +159,11 @@ func (d *dataModelImpl) AddResource(resource resources.Resource) {
 	d.resources.Add(resource.Timestamp.Time, resource.Key(), data)
 }
 
-// func EncodeToBytes(data interface{}) ([]byte, error) {
-// 	var buf bytes.Buffer
-// 	enc := gob.NewEncoder(&buf)
-// 	err := enc.Encode(data)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return buf.Bytes(), nil
-// }
-
-// var sizes1 int
-// var sizes2 int
-
 func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	data, err := temporal.EncodeToBytes(resource)
+	data, err := misc.EncodeToBytes(resource)
 	if err != nil {
 		panic(err)
 	}
@@ -193,13 +179,6 @@ func (d *dataModelImpl) DeleteResource(resource resources.Resource) {
 	d.resources.Remove(resource.Timestamp.Time, resource.Key())
 }
 
-func decodeFromBytes(data []byte, resource *resources.Resource) error {
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(resource)
-	return err
-}
-
 func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -209,7 +188,7 @@ func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespa
 	values := make([]resources.Resource, 0, len(m))
 	for _, v := range m {
 		var r resources.Resource
-		err := decodeFromBytes(v, &r)
+		err := misc.DecodeFromBytes(v, &r)
 		if err != nil {
 			panic(fmt.Sprintf("Tried to decode %d bytes but got an error: %v", len(v), err))
 		}

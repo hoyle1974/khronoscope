@@ -1,11 +1,10 @@
 package temporal
 
 import (
-	"bytes"
-	"encoding/gob"
 	"sort"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
@@ -33,23 +32,16 @@ type keyFrame struct {
 	Last       []byte
 }
 
-func decodeFromBytes(data []byte, resource *resources.Resource) error {
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(resource)
-	return err
-}
-
 func (frame *keyFrame) check() {
 	var r resources.Resource
 	orig := frame.queryValue(frame.Timestamp.Time)
-	decodeFromBytes(orig, &r)
+	misc.DecodeFromBytes(orig, &r)
 	// fmt.Printf("------------------ ORIG\n%s\n", strings.Join(r.GetDetails(), "\n"))
 
 	for _, d := range frame.DiffFrames {
 		b := frame.queryValue(d.Timestamp.Time)
 
-		decodeFromBytes(b, &r)
+		misc.DecodeFromBytes(b, &r)
 		// fmt.Printf("------------------ %d\n%s\n", idx, strings.Join(r.GetDetails(), "\n"))
 	}
 }

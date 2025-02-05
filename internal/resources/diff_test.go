@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
 
@@ -126,16 +127,6 @@ func Test_Diff2(t *testing.T) {
 	fmt.Println("Diff Size:    ", len(diff))
 }
 
-func EncodeToBytes(data interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(data)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 func Test_Diff(t *testing.T) {
 	gob.Register(Resource{})
 	gob.Register(PodExtra{})
@@ -162,8 +153,8 @@ func Test_Diff(t *testing.T) {
 	}
 	b = a
 
-	aa, _ := EncodeToBytes(a)
-	bb, _ := EncodeToBytes(b)
+	aa, _ := misc.EncodeToBytes(a)
+	bb, _ := misc.EncodeToBytes(b)
 
 	/*
 		patch, _ := bsdiff.Bytes(aa, bb)
@@ -253,8 +244,8 @@ func Test_RandomDiff(t *testing.T) {
 
 		b := mutateResource(a)
 
-		aa, _ := EncodeToBytes(a)
-		bb, _ := EncodeToBytes(b)
+		aa, _ := misc.EncodeToBytes(a)
+		bb, _ := misc.EncodeToBytes(b)
 		ca += len(aa)
 		cb += len(bb)
 

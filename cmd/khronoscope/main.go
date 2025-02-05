@@ -3,16 +3,29 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
+	"log"
+	"os"
+	"runtime/pprof"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
+	"github.com/hoyle1974/khronoscope/internal/metrics"
 	khronoscope "github.com/hoyle1974/khronoscope/internal/program"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/ui"
 )
 
 func main() {
+	defer metrics.Print()
+
+	f, err := os.Create("khronoscope.pprof")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	gob.Register(resources.Resource{})
 	gob.Register(resources.ReplicaSetExtra{})
 	gob.Register(resources.NodeExtra{})

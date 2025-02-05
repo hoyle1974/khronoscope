@@ -55,14 +55,12 @@ func ToggleLogs(r types.Resource) {
 			if extra.Logging {
 				_logCollector.start(r, func(logs string) {
 					// Get the latest resource
-					for _, rs := range _watcher.data.GetResourcesAt(time.Now(), "Pod", r.GetNamespace()) {
-						if rs.GetUID() == r.GetUID() {
-							extra = rs.Extra.Copy().(PodExtra)
-							extra.Logs = append(extra.Logs, strings.Split(logs, "\n")...)
-							rs.Extra = extra
-							rs.Timestamp = serializable.Time{Time: time.Now()}
-							go _watcher.Update(rs)
-						}
+					if rs, err := _watcher.data.GetResourceAt(time.Now(), r.GetUID()); err == nil {
+						extra = rs.Extra.Copy().(PodExtra)
+						extra.Logs = append(extra.Logs, strings.Split(logs, "\n")...)
+						rs.Extra = extra
+						rs.Timestamp = serializable.Time{Time: time.Now()}
+						go _watcher.Update(rs)
 					}
 				})
 			} else {

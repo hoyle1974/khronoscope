@@ -95,5 +95,6 @@ func NewResource(uuid string, timestmap time.Time, kind string, namespace string
 }
 
 func (r Resource) Key() string {
-	return r.Kind + "/" + r.Namespace + "/" + r.Name
+	//return r.Kind + "/" + r.Namespace + "/" + r.Name
+	return r.Uid
 }

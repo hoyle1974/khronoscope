@@ -138,7 +138,7 @@ func (tm *mapImpl) GetItem(timestamp time.Time, key string) []byte {
 	return nil
 }
 
-// Update updates the value of an item with the given timestamp and key.
+// Update the value of an item with the given timestamp and key.
 func (tm *mapImpl) Update(timestamp time.Time, key string, value []byte) {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
@@ -149,10 +149,10 @@ func (tm *mapImpl) Update(timestamp time.Time, key string, value []byte) {
 	if !ok {
 		v = NewTimeValueStore()
 	}
-	if v.QueryValue(timestamp) != nil {
-		v.AddValue(timestamp, value)
-		tm.Items[key] = v
-	}
+	//if v.QueryValue(timestamp) != nil {
+	v.AddValue(timestamp, value)
+	tm.Items[key] = v
+	//}
 }
 
 // Remove removes the item with the given timestamp and key.
@@ -178,7 +178,7 @@ func (tm *mapImpl) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	state := make(map[string][]byte)
 	for key, item := range tm.Items {
 		value := item.QueryValue(timestamp)
-		if value != nil && len(value) > 0 {
+		if len(value) > 0 {
 			state[key] = value
 		}
 	}

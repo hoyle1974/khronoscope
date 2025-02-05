@@ -1,6 +1,8 @@
 module github.com/hoyle1974/khronoscope
 
-go 1.23.5
+go 1.23.0
+
+toolchain go1.23.5
 
 require (
 	github.com/charmbracelet/bubbletea v1.2.4
@@ -30,7 +32,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
-	github.com/go-test/deep v1.1.1
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect

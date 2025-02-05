@@ -17,6 +17,7 @@ type DAO interface {
 	UpdateResource(Resource)
 	DeleteResource(Resource)
 	GetResourcesAt(timestamp time.Time, kind string, namespace string) []Resource
+	GetResourceAt(timestamp time.Time, uid string) (Resource, error)
 }
 
 // Interface for watching resource events.

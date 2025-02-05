@@ -16,6 +16,7 @@ import (
 
 type KhronoStore interface {
 	GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource
+	GetResourceAt(timestamp time.Time, uid string) (resources.Resource, error)
 	GetTimeRange() (time.Time, time.Time)
 	AddResource(resource resources.Resource)
 	UpdateResource(resource resources.Resource)
@@ -177,6 +178,21 @@ func (d *dataModelImpl) DeleteResource(resource resources.Resource) {
 	defer d.lock.Unlock()
 
 	d.resources.Remove(resource.Timestamp.Time, resource.Key())
+}
+
+func (d *dataModelImpl) GetResourceAt(timestamp time.Time, uid string) (resources.Resource, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	b := d.resources.GetItem(timestamp, uid)
+
+	var r resources.Resource
+	err := misc.DecodeFromBytes(b, &r)
+	if err != nil {
+		return r, err
+	}
+
+	return r, nil
 }
 
 func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource {

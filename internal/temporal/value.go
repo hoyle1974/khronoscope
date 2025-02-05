@@ -35,7 +35,7 @@ type keyFrame struct {
 	Last       []byte
 }
 
-func (frame *keyFrame) check() error {
+func (frame *keyFrame) CheckForErrors() error {
 	var r resources.Resource
 	orig := frame.queryValue(frame.Timestamp.Time)
 	err := misc.DecodeFromBytes(orig, &r)

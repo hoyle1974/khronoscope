@@ -24,7 +24,7 @@ func Test_OneValue(t *testing.T) {
 	if store.QueryValue(t1) != nil {
 		t.Fatalf("Expected nil value")
 	}
-	if bytes.Compare(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) != 0 {
+	if !bytes.Equal(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) {
 		t.Fatalf("Expected a value")
 	}
 }
@@ -39,10 +39,10 @@ func Test_TwoValue(t *testing.T) {
 	if store.QueryValue(t1) != nil {
 		t.Fatalf("Expected nil value")
 	}
-	if bytes.Compare(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) != 0 {
+	if !bytes.Equal(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) {
 		t.Fatalf("Expected a value")
 	}
-	if bytes.Compare(store.QueryValue(t1.Add(time.Second*6)), []byte{2, 3, 4}) != 0 {
+	if !bytes.Equal(store.QueryValue(t1.Add(time.Second*6)), []byte{2, 3, 4}) {
 		t.Fatalf("Expected a value")
 	}
 }
@@ -58,13 +58,13 @@ func Test_ThreeValue(t *testing.T) {
 	if store.QueryValue(t1) != nil {
 		t.Fatalf("Expected nil value")
 	}
-	if bytes.Compare(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) != 0 {
+	if !bytes.Equal(store.QueryValue(t1.Add(time.Second*2)), []byte{1, 2, 3}) {
 		t.Fatalf("Expected a value")
 	}
-	if bytes.Compare(store.QueryValue(t1.Add(time.Second*6)), []byte{2, 3, 4}) != 0 {
+	if !bytes.Equal(store.QueryValue(t1.Add(time.Second*6)), []byte{2, 3, 4}) {
 		t.Fatalf("Expected a value")
 	}
-	if bytes.Compare(store.QueryValue(t1.Add(time.Second*11)), []byte{3, 4, 5}) != 0 {
+	if !bytes.Equal(store.QueryValue(t1.Add(time.Second*11)), []byte{3, 4, 5}) {
 		t.Fatalf("Expected a value")
 	}
 }
@@ -83,7 +83,7 @@ func Test_ManyValues(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		offset := time.Second + (time.Duration(i) * time.Second) + time.Millisecond
-		if bytes.Compare(store.QueryValue(t1.Add(offset)), []byte{byte(i)}) != 0 {
+		if !bytes.Equal(store.QueryValue(t1.Add(offset)), []byte{byte(i)}) {
 			t.Fatalf("Expected a value")
 		}
 	}

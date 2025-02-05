@@ -43,19 +43,19 @@ func validateMap(t *testing.T, start, end, t1, t2, t3 time.Time, m Map) {
 		t.Fatalf("Expected empty map")
 	}
 
-	if a := m.GetStateAtTime(t1); bytes.Compare(a["key1"], []byte("key1value1")) != 0 {
+	if a := m.GetStateAtTime(t1); !bytes.Equal(a["key1"], []byte("key1value1")) {
 		t.Fatalf("Unexpected value for key1 at t1")
 	}
 
-	if a := m.GetStateAtTime(t2); bytes.Compare(a["key1"], []byte("key1value2")) != 0 || bytes.Compare(a["key2"], []byte("key2value1")) != 0 {
+	if a := m.GetStateAtTime(t2); !bytes.Equal(a["key1"], []byte("key1value2")) || !bytes.Equal(a["key2"], []byte("key2value1")) {
 		t.Fatalf("Unexpected value for key1 at t2 or key2 at t2")
 	}
 
-	if a := m.GetStateAtTime(t3); bytes.Compare(a["key1"], []byte("key1value3")) != 0 || bytes.Compare(a["key2"], []byte("key2value1")) != 0 {
+	if a := m.GetStateAtTime(t3); !bytes.Equal(a["key1"], []byte("key1value3")) || !bytes.Equal(a["key2"], []byte("key2value1")) {
 		t.Fatalf("Unexpected value for key1 at t3 or key2 at t3")
 	}
 
-	if a := m.GetStateAtTime(end); bytes.Compare(a["key1"], []byte("key1value3")) != 0 || bytes.Compare(a["key2"], []byte("key2value1")) != 0 {
+	if a := m.GetStateAtTime(end); !bytes.Equal(a["key1"], []byte("key1value3")) || !bytes.Equal(a["key2"], []byte("key2value1")) {
 		t.Fatalf("Unexpected value for key1 at end or key2 at end")
 	}
 }

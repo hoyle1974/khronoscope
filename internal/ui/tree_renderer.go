@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -102,10 +101,7 @@ func createRenderTree(model TreeModel, filter Filter) (*renderNode, int) {
 		}
 		switch n := node.(type) {
 		case *treeLeaf:
-			temp := n.Resource.String()
-			fmt.Sprintf(temp)
-			m := filter.Matches(n.Resource)
-			return m //strings.Contains(n.Resource.String(), search)
+			return filter.Matches(n.Resource)
 		default:
 			return false
 		}

@@ -19,12 +19,14 @@ import (
 func main() {
 	defer metrics.Print()
 
-	f, err := os.Create("khronoscope.pprof")
-	if err != nil {
+	if f, err := os.Create("khronoscope.pprof"); err != nil {
 		log.Fatal(err)
+	} else {
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal(err)
+		}
+		defer pprof.StopCPUProfile()
 	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
 
 	gob.Register(resources.Resource{})
 	gob.Register(resources.ReplicaSetExtra{})

@@ -35,18 +35,23 @@ type keyFrame struct {
 	Last       []byte
 }
 
-func (frame *keyFrame) check() {
+func (frame *keyFrame) check() error {
 	var r resources.Resource
 	orig := frame.queryValue(frame.Timestamp.Time)
-	misc.DecodeFromBytes(orig, &r)
-	// fmt.Printf("------------------ ORIG\n%s\n", strings.Join(r.GetDetails(), "\n"))
+	err := misc.DecodeFromBytes(orig, &r)
+	if err != nil {
+		return err
+	}
 
 	for _, d := range frame.DiffFrames {
 		b := frame.queryValue(d.Timestamp.Time)
 
-		misc.DecodeFromBytes(b, &r)
-		// fmt.Printf("------------------ %d\n%s\n", idx, strings.Join(r.GetDetails(), "\n"))
+		err := misc.DecodeFromBytes(b, &r)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // This keyFrame is expected to hold this value.  Query it and it's diffs to find the
@@ -163,13 +168,6 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 	}
 
 	return true
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 type diffFrame struct {

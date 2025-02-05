@@ -61,6 +61,16 @@ func (frame *keyFrame) queryValue(timestamp time.Time) []byte {
 		return frame.Value
 	}
 
+	if index > 0 {
+		if frame.DiffFrames[index-1].original != nil {
+			metrics.Count("DiffFrame.Original", 1)
+			return frame.DiffFrames[index-1].original
+		} else {
+			metrics.Count("DiffFrame.Original.Nil", 1)
+		}
+	}
+	metrics.Count("DiffFrame.Diff", 1)
+
 	cur := frame.Value
 	for i := 0; i < index; i++ {
 		cur, _ = applyDiff(cur, frame.DiffFrames[i].Diff)
@@ -99,7 +109,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
 			Timestamp: serializable.Time{Time: timestamp},
 			Diff:      diff,
-			// Original:  value,
+			original:  value,
 		})
 
 		frame.Last = value // Update stored full value for next append
@@ -146,7 +156,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
 			Timestamp: times[idx],
 			Diff:      diff,
-			// Original:  original[idx],
+			original:  original[idx],
 		})
 
 		last = original[idx]
@@ -165,7 +175,7 @@ func max(a, b int) int {
 type diffFrame struct {
 	Timestamp serializable.Time
 	Diff      Diff
-	// Original  []byte
+	original  []byte
 }
 
 // Add a value that is valid @timestamp and after

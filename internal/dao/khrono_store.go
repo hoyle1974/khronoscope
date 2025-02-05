@@ -211,7 +211,7 @@ func (d *dataModelImpl) GetResourcesAt(timestamp time.Time, kind string, namespa
 		var r resources.Resource
 		err := decodeFromBytes(v, &r)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("Tried to decode %d bytes but got an error: %v", len(v), err))
 		}
 		if kind != "" && kind != r.Kind {
 			continue

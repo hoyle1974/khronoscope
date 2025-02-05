@@ -47,14 +47,13 @@ func (frame *keyFrame) check() {
 	var r resources.Resource
 	orig := frame.queryValue(frame.Timestamp.Time)
 	decodeFromBytes(orig, &r)
-	fmt.Printf("------------------ ORIG\n%s\n", strings.Join(r.GetDetails(), "\n"))
+	// fmt.Printf("------------------ ORIG\n%s\n", strings.Join(r.GetDetails(), "\n"))
 
-	for idx, d := range frame.DiffFrames {
+	for _, d := range frame.DiffFrames {
 		b := frame.queryValue(d.Timestamp.Time)
 
 		decodeFromBytes(b, &r)
-		fmt.Printf("------------------ %d\n%s\n", idx, strings.Join(r.GetDetails(), "\n"))
-
+		// fmt.Printf("------------------ %d\n%s\n", idx, strings.Join(r.GetDetails(), "\n"))
 	}
 }
 

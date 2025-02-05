@@ -178,7 +178,7 @@ func (tm *mapImpl) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	state := make(map[string][]byte)
 	for key, item := range tm.Items {
 		value := item.QueryValue(timestamp)
-		if value != nil {
+		if value != nil && len(value) > 0 {
 			state[key] = value
 		}
 	}

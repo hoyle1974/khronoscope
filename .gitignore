@@ -31,3 +31,4 @@ temp.dat.gz
 .DS_Store
 khronoscope
 *.pprof
+*.dat

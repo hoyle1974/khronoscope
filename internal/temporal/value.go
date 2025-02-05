@@ -3,12 +3,9 @@ package temporal
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"sort"
-	"strings"
 	"time"
 
-	"github.com/go-test/deep"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
@@ -72,61 +69,20 @@ func (frame *keyFrame) queryValue(timestamp time.Time) []byte {
 	cur := frame.Value
 	for i := 0; i < index; i++ {
 		cur, _ = applyDiff(cur, frame.DiffFrames[i].Diff)
-		if bytes.Compare(cur, frame.DiffFrames[i].Original) != 0 {
-			var r1, r2 resources.Resource
-			decodeFromBytes(cur, &r1)
-			decodeFromBytes(frame.DiffFrames[i].Original, &r2)
-
-			fmt.Printf("------------------\n%s\n", strings.Join(r2.GetDetails(), "\n"))
-
-			diff := deep.Equal(r1, r2)
-			fmt.Println(strings.Join(diff, "\n"))
-
-			// file, err := os.OpenFile("output.txt", os.O_CREATE|os.O_WRONLY, 0644)
-			// if err != nil {
-			// 	log.Fatal(err)
-			// }
-			// defer file.Close()
-
-			// b, e := EncodeToBytes(frame)
-			// if e != nil {
-			// 	fmt.Println(e)
-			// }
-			// file.Write(b)
-
-			// HELP! Why does this compare sometimes fail?
-			/*
+		/*
+			if bytes.Compare(cur, frame.DiffFrames[i].Original) != 0 {
 				var r1, r2 resources.Resource
 				decodeFromBytes(cur, &r1)
 				decodeFromBytes(frame.DiffFrames[i].Original, &r2)
 
-				file, err := os.OpenFile("output.txt", os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					log.Fatal(err)
-				}
-				defer file.Close()
+				fmt.Printf("------------------\n%s\n", strings.Join(r2.GetDetails(), "\n"))
 
-				file.WriteString(fmt.Sprintf("i=%d\n", i))
-				file.WriteString(fmt.Sprintf("Diff Frames: %d\n", len(frame.DiffFrames)))
-				for idx, d := range frame.DiffFrames {
-					file.WriteString(
-						fmt.Sprintf("%d) %d\n", idx, len(d.Diff)),
-					)
-				}
+				diff := deep.Equal(r1, r2)
+				fmt.Println(strings.Join(diff, "\n"))
 
-				file.WriteString("-------------------------")
-				file.WriteString(r1.GetUID() + " ")
-				file.WriteString(r1.GetTimestamp().String() + "\n")
-				file.WriteString(fmt.Sprintf(" Cur:\n%s\n", strings.Join(r1.GetDetails(), "\n")))
-				file.WriteString("-------------------------")
-				file.WriteString(r2.GetUID() + " ")
-				file.WriteString(r2.GetTimestamp().String() + "\n")
-				file.WriteString(fmt.Sprintf("Orig:\n%s\n", strings.Join(r2.GetDetails(), "\n")))
-				file.WriteString("-------------------------")
-			*/
-
-			panic("Original did not match diffed version")
-		}
+				panic("Original did not match diffed version")
+			}
+		*/
 	}
 	return cur
 }
@@ -147,7 +103,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
 			Timestamp: serializable.Time{Time: timestamp},
 			Diff:      diff,
-			Original:  value,
+			// Original:  value,
 		})
 
 		frame.Last = value // Update stored full value for next append
@@ -192,7 +148,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
 			Timestamp: times[idx],
 			Diff:      diff,
-			Original:  original[idx],
+			// Original:  original[idx],
 		})
 
 		last = original[idx]
@@ -276,7 +232,7 @@ func max(a, b int) int {
 type diffFrame struct {
 	Timestamp serializable.Time
 	Diff      Diff
-	Original  []byte
+	// Original  []byte
 }
 
 // Add a value that is valid @timestamp and after

@@ -6,7 +6,11 @@ import (
 )
 
 func TestPlaybackRenderer(t *testing.T) {
-	renderer := PlaybackRenderer{}
+	renderer := PlaybackRenderer{
+		leftArrow:   "◀",
+		rightArrow:  "▶",
+		pauseSymbol: "⏸",
+	}
 
 	tests := []struct {
 		name     string

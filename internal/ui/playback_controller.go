@@ -23,10 +23,6 @@ func (tc PlaybackRenderer) Render(model playbackModel) string {
 		return ""
 	}
 
-	// var leftArrow = fmt.Sprintf("%c", '\u25C0')
-	// var rightArrow = fmt.Sprintf("%c", '\u25B6')
-	// var pauseSymbol = fmt.Sprintf("%c", '\u23F8')
-
 	symbol := tc.pauseSymbol
 
 	if model.playSpeed == 0 {

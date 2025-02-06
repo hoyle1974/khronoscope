@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/dao"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/types"
@@ -34,6 +35,7 @@ type KhronoscopeTeaProgram struct {
 	searchInput       textinput.Model
 	logCollector      *resources.LogCollector
 	tab               int
+	cfg               config.Config
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -127,6 +129,7 @@ func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.L
 		data:         d,
 		tv:           ui.NewTreeView(),
 		logCollector: l,
+		cfg:          config.Get(),
 	}
 
 	return am
@@ -342,20 +345,20 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "1":
+		case m.cfg.KeyBindings.WindowDetails: //"1":
 			m.tab = 0
 			return m, nil
-		case "2":
+		case m.cfg.KeyBindings.WindowLogs: // "2":
 			m.tab = 1
 			return m, nil
-		case "L":
+		case m.cfg.KeyBindings.FilterLogsToggle: // "L":
 			if m.searchFilter == nil {
 				m.searchFilter = logFilter{}
 			} else {
 				m.searchFilter = nil
 			}
 			return m, nil
-		case "l":
+		case m.cfg.KeyBindings.LogToggle: //:"l":
 			if m.VCR.IsEnabled() {
 				return m, nil // Can't toggle logs while in VCR mode
 			}
@@ -363,7 +366,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				resources.ToggleLogs(sel)
 			}
 			return m, nil
-		case "/":
+		case m.cfg.KeyBindings.FilterSearch: // "/":
 			m.searchInput = textinput.New()
 			m.searchInput.Placeholder = ""
 			m.searchInput.Focus()
@@ -371,54 +374,54 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchInput.Width = 20
 			m.search = true
 			return m, nil
-		case "s":
+		case m.cfg.KeyBindings.Save: // "s":
 			m.data.Save("temp.dat")
 			return m, nil
-		case "m":
+		case m.cfg.KeyBindings.NewLabel: //"m":
 			m.VCR.Pause()
 			m.SetPopup(ui.NewLabelPopup(m))
 			return m, nil
-		case "tab":
+		case m.cfg.KeyBindings.RotateViewToggle: //"tab":
 			m.viewMode++
 			m.viewMode %= 2
 			m.windowResize(m.lastWindowSizeMsg)
 			return m, nil
-		case "ctrl+c":
+		case m.cfg.KeyBindings.Quit: //"ctrl+c":
 			return m, tea.Quit
-		case "left":
+		case m.cfg.KeyBindings.VCRRewind: //"left":
 			m.VCR.Rewind()
 			return m, nil
-		case "right":
+		case m.cfg.KeyBindings.VCRFastForward: // "right":
 			m.VCR.FastForward()
 			return m, nil
-		case " ":
+		case m.cfg.KeyBindings.VCRPlay: //" ":
 			if m.VCR.GetPlaySpeed() == 0 {
 				m.VCR.Play()
 			} else {
 				m.VCR.Pause()
 			}
 			return m, nil
-		case "esc":
+		case m.cfg.KeyBindings.VCROff: // m.cfg.KeyBindings.Exit: // "esc":
 			m.VCR.DisableVirtualTime()
-		case "enter":
+		case m.cfg.KeyBindings.Toggle: // "enter":
 			m.tv.Toggle()
 			return m, nil
-		case "shift+up":
+		case m.cfg.KeyBindings.DetailsUp: //"shift+up":
 			m.detailView.LineUp(10)
 			return m, nil
-		case "shift+down":
+		case m.cfg.KeyBindings.DetailsDown: //"shift+down":
 			m.detailView.LineDown(10)
 			return m, nil
-		case "up":
+		case m.cfg.KeyBindings.Up: // "up":
 			m.tv.Up()
 			return m, nil
-		case "down":
+		case m.cfg.KeyBindings.Down: // "down":
 			m.tv.Down()
 			return m, nil
-		case "alt+up":
+		case m.cfg.KeyBindings.PageUp: // "alt+up":
 			m.tv.PageUp()
 			return m, nil
-		case "alt+down":
+		case m.cfg.KeyBindings.PageDown: // "alt+down":
 			m.tv.PageDown()
 			return m, nil
 		}

@@ -32,3 +32,4 @@ temp.dat.gz
 khronoscope
 *.pprof
 *.dat
+config.yaml

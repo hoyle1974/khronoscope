@@ -8,6 +8,7 @@ import (
 	"runtime/pprof"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
 	"github.com/hoyle1974/khronoscope/internal/metrics"
@@ -17,15 +18,25 @@ import (
 )
 
 func main() {
-	defer metrics.Print()
+	cfg, err := config.InitConfig()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(cfg)
 
-	if f, err := os.Create("khronoscope.pprof"); err != nil {
-		log.Fatal(err)
-	} else {
-		if err := pprof.StartCPUProfile(f); err != nil {
+	if cfg.Metrics {
+		defer metrics.Print()
+	}
+
+	if cfg.Profiling {
+		if f, err := os.Create("khronoscope.pprof"); err != nil {
 			log.Fatal(err)
+		} else {
+			if err := pprof.StartCPUProfile(f); err != nil {
+				log.Fatal(err)
+			}
+			defer pprof.StopCPUProfile()
 		}
-		defer pprof.StopCPUProfile()
 	}
 
 	gob.Register(resources.Resource{})

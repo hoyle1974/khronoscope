@@ -28,6 +28,7 @@ type Keys struct {
 	Down             string `default:"down"`
 	PageUp           string `default:"alt+up"`
 	PageDown         string `default:"alt+down"`
+	DeleteResource   string `default:"ctrl+d"`
 }
 
 type Config struct {

@@ -1,16 +1,20 @@
 package program
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
 	"time"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/config"
+	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/types"
@@ -36,6 +40,7 @@ type KhronoscopeTeaProgram struct {
 	logCollector      *resources.LogCollector
 	tab               int
 	cfg               config.Config
+	client            conn.KhronosConn
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -123,13 +128,14 @@ func (m *KhronoscopeTeaProgram) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
-func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector) *KhronoscopeTeaProgram {
+func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn) *KhronoscopeTeaProgram {
 	am := &KhronoscopeTeaProgram{
 		watcher:      watcher,
 		data:         d,
 		tv:           ui.NewTreeView(),
 		logCollector: l,
 		cfg:          config.Get(),
+		client:       client,
 	}
 
 	return am
@@ -423,6 +429,12 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.cfg.KeyBindings.PageDown: // "alt+down":
 			m.tv.PageDown()
+			return m, nil
+		case m.cfg.KeyBindings.DeleteResource:
+			r := m.tv.GetSelected()
+			if r != nil && r.GetKind() == "Pod" {
+				_ = m.client.Client.CoreV1().Pods(r.GetNamespace()).Delete(context.Background(), r.GetName(), v1.DeleteOptions{})
+			}
 			return m, nil
 		}
 	case tea.WindowSizeMsg:

@@ -70,7 +70,7 @@ func main() {
 		panic(err)
 	}
 
-	appModel := khronoscope.NewProgram(watcher, d, logCollector)
+	appModel := khronoscope.NewProgram(watcher, d, logCollector, client)
 	p := tea.NewProgram(appModel)
 
 	appModel.VCR = ui.NewTimeController(d, func() {

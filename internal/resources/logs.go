@@ -49,6 +49,7 @@ func ToggleLogs(r types.Resource, containerName string) {
 				if v == containerName {
 					extra.Logging = append(extra.Logging[:i], extra.Logging[i+1:]...)
 					found = true
+					break
 				}
 			}
 			if !found {
@@ -72,7 +73,7 @@ func ToggleLogs(r types.Resource, containerName string) {
 					}
 				})
 			} else {
-				_logCollector.stop(r.GetUID(), containerName)
+				_logCollector.stop(r, containerName)
 			}
 		}
 
@@ -90,16 +91,16 @@ type podLogCollector struct {
 	onLog         func(logs string)
 }
 
-func NewPodLogCollector(client kubernetes.Interface, namespace, podName, containerName string, onLog func(logs string)) *podLogCollector {
+func NewPodLogCollector(l *LogCollector, client kubernetes.Interface, r types.Resource, containerName string, onLog func(logs string)) *podLogCollector {
 	plc := &podLogCollector{
 		client:        client,
-		namespace:     namespace,
-		podName:       podName,
+		namespace:     r.GetNamespace(),
+		podName:       r.GetName(),
 		containerName: containerName,
 		stopCh:        make(chan struct{}),
 		onLog:         onLog,
 	}
-	plc.start()
+	plc.start(l, key(r, containerName))
 	return plc
 }
 
@@ -111,7 +112,10 @@ func (plc *podLogCollector) getPodLogs(containerName string) error {
 		TailLines: &lines,
 	})
 
-	podLogs, err := req.Stream(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	podLogs, err := req.Stream(ctx)
 	if err != nil {
 		return fmt.Errorf("error opening stream: %w", err)
 	}
@@ -121,38 +125,43 @@ func (plc *podLogCollector) getPodLogs(containerName string) error {
 	for {
 		select {
 		case <-plc.stopCh:
-			return nil // Stop reading logs when stop channel is closed
+			return nil
 		default:
 			line, err := reader.ReadString('\n')
 			if err == io.EOF {
-				time.Sleep(100 * time.Millisecond) // Avoid busy-waiting
-				continue
+				return fmt.Errorf("log stream closed")
 			} else if err != nil {
-				return fmt.Errorf("error reading logs: %w", err)
+				return fmt.Errorf("log stream error: %w", err)
 			}
 
-			// Process the log line
-			plc.mu.Lock()
 			plc.onLog(strings.TrimSpace(line))
-			plc.mu.Unlock()
 		}
 	}
 }
 
-func (plc *podLogCollector) start() {
+func (plc *podLogCollector) start(l *LogCollector, key string) {
 	plc.wg.Add(1)
 	go func() {
 		defer plc.wg.Done()
-		err := plc.getPodLogs(plc.containerName)
-		if err != nil {
-			fmt.Printf("Log streaming error: %v\n", err)
-		}
+		_ = plc.getPodLogs(plc.containerName)
+
+		// Remove from collectors map when logs stop
+		l.lock.Lock()
+		delete(l.collectors, key)
+		l.lock.Unlock()
 	}()
 }
 
 func (plc *podLogCollector) Stop() {
-	close(plc.stopCh) // Signal the loop in `getPodLogs` to stop
-	plc.wg.Wait()     // Wait for goroutine to finish
+	plc.mu.Lock()
+	defer plc.mu.Unlock()
+	select {
+	case <-plc.stopCh:
+		return // Already stopped
+	default:
+		close(plc.stopCh) // Stop goroutine safely
+		plc.wg.Wait()     // Wait for it to finish
+	}
 }
 
 type LogCollector struct {
@@ -161,20 +170,25 @@ type LogCollector struct {
 	collectors map[string]*podLogCollector
 }
 
+func key(r types.Resource, containerName string) string {
+	return r.GetUID() + ":" + r.GetNamespace() + "." + r.GetName() + ":" + containerName
+}
+
 func (l *LogCollector) start(r types.Resource, containerName string, onLog func(logs string)) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	l.collectors[r.GetUID()+":"+containerName] = NewPodLogCollector(l.client.Client, r.GetNamespace(), r.GetName(), containerName, onLog)
+	l.collectors[key(r, containerName)] = NewPodLogCollector(l, l.client.Client, r, containerName, onLog)
 }
 
-func (l *LogCollector) stop(uid string, containerName string) {
+func (l *LogCollector) stop(r types.Resource, containerName string) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	plc, ok := l.collectors[uid+":"+containerName]
+	k := key(r, containerName)
+	plc, ok := l.collectors[k]
 	if ok {
 		go plc.Stop()
-		delete(l.collectors, uid)
+		delete(l.collectors, k)
 		return
 	}
 }

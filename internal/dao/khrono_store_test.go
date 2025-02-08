@@ -66,7 +66,7 @@ func randomPod(r *rand.Rand) resources.Resource {
 		Labels:      randomStrings(r),
 		Annotations: randomStrings(r),
 		Logs:        randomStrings(r),
-		Logging:     r.Float32() > .5,
+		Logging:     []string{"Container"},
 	}
 	return resources.Resource{
 		Uid:       "PodUid",
@@ -102,7 +102,6 @@ func Test_Store(t *testing.T) {
 	data := []resources.Resource{}
 	for i := 0; i < 100; i++ {
 		resource := randomResource(r)
-		// fmt.Printf("%s\n", strings.Join(resource.GetDetails(), "\n"))
 
 		times = append(times, resource.GetTimestamp())
 		data = append(data, resource)

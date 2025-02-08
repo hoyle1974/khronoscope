@@ -306,7 +306,7 @@ func (f logFilter) Matches(r types.Resource) bool {
 	}
 	if r.GetExtra() != nil {
 		if pe, ok := r.GetExtra().(resources.PodExtra); ok {
-			return pe.Logging
+			return len(pe.Logging) > 0
 		}
 	}
 	return false
@@ -380,7 +380,13 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil // Can't toggle logs while in VCR mode
 			}
 			if sel := m.tv.GetSelected(); sel != nil {
-				resources.ToggleLogs(sel)
+				m.popup = ui.NewContainerPopupModel(m.client, sel, func(name string) {
+					if name == "" {
+						return
+					}
+					// Container was selected
+					resources.ToggleLogs(sel, name)
+				})
 			}
 			return m, nil
 		case m.cfg.KeyBindings.FilterSearch: // "/":

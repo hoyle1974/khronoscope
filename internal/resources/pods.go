@@ -42,7 +42,7 @@ type PodExtra struct {
 	Labels      []string
 	Annotations []string
 	Logs        []string
-	Logging     bool
+	Logging     []string
 }
 
 func (r PodExtra) GetValue(key string) any { return nil }
@@ -57,95 +57,13 @@ func (p PodExtra) Copy() Copyable {
 		Containers:  misc.DeepCopyMap(p.Containers),
 		Labels:      p.Labels,
 		Annotations: p.Annotations,
-		Logs:        p.Logs,
-		Logging:     p.Logging,
+		Logs:        misc.DeepCopyArray(p.Logs),
+		Logging:     misc.DeepCopyArray(p.Logging),
 	}
 }
 
 type PodRenderer struct {
 }
-
-/*
-// describePod returns a list of formatted strings describing the pod's details.
-func describePod(pod *corev1.Pod) []string {
-	// Prepare the list of strings
-	var details []string
-
-	// Add pod basic information
-	details = append(details, fmt.Sprintf("Priority:\t\t%d", pod.Spec.Priority))
-	details = append(details, fmt.Sprintf("Priority Class Name:\t%s", pod.Spec.PriorityClassName))
-	details = append(details, fmt.Sprintf("Service Account:\t%s", pod.Spec.ServiceAccountName))
-	details = append(details, fmt.Sprintf("Node:\t\t\t%s/%s", pod.Spec.NodeName, pod.Status.PodIP))
-
-	// Start time
-	startTime := "N/A"
-	if pod.Status.StartTime != nil {
-		startTime = pod.Status.StartTime.Format(time.RFC1123Z)
-	}
-	details = append(details, fmt.Sprintf("Start Time:\t\t%s", startTime))
-
-	// Status
-	details = append(details, fmt.Sprintf("Status:\t\t\t%s", pod.Status.Phase))
-
-	// IPs
-	details = append(details, fmt.Sprintf("IP:\t\t\t%s", pod.Status.PodIP))
-	details = append(details, "IPs:")
-	for _, ip := range pod.Status.PodIPs {
-		details = append(details, fmt.Sprintf("\tIP:\t\t%s", ip.IP))
-	}
-
-	// Controlled By
-	if pod.OwnerReferences != nil {
-		for _, owner := range pod.OwnerReferences {
-			details = append(details, fmt.Sprintf("Controlled By:\t%s/%s", owner.Kind, owner.Name))
-		}
-	}
-
-	// Container details
-	details = append(details, "Containers:")
-	for _, container := range pod.Spec.Containers {
-		details = append(details, fmt.Sprintf("\t%s:", container.Name))
-		details = append(details, fmt.Sprintf("\t\tContainer ID:\t%s", "N/A")) // Need to query container ID if required
-		details = append(details, fmt.Sprintf("\t\tImage:\t\t%s", container.Image))
-		details = append(details, fmt.Sprintf("\t\tImage ID:\t%s", "N/A")) // Image ID can be retrieved via containerd or docker client
-		details = append(details, fmt.Sprintf("\t\tPorts:\t\t%v", container.Ports))
-		details = append(details, fmt.Sprintf("\t\tHost Ports:\t%v", container.Ports)) // For host ports
-		details = append(details, fmt.Sprintf("\t\tArgs:\t\t%s", container.Args))
-		details = append(details, fmt.Sprintf("\t\tLimits:\t%v", container.Resources.Limits))
-		details = append(details, fmt.Sprintf("\t\tRequests:\t%v", container.Resources.Requests))
-		details = append(details, fmt.Sprintf("\t\tLiveness:\t%s", container.LivenessProbe))
-		details = append(details, fmt.Sprintf("\t\tReadiness:\t%s", container.ReadinessProbe))
-		details = append(details, fmt.Sprintf("\t\tEnvironment:\t%s", container.Env))
-		details = append(details, fmt.Sprintf("\t\tMounts:\t%v", container.VolumeMounts))
-
-	}
-
-	// Conditions
-	details = append(details, "Conditions:")
-	for _, condition := range pod.Status.Conditions {
-		details = append(details, fmt.Sprintf("\tType: %s, Status: %s", condition.Type, condition.Status))
-	}
-
-	// Volumes
-	details = append(details, "Volumes:")
-	for _, volume := range pod.Spec.Volumes {
-		details = append(details, fmt.Sprintf("\t%s:", volume.Name))
-		details = append(details, fmt.Sprintf("\t\tType:\t%s", volume.VolumeSource))
-	}
-
-	// QoS class, Node selectors, and Tolerations
-	details = append(details, fmt.Sprintf("QoS Class:\t\t%s", pod.Status.QOSClass))
-	details = append(details, fmt.Sprintf("Node-Selectors:\t%s", pod.Spec.NodeSelector))
-	details = append(details, "Tolerations:")
-	for _, toleration := range pod.Spec.Tolerations {
-		details = append(details, fmt.Sprintf("\t%s", toleration.Key))
-	}
-
-	// Events (Optional: You may want to fetch and append events related to this pod)
-
-	return details
-}
-*/
 
 func (r PodRenderer) Render(resource Resource, details bool) []string {
 	if resource.Extra == nil {
@@ -175,26 +93,6 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 				out = append(out, fmt.Sprintf("   %v - %v", bar, k))
 			}
 		}
-
-		// out = append(out, fmt.Sprintf("Generation: %v", pod.GetGeneration()))
-
-		// getContainerState := func(cname string) string {
-		// 	for _, status := range pod.Status.ContainerStatuses {
-		// 		if status.Name == cname {
-		// 			if status.State.Waiting != nil {
-		// 				return "Waiting: " + status.State.Waiting.Reason
-		// 			}
-		// 			if status.State.Running != nil {
-		// 				return "Running"
-		// 			}
-		// 			if status.State.Terminated != nil {
-		// 				return "Terminated: " + status.State.Terminated.Reason
-		// 			}
-		// 			return "unknown"
-		// 		}
-		// 	}
-		// 	return ""
-		// }
 
 		// Print container information
 		out = append(out, "Containers:")
@@ -306,8 +204,6 @@ func (n *PodWatcher) getPodMetricsForPod(resource Resource) map[string]PodMetric
 	}
 	return metricsExtra
 }
-
-// func (n *PodWatcher) SetLogging()
 
 func (n *PodWatcher) updateResourceMetrics(resource Resource) {
 	extra := resource.Extra.Copy().(PodExtra)

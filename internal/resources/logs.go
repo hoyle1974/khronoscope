@@ -34,26 +34,34 @@ func toPodExtra(r types.Resource) (PodExtra, bool) {
 
 func IsLogging(r types.Resource) bool {
 	if pe, ok := toPodExtra(r); ok {
-		return pe.Logging
+		return len(pe.Logging) > 0
 	}
 	return false
 }
 
-func ToggleLogs(r types.Resource) {
+func ToggleLogs(r types.Resource, containerName string) {
 	if extra, ok := toPodExtra(r); ok {
 		if rs, ok := r.(Resource); ok {
 			extra = extra.Copy().(PodExtra)
-			extra.Logging = !extra.Logging
-			if !extra.Logging {
-				extra.Logs = []string{}
+
+			found := false
+			for i, v := range extra.Logging {
+				if v == containerName {
+					extra.Logging = append(extra.Logging[:i], extra.Logging[i+1:]...)
+					found = true
+				}
 			}
+			if !found {
+				extra.Logging = append(extra.Logging, containerName)
+			}
+
 			rs.Extra = extra
 			rs.Timestamp = serializable.Time{Time: time.Now()}
 
 			go _watcher.Update(rs)
 
-			if extra.Logging {
-				_logCollector.start(r, func(logs string) {
+			if !found {
+				_logCollector.start(r, containerName, func(logs string) {
 					// Get the latest resource
 					if rs, err := _watcher.data.GetResourceAt(time.Now(), r.GetUID()); err == nil {
 						extra = rs.Extra.Copy().(PodExtra)
@@ -64,7 +72,7 @@ func ToggleLogs(r types.Resource) {
 					}
 				})
 			} else {
-				_logCollector.stop(r.GetUID())
+				_logCollector.stop(r.GetUID(), containerName)
 			}
 		}
 
@@ -72,30 +80,34 @@ func ToggleLogs(r types.Resource) {
 }
 
 type podLogCollector struct {
-	client    kubernetes.Interface
-	namespace string
-	podName   string
-	stopCh    chan struct{}
-	wg        sync.WaitGroup
-	mu        sync.Mutex
-	onLog     func(logs string)
+	client        kubernetes.Interface
+	namespace     string
+	podName       string
+	containerName string
+	stopCh        chan struct{}
+	wg            sync.WaitGroup
+	mu            sync.Mutex
+	onLog         func(logs string)
 }
 
-func NewPodLogCollector(client kubernetes.Interface, namespace, podName string, onLog func(logs string)) *podLogCollector {
+func NewPodLogCollector(client kubernetes.Interface, namespace, podName, containerName string, onLog func(logs string)) *podLogCollector {
 	plc := &podLogCollector{
-		client:    client,
-		namespace: namespace,
-		podName:   podName,
-		stopCh:    make(chan struct{}),
-		onLog:     onLog,
+		client:        client,
+		namespace:     namespace,
+		podName:       podName,
+		containerName: containerName,
+		stopCh:        make(chan struct{}),
+		onLog:         onLog,
 	}
 	plc.start()
 	return plc
 }
 
-func (plc *podLogCollector) getPodLogs() (string, error) {
+func (plc *podLogCollector) getPodLogs(containerName string) (string, error) {
 	lines := int64(15)
 	req := plc.client.CoreV1().Pods(plc.namespace).GetLogs(plc.podName, &corev1.PodLogOptions{
+		Container: containerName,
+		Follow:    true,
 		TailLines: &lines,
 	})
 
@@ -123,7 +135,7 @@ func (plc *podLogCollector) start() {
 			case <-plc.stopCh:
 				return
 			default:
-				logData, err := plc.getPodLogs()
+				logData, err := plc.getPodLogs(plc.containerName)
 				if err == nil {
 					plc.mu.Lock()
 					plc.onLog(logData)
@@ -146,17 +158,17 @@ type LogCollector struct {
 	collectors map[string]*podLogCollector
 }
 
-func (l *LogCollector) start(r types.Resource, onLog func(logs string)) {
+func (l *LogCollector) start(r types.Resource, containerName string, onLog func(logs string)) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	l.collectors[r.GetUID()] = NewPodLogCollector(l.client.Client, r.GetNamespace(), r.GetName(), onLog)
+	l.collectors[r.GetUID()+":"+containerName] = NewPodLogCollector(l.client.Client, r.GetNamespace(), r.GetName(), containerName, onLog)
 }
 
-func (l *LogCollector) stop(uid string) {
+func (l *LogCollector) stop(uid string, containerName string) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	plc, ok := l.collectors[uid]
+	plc, ok := l.collectors[uid+":"+containerName]
 	if ok {
 		go plc.Stop()
 		delete(l.collectors, uid)

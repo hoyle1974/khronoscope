@@ -7,6 +7,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+func DeepCopyArray[K any](s []K) []K {
+	dest := make([]K, len(s))
+
+	for k := 0; k < len(s); k++ {
+		dest[k] = deepCopyValue(s[k])
+	}
+
+	return dest
+}
+
 func DeepCopyMap[K comparable, V any](m map[K]V) map[K]V {
 	newMap := make(map[K]V, len(m))
 

@@ -286,12 +286,16 @@ type searchFilter struct {
 	value string
 }
 
-func (f searchFilter) Matches(r types.Resource) bool {
-	return strings.Contains(r.String(), f.value)
+func (f searchFilter) Matches(r types.Resource) bool { return strings.Contains(r.String(), f.value) }
+func (f searchFilter) Description() string           { return f.value }
+func (f searchFilter) Highlight() string             { return f.value }
+
+type podFilter struct {
 }
 
-func (f searchFilter) Description() string { return f.value }
-func (f searchFilter) Highlight() string   { return f.value }
+func (f podFilter) Matches(r types.Resource) bool { return r.GetKind() == "Pod" }
+func (f podFilter) Description() string           { return "Pods" }
+func (f podFilter) Highlight() string             { return "" }
 
 type logFilter struct {
 }
@@ -364,6 +368,13 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchFilter = nil
 			}
 			return m, nil
+		case m.cfg.KeyBindings.Pod:
+			if m.searchFilter == nil {
+				m.searchFilter = podFilter{}
+			} else {
+				m.searchFilter = nil
+			}
+			return m, nil
 		case m.cfg.KeyBindings.LogToggle: //:"l":
 			if m.VCR.IsEnabled() {
 				return m, nil // Can't toggle logs while in VCR mode
@@ -382,6 +393,11 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.cfg.KeyBindings.Save: // "s":
 			m.data.Save("temp.dat")
+			return m, nil
+		case m.cfg.KeyBindings.Exec:
+			if sel := m.tv.GetSelected(); sel != nil && sel.GetKind() == "Pod" {
+				m.SetPopup(ui.NewExecPopupModel(m.client, sel))
+			}
 			return m, nil
 		case m.cfg.KeyBindings.NewLabel: //"m":
 			m.VCR.Pause()

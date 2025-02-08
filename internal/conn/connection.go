@@ -18,6 +18,7 @@ import (
 type KhronosConn struct {
 	Client        kubernetes.Interface
 	MetricsClient *metrics.Clientset
+	Config        *rest.Config
 }
 
 var kubeConfigFlag = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
@@ -67,5 +68,5 @@ func NewKhronosConnection() (KhronosConn, error) {
 		return KhronosConn{}, fmt.Errorf("unable to create a metric client: %v", err)
 	}
 
-	return KhronosConn{Client: client, MetricsClient: mc}, nil
+	return KhronosConn{Client: client, MetricsClient: mc, Config: kubeconfig}, nil
 }

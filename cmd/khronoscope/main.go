@@ -18,6 +18,14 @@ import (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Recovered from panic:", r)
+			fmt.Print("\033[H\033[2J") // Reset the terminal
+			os.Exit(1)
+		}
+	}()
+
 	cfg, err := config.InitConfig()
 	if err != nil {
 		panic(err)
@@ -91,4 +99,5 @@ func main() {
 		panic(err)
 	}
 
+	ui.ResetTerminal()
 }

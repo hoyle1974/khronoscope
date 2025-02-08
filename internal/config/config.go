@@ -13,7 +13,7 @@ type Keys struct {
 	FilterLogsToggle string `default:"L"`
 	LogToggle        string `default:"l"`
 	FilterSearch     string `default:"/"`
-	Save             string `default:"s"`
+	Save             string `default:"q"`
 	NewLabel         string `default:"m"`
 	RotateViewToggle string `default:"tab"`
 	Quit             string `default:"ctrl+c"`
@@ -29,6 +29,8 @@ type Keys struct {
 	PageUp           string `default:"alt+up"`
 	PageDown         string `default:"alt+down"`
 	DeleteResource   string `default:"ctrl+d"`
+	Exec             string `default:"s"`
+	Pod              string `default:"P"`
 }
 
 type Config struct {

@@ -1,7 +1,7 @@
 package resources
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -103,7 +103,7 @@ func NewPodLogCollector(client kubernetes.Interface, namespace, podName, contain
 	return plc
 }
 
-func (plc *podLogCollector) getPodLogs(containerName string) (string, error) {
+func (plc *podLogCollector) getPodLogs(containerName string) error {
 	lines := int64(15)
 	req := plc.client.CoreV1().Pods(plc.namespace).GetLogs(plc.podName, &corev1.PodLogOptions{
 		Container: containerName,
@@ -113,43 +113,46 @@ func (plc *podLogCollector) getPodLogs(containerName string) (string, error) {
 
 	podLogs, err := req.Stream(context.Background())
 	if err != nil {
-		return "", fmt.Errorf("error opening stream: %w", err)
+		return fmt.Errorf("error opening stream: %w", err)
 	}
 	defer podLogs.Close()
 
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, podLogs)
-	if err != nil {
-		return "", fmt.Errorf("error copying logs: %w", err)
-	}
+	reader := bufio.NewReader(podLogs)
+	for {
+		select {
+		case <-plc.stopCh:
+			return nil // Stop reading logs when stop channel is closed
+		default:
+			line, err := reader.ReadString('\n')
+			if err == io.EOF {
+				time.Sleep(100 * time.Millisecond) // Avoid busy-waiting
+				continue
+			} else if err != nil {
+				return fmt.Errorf("error reading logs: %w", err)
+			}
 
-	return buf.String(), nil
+			// Process the log line
+			plc.mu.Lock()
+			plc.onLog(strings.TrimSpace(line))
+			plc.mu.Unlock()
+		}
+	}
 }
 
 func (plc *podLogCollector) start() {
 	plc.wg.Add(1)
 	go func() {
 		defer plc.wg.Done()
-		for {
-			select {
-			case <-plc.stopCh:
-				return
-			default:
-				logData, err := plc.getPodLogs(plc.containerName)
-				if err == nil {
-					plc.mu.Lock()
-					plc.onLog(logData)
-					plc.mu.Unlock()
-				}
-				time.Sleep(5 * time.Second) // Poll logs every 5 seconds
-			}
+		err := plc.getPodLogs(plc.containerName)
+		if err != nil {
+			fmt.Printf("Log streaming error: %v\n", err)
 		}
 	}()
 }
 
 func (plc *podLogCollector) Stop() {
-	close(plc.stopCh)
-	plc.wg.Wait()
+	close(plc.stopCh) // Signal the loop in `getPodLogs` to stop
+	plc.wg.Wait()     // Wait for goroutine to finish
 }
 
 type LogCollector struct {

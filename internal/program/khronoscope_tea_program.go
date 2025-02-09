@@ -213,7 +213,7 @@ func (m *KhronoscopeTeaProgram) insertPopup(content string, popup ui.Popup) stri
 		return content
 	}
 
-	popupLines := strings.Split(popup.View(m.width, m.height), "\n")
+	popupLines := strings.Split(popup.View(), "\n")
 	contentLines := strings.Split(content, "\n")
 
 	ll := len(contentLines)
@@ -322,7 +322,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	if m.popup != nil {
-		if m.popup.Update(msg) {
+		if _, cmd := m.popup.Update(msg); cmd != nil {
 			m.SetPopup(nil)
 		}
 		return m, nil
@@ -380,7 +380,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil // Can't toggle logs while in VCR mode
 			}
 			if sel := m.tv.GetSelected(); sel != nil {
-				m.popup = ui.NewContainerPopupModel(m.client, sel, func(name string) {
+				m.popup = ui.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
 					if name == "" {
 						return
 					}
@@ -402,12 +402,18 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.cfg.KeyBindings.Exec:
 			if sel := m.tv.GetSelected(); sel != nil && sel.GetKind() == "Pod" {
-				m.SetPopup(ui.NewExecPopupModel(m.client, sel))
+				m.popup = ui.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
+					if name == "" {
+						return
+					}
+					// Container was selected
+					m.SetPopup(ui.NewExecPopupModel(m.client, sel, name))
+				})
 			}
 			return m, nil
 		case m.cfg.KeyBindings.NewLabel: //"m":
 			m.VCR.Pause()
-			m.SetPopup(ui.NewLabelPopup(m))
+			m.SetPopup(ui.NewLabelPopup(m.width, m.height, m))
 			return m, nil
 		case m.cfg.KeyBindings.RotateViewToggle: //"tab":
 			m.viewMode++

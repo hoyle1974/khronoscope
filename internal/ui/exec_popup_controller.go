@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"io"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,32 +22,60 @@ import (
 
 type execPopupModel struct {
 	textInput textinput.Model
+	stdin     *io.PipeWriter
+	output    string
+	errMsg    string
 }
 
-func (p *execPopupModel) Update(msg tea.Msg) bool {
+func (p *execPopupModel) Init() tea.Cmd {
+	return nil
+}
+
+func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return true
+			return p, tea.Quit
 		case tea.KeyEnter:
-			// Save the label
-			// p.labeler.SetLabel(p.textInput.Value())
-			return true
+			// Send command to the remote shell
+			cmd := p.textInput.Value() + "\n"
+			_, err := p.stdin.Write([]byte(cmd))
+			if err != nil {
+				p.errMsg = fmt.Sprintf("Error sending input: %v", err)
+			}
+			p.textInput.SetValue("") // Clear input
 		}
 	}
 
-	p.textInput, _ = p.textInput.Update(msg)
-
-	return false
+	var cmd tea.Cmd
+	p.textInput, cmd = p.textInput.Update(msg)
+	return p, cmd
 }
 
-func (model *execPopupModel) View(width, height int) string {
-	return RenderExecPopup(model, width, height)
+func (p *execPopupModel) View() string {
+	b := lipgloss.RoundedBorder()
+	style := lipgloss.NewStyle().
+		BorderStyle(b).
+		Padding(1).
+		Width(50).
+		Height(10).
+		AlignHorizontal(lipgloss.Center).
+		AlignVertical(lipgloss.Center)
+
+	if p.errMsg != "" {
+		return style.Render(fmt.Sprintf("%v", p.errMsg))
+	}
+
+	return style.Render(fmt.Sprintf(
+		"Remote Shell\n\n%s\n\n> %s\n\n%s",
+		p.output,
+		p.textInput.View(),
+		"(esc to quit)",
+	))
 }
 
-// ExecInPod executes a command inside a Kubernetes container
-func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, podName, containerName string, command []string) (string, error) {
+func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, podName, containerName string, command []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	req := clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(podName).
@@ -55,51 +84,68 @@ func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, p
 		VersionedParams(&corev1.PodExecOptions{
 			Command:   command,
 			Container: containerName,
-			Stdin:     false,
+			Stdin:     true,
 			Stdout:    true,
 			Stderr:    true,
-			TTY:       false,
+			TTY:       true,
 		}, runtime.ParameterCodec(scheme.ParameterCodec))
 
 	// Create an executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return "", fmt.Errorf("failed to initialize executor: %w", err)
+		return fmt.Errorf("failed to initialize executor: %w", err)
 	}
 
-	// Capture output
-	var stdout, stderr bytes.Buffer
-	err = exec.StreamWithContext(context.TODO(), remotecommand.StreamOptions{
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Tty:    false,
+	// Stream with interactive supportP
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+		Tty:    true, // Enables interactive session
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to execute command: %w\nstderr: %s", err, stderr.String())
+		return fmt.Errorf("failed to execute command: %w", err)
 	}
 
-	return stdout.String(), nil
+	return nil
 }
 
-func NewExecPopupModel(client conn.KhronosConn, resource types.Resource) Popup {
+func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, containerName string) Popup {
 	ti := textinput.New()
-	ti.Placeholder = ""
+	ti.Placeholder = "Enter command..."
 	ti.Focus()
-	ti.CharLimit = 156
-	ti.Width = 20
+	ti.CharLimit = 256
+	ti.Width = 40
 
-	// Command to execute inside the container
-	command := []string{"sh", "-c", "echo Hello from inside the container"}
+	// Create pipes for stdin
+	stdinReader, stdinWriter := io.Pipe()
+	stdoutBuffer := new(bytes.Buffer)
+	stderrBuffer := new(bytes.Buffer)
 
-	// Execute the command
-	output, err := execInPod(client.Client, client.Config, resource.GetNamespace(), resource.GetName(), "etcd", command)
-	if err != nil {
-		log.Fatalf("Error executing command: %v", err)
+	model := &execPopupModel{
+		textInput: ti,
+		stdin:     stdinWriter,
 	}
 
-	ti.SetValue(output)
+	// Run the shell session in a goroutine
+	go func() {
+		err := execInPod(client.Client, client.Config, resource.GetNamespace(), resource.GetName(), containerName, []string{"sh"}, stdinReader, stdoutBuffer, stderrBuffer)
+		if err != nil {
+			model.errMsg = fmt.Sprintf("Error: %v", err)
+		}
+	}()
 
-	return &execPopupModel{textInput: ti}
+	// Continuously read output
+	go func() {
+		for {
+			time.Sleep(100 * time.Millisecond) // Polling interval
+			model.output = stdoutBuffer.String() + stderrBuffer.String()
+		}
+	}()
+
+	return model
 }
 
 func RenderExecPopup(model *execPopupModel, width, height int) string {
@@ -111,6 +157,10 @@ func RenderExecPopup(model *execPopupModel, width, height int) string {
 		Height(5).
 		AlignHorizontal(lipgloss.Center).
 		AlignVertical(lipgloss.Center)
+
+	if model.errMsg != "" {
+		return style.Render(fmt.Sprintf("%v", model.errMsg))
+	}
 
 	return style.Render(fmt.Sprintf(
 		"Add a label to this timestamp\n\n%s\n\n%s",

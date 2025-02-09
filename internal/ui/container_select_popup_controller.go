@@ -18,28 +18,31 @@ type containerPopupModel struct {
 	Containers        []string
 	Select            int
 	OnContainerSelect func(string)
+	width, height     int
 }
 
-func (p *containerPopupModel) Update(msg tea.Msg) bool {
+func (p *containerPopupModel) Init() tea.Cmd { return nil }
+
+func (p *containerPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyUp:
 			p.Up()
-			return false
+			return p, nil
 		case tea.KeyDown:
 			p.Down()
-			return false
+			return p, nil
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return true
+			return p, tea.Quit
 		case tea.KeyEnter:
 			// Save the label
 			p.OnContainerSelect(p.Containers[p.Select])
-			return true
+			return p, tea.Quit
 		}
 	}
 
-	return false
+	return p, nil
 }
 
 func (model *containerPopupModel) Up() {
@@ -56,11 +59,11 @@ func (model *containerPopupModel) Down() {
 	}
 }
 
-func (model *containerPopupModel) View(width, height int) string {
-	return RenderContainerPopup(model, width, height)
+func (model *containerPopupModel) View() string {
+	return RenderContainerPopup(model, model.width, model.height)
 }
 
-func NewContainerPopupModel(client conn.KhronosConn, resource types.Resource, selector func(string)) Popup {
+func NewContainerPopupModel(client conn.KhronosConn, resource types.Resource, width, height int, selector func(string)) Popup {
 	if resource.GetKind() != "Pod" {
 		return nil
 	}
@@ -79,7 +82,12 @@ func NewContainerPopupModel(client conn.KhronosConn, resource types.Resource, se
 		return nil
 	}
 
-	return &containerPopupModel{Containers: containers, OnContainerSelect: selector}
+	return &containerPopupModel{
+		Containers:        containers,
+		OnContainerSelect: selector,
+		width:             width,
+		height:            height,
+	}
 }
 
 func RenderContainerPopup(model *containerPopupModel, width, height int) string {

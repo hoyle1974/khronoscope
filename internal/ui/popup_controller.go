@@ -9,8 +9,8 @@ import (
 )
 
 type Popup interface {
-	Update(msg tea.Msg) bool
-	View(width, height int) string
+	Update(msg tea.Msg) (tea.Model, tea.Cmd)
+	View() string
 }
 
 type Labeler interface {
@@ -18,66 +18,72 @@ type Labeler interface {
 }
 
 type labelPopupModel struct {
-	textInput textinput.Model
-	labeler   Labeler
+	textInput     textinput.Model
+	labeler       Labeler
+	width, height int
 }
 
-func (p *labelPopupModel) Update(msg tea.Msg) bool {
+func (p *labelPopupModel) Init() tea.Cmd { return nil }
+
+func (p *labelPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return true
+			return p, tea.Quit
 		case tea.KeyEnter:
 			// Save the label
 			p.labeler.SetLabel(p.textInput.Value())
-			return true
+			return p, tea.Quit
 		}
 	}
 
 	p.textInput, _ = p.textInput.Update(msg)
 
-	return false
+	return p, nil
 }
 
-func (model *labelPopupModel) View(width, height int) string {
-	return RenderLabelPopup(model, width, height)
+func (model *labelPopupModel) View() string {
+	return RenderLabelPopup(model, model.width, model.height)
 }
 
-func NewLabelPopup(labeler Labeler) Popup {
+func NewLabelPopup(width, height int, labeler Labeler) Popup {
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
 
-	return &labelPopupModel{textInput: ti, labeler: labeler}
+	return &labelPopupModel{textInput: ti, labeler: labeler, width: width, height: height}
 }
 
 type messagePopupModel struct {
-	msg   string
-	close string
+	msg           string
+	close         string
+	width, height int
 }
 
-func (p *messagePopupModel) Update(msg tea.Msg) bool {
+func (p *messagePopupModel) Init() tea.Cmd { return nil }
+
+func (p *messagePopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case p.close:
-			return true
+			return p, tea.Quit
 		}
 	}
 
-	return false
+	return p, nil
 }
 
-func (model *messagePopupModel) View(width, height int) string {
-	return RenderMessagePopup(model, width, height)
+func (model *messagePopupModel) View() string {
+	return RenderMessagePopup(model, model.width, model.height)
 }
 
 // NewMessagePopup creates a new message popup with the given message and close key
-func NewMessagePopup(msg string, close string) Popup {
-	return &messagePopupModel{msg: msg, close: close}
+func NewMessagePopup(msg string, close string, width, height int) Popup {
+	return &messagePopupModel{msg: msg, close: close, width: width, height: height}
 }
 
 func RenderLabelPopup(model *labelPopupModel, width, height int) string {

@@ -7,24 +7,23 @@ import (
 	"io"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 type execPopupModel struct {
-	textInput textinput.Model
-	stdin     *io.PipeWriter
-	output    string
-	errMsg    string
+	// textInput textinput.Model
+	stdin  *io.PipeWriter
+	output string
+	errMsg string
 }
 
 func (p *execPopupModel) Init() tea.Cmd {
@@ -35,22 +34,26 @@ func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
 			return p, tea.Quit
 		case tea.KeyEnter:
-			// Send command to the remote shell
-			cmd := p.textInput.Value() + "\n"
-			_, err := p.stdin.Write([]byte(cmd))
-			if err != nil {
-				p.errMsg = fmt.Sprintf("Error sending input: %v", err)
+			_, _ = p.stdin.Write([]byte("\n")) // Send actual newline
+		case tea.KeyBackspace:
+			_, _ = p.stdin.Write([]byte("\b")) // Send actual backspace
+		case tea.KeyTab:
+			_, _ = p.stdin.Write([]byte("\t")) // Send tab character
+		case tea.KeySpace:
+			_, _ = p.stdin.Write([]byte(" ")) // Send space character
+		case tea.KeyEscape:
+			_, _ = p.stdin.Write([]byte("\x1b")) // Send escape character
+		default:
+			if len(msg.Runes) > 0 {
+				_, _ = p.stdin.Write([]byte(string(msg.Runes))) // Send normal characters
 			}
-			p.textInput.SetValue("") // Clear input
 		}
 	}
 
-	var cmd tea.Cmd
-	p.textInput, cmd = p.textInput.Update(msg)
-	return p, cmd
+	return p, nil
 }
 
 func (p *execPopupModel) View() string {
@@ -58,37 +61,37 @@ func (p *execPopupModel) View() string {
 	style := lipgloss.NewStyle().
 		BorderStyle(b).
 		Padding(1).
-		Width(50).
-		Height(10).
-		AlignHorizontal(lipgloss.Center).
-		AlignVertical(lipgloss.Center)
+		Width(120).
+		Height(50).
+		AlignHorizontal(lipgloss.Left).
+		AlignVertical(lipgloss.Top)
 
 	if p.errMsg != "" {
 		return style.Render(fmt.Sprintf("%v", p.errMsg))
 	}
 
-	return style.Render(fmt.Sprintf(
-		"Remote Shell\n\n%s\n\n> %s\n\n%s",
-		p.output,
-		p.textInput.View(),
-		"(esc to quit)",
-	))
+	return style.Render(p.errMsg + "\n" + p.output)
 }
 
-func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, podName, containerName string, command []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
-	req := clientset.CoreV1().RESTClient().Post().
+func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, podName, containerName string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	coreclient, err := corev1client.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+	req := coreclient.RESTClient().Post().
 		Resource("pods").
 		Name(podName).
 		Namespace(namespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Command:   command,
 			Container: containerName,
+			Command:   []string{"/bin/sh"},
 			Stdin:     true,
 			Stdout:    true,
 			Stderr:    true,
 			TTY:       true,
-		}, runtime.ParameterCodec(scheme.ParameterCodec))
+		}, scheme.ParameterCodec)
 
 	// Create an executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
@@ -97,9 +100,7 @@ func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, p
 	}
 
 	// Stream with interactive supportP
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdin:  stdin,
 		Stdout: stdout,
 		Stderr: stderr,
@@ -113,11 +114,6 @@ func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, p
 }
 
 func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, containerName string) Popup {
-	ti := textinput.New()
-	ti.Placeholder = "Enter command..."
-	ti.Focus()
-	ti.CharLimit = 256
-	ti.Width = 40
 
 	// Create pipes for stdin
 	stdinReader, stdinWriter := io.Pipe()
@@ -125,13 +121,12 @@ func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, contain
 	stderrBuffer := new(bytes.Buffer)
 
 	model := &execPopupModel{
-		textInput: ti,
-		stdin:     stdinWriter,
+		stdin: stdinWriter,
 	}
 
 	// Run the shell session in a goroutine
 	go func() {
-		err := execInPod(client.Client, client.Config, resource.GetNamespace(), resource.GetName(), containerName, []string{"sh"}, stdinReader, stdoutBuffer, stderrBuffer)
+		err := execInPod(client.Client, client.Config, resource.GetNamespace(), resource.GetName(), containerName, stdinReader, stdoutBuffer, stderrBuffer)
 		if err != nil {
 			model.errMsg = fmt.Sprintf("Error: %v", err)
 		}
@@ -140,31 +135,10 @@ func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, contain
 	// Continuously read output
 	go func() {
 		for {
-			time.Sleep(100 * time.Millisecond) // Polling interval
+			time.Sleep(10 * time.Millisecond) // Polling interval
 			model.output = stdoutBuffer.String() + stderrBuffer.String()
 		}
 	}()
 
 	return model
-}
-
-func RenderExecPopup(model *execPopupModel, width, height int) string {
-	b := lipgloss.RoundedBorder()
-	style := lipgloss.NewStyle().
-		BorderStyle(b).
-		Padding(1).
-		Width(width - 2).
-		Height(5).
-		AlignHorizontal(lipgloss.Center).
-		AlignVertical(lipgloss.Center)
-
-	if model.errMsg != "" {
-		return style.Render(fmt.Sprintf("%v", model.errMsg))
-	}
-
-	return style.Render(fmt.Sprintf(
-		"Add a label to this timestamp\n\n%s\n\n%s",
-		model.textInput.View(),
-		"(esc to quit)",
-	))
 }

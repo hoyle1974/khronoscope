@@ -41,6 +41,7 @@ type KhronoscopeTeaProgram struct {
 	tab               int
 	cfg               config.Config
 	client            conn.KhronosConn
+	forceSelect       *resources.Resource
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -128,7 +129,7 @@ func (m *KhronoscopeTeaProgram) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
-func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn) *KhronoscopeTeaProgram {
+func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn, sel resources.Resource) *KhronoscopeTeaProgram {
 	am := &KhronoscopeTeaProgram{
 		watcher:      watcher,
 		data:         d,
@@ -136,6 +137,7 @@ func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.L
 		logCollector: l,
 		cfg:          config.Get(),
 		client:       client,
+		forceSelect:  &sel,
 	}
 
 	return am
@@ -215,6 +217,9 @@ func (m *KhronoscopeTeaProgram) insertPopup(content string, popup ui.Popup) stri
 
 	popupLines := strings.Split(popup.View(), "\n")
 	contentLines := strings.Split(content, "\n")
+	for len(contentLines) < len(popupLines) {
+		contentLines = append(contentLines, "")
+	}
 
 	ll := len(contentLines)
 	for idx := 0; idx < m.height-ll; idx++ {
@@ -222,6 +227,9 @@ func (m *KhronoscopeTeaProgram) insertPopup(content string, popup ui.Popup) stri
 	}
 
 	offset := (m.height / 2) - (len(popupLines) / 2)
+	if offset < 0 {
+		offset = 0
+	}
 
 	for idx, line := range popupLines {
 		contentLines[idx+offset] = line
@@ -316,6 +324,19 @@ func (f logFilter) Description() string { return "Logging" }
 func (f logFilter) Highlight() string   { return "" }
 
 func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	if m.forceSelect != nil {
+		ui.NewContainerPopupModel(m.client, m.forceSelect, m.width, m.height, func(name string) {
+			if name == "" {
+				return
+			}
+			// Container was selected
+			m.SetPopup(ui.NewExecPopupModel(m.client, m.forceSelect, name))
+		})
+		m.forceSelect = nil
+		return m, nil
+	}
+
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -406,8 +427,11 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if name == "" {
 						return
 					}
-					// Container was selected
-					m.SetPopup(ui.NewExecPopupModel(m.client, sel, name))
+					go func() {
+						time.Sleep(time.Second * 2)
+						// Container was selected
+						m.SetPopup(ui.NewExecPopupModel(m.client, sel, name))
+					}()
 				})
 			}
 			return m, nil

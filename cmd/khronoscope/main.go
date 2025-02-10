@@ -18,13 +18,26 @@ import (
 )
 
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Recovered from panic:", r)
-			fmt.Print("\033[H\033[2J") // Reset the terminal
-			os.Exit(1)
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		log.Println("Recovered from panic:", r)
+	// 		fmt.Print("\033[H\033[2J") // Reset the terminal
+	// 		os.Exit(1)
+	// 	}
+	// }()
+
+	////////////////
+	// Put the terminal into raw mode to prevent it echoing characters twice.
+	// oldState, err := term.MakeRaw(0)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer func() {
+	// 	err := term.Restore(0, oldState)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }()
 
 	cfg, err := config.InitConfig()
 	if err != nil {
@@ -78,7 +91,17 @@ func main() {
 		panic(err)
 	}
 
-	appModel := khronoscope.NewProgram(watcher, d, logCollector, client)
+	// Wait to make sure we connect to something
+	var sel resources.Resource
+	// time.Sleep(time.Second * 2)
+	// for _, r := range d.GetResourcesAt(time.Now(), "Pod", "kube-system") {
+	// 	if r.GetName() == "etcd-kind-control-plane" {
+	// 		sel = r
+	// 		break
+	// 	}
+	// }
+
+	appModel := khronoscope.NewProgram(watcher, d, logCollector, client, sel)
 	p := tea.NewProgram(appModel)
 
 	appModel.VCR = ui.NewTimeController(d, func() {

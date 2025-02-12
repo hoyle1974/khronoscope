@@ -11,6 +11,7 @@ import (
 type Popup interface {
 	Update(msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string
+	Init() tea.Cmd
 }
 
 type Labeler interface {

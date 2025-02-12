@@ -21,13 +21,22 @@ import (
 
 type execPopupModel struct {
 	// textInput textinput.Model
-	stdin  *io.PipeWriter
-	output string
-	errMsg string
+	stdin         *io.PipeWriter
+	output        string
+	errMsg        string
+	cursorVisible bool
+}
+
+type TickMsg time.Time
+
+func doTick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return TickMsg(t)
+	})
 }
 
 func (p *execPopupModel) Init() tea.Cmd {
-	return nil
+	return doTick()
 }
 
 func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -51,6 +60,9 @@ func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				_, _ = p.stdin.Write([]byte(string(msg.Runes))) // Send normal characters
 			}
 		}
+	case TickMsg:
+		p.cursorVisible = !p.cursorVisible
+		return p, doTick()
 	}
 
 	return p, nil
@@ -70,7 +82,13 @@ func (p *execPopupModel) View() string {
 		return style.Render(fmt.Sprintf("%v", p.errMsg))
 	}
 
-	return style.Render(p.errMsg + "\n" + p.output)
+	// Append blinking cursor
+	cursor := " "
+	if p.cursorVisible {
+		cursor = "_"
+	}
+
+	return style.Render(p.errMsg + "\n" + p.output + cursor)
 }
 
 func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, podName, containerName string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

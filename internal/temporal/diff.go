@@ -13,23 +13,11 @@ func generateDiff(a, b []byte) (Diff, error) {
 		return Diff{}, err
 	}
 
-	/*
-		var buf bytes.Buffer
-		patchWriter := zlib.NewWriter(&buf)
-		patchWriter.Write(patch)
-		patchWriter.Close()
-		return buf.Bytes(), nil
-	*/
 	return patch, nil
 }
 
 func applyDiff(a []byte, diffData Diff) ([]byte, error) {
-	// var out bytes.Buffer
-	// r, _ := zlib.NewReader(bytes.NewReader(diffData))
-	// io.Copy(&out, r)
-	// r.Close()
-
-	newfile, err := bspatch.Bytes(a, diffData) //out.Bytes())
+	newfile, err := bspatch.Bytes(a, diffData)
 	if err != nil {
 		panic(err)
 	}

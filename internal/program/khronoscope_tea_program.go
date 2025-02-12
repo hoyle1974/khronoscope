@@ -42,6 +42,7 @@ type KhronoscopeTeaProgram struct {
 	cfg               config.Config
 	client            conn.KhronosConn
 	forceSelect       *resources.Resource
+	Program           *tea.Program
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -430,7 +431,9 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					go func() {
 						time.Sleep(time.Second * 2)
 						// Container was selected
-						m.SetPopup(ui.NewExecPopupModel(m.client, sel, name))
+						model := ui.NewExecPopupModel(m.client, sel, name)
+						m.SetPopup(model)
+						m.Program.Send(model.Init())
 					}()
 				})
 			}

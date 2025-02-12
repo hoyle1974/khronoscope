@@ -103,6 +103,7 @@ func main() {
 
 	appModel := khronoscope.NewProgram(watcher, d, logCollector, client, sel)
 	p := tea.NewProgram(appModel)
+	appModel.Program = p
 
 	appModel.VCR = ui.NewTimeController(d, func() {
 		p.Send(1)

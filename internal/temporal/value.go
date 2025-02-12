@@ -3,6 +3,7 @@ package temporal
 import (
 	"sort"
 	"time"
+	"weak"
 
 	"github.com/hoyle1974/khronoscope/internal/metrics"
 	"github.com/hoyle1974/khronoscope/internal/misc"
@@ -22,8 +23,6 @@ func NewTimeValueStore() *TimeValueStore {
 // TimeValueStore holds the values and diffs with associated timestamps
 type TimeValueStore struct {
 	Keyframes []keyFrame
-	// lastTimestamp time.Time
-	// lastValue     Diff
 }
 
 // keyFrame represents a snapshot of a value at a specific timestamp
@@ -67,9 +66,9 @@ func (frame *keyFrame) queryValue(timestamp time.Time) []byte {
 	}
 
 	if index > 0 {
-		if frame.DiffFrames[index-1].original != nil {
+		if ptr := frame.DiffFrames[index-1].original.Value(); ptr != nil {
 			metrics.Count("DiffFrame.Original", 1)
-			return frame.DiffFrames[index-1].original
+			return *ptr
 		} else {
 			metrics.Count("DiffFrame.Original.Nil", 1)
 		}
@@ -114,7 +113,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
 			Timestamp: serializable.Time{Time: timestamp},
 			Diff:      diff,
-			original:  value,
+			original:  weak.Make(&value),
 		})
 
 		frame.Last = value // Update stored full value for next append
@@ -158,10 +157,11 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 		if err != nil {
 			panic(err)
 		}
+
 		frame.DiffFrames = append(frame.DiffFrames, diffFrame{
 			Timestamp: times[idx],
 			Diff:      diff,
-			original:  original[idx],
+			original:  weak.Make(&original[idx]),
 		})
 
 		last = original[idx]
@@ -173,7 +173,7 @@ func (frame *keyFrame) addDiffFrame(timestamp time.Time, value []byte) bool {
 type diffFrame struct {
 	Timestamp serializable.Time
 	Diff      Diff
-	original  []byte
+	original  weak.Pointer[[]byte]
 }
 
 // Add a value that is valid @timestamp and after

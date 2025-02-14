@@ -36,6 +36,7 @@ func doTick() tea.Cmd {
 }
 
 func (p *execPopupModel) Init() tea.Cmd {
+	// return nil
 	return doTick()
 }
 
@@ -85,7 +86,7 @@ func (p *execPopupModel) View() string {
 	// Append blinking cursor
 	cursor := " "
 	if p.cursorVisible {
-		cursor = "_"
+		cursor = "█"
 	}
 
 	return style.Render(p.errMsg + "\n" + p.output + cursor)

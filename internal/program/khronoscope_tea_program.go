@@ -344,10 +344,13 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	if m.popup != nil {
-		if _, cmd := m.popup.Update(msg); cmd != nil {
+		if _, ok := msg.(tea.QuitMsg); ok {
 			m.SetPopup(nil)
+			return m, nil
 		}
-		return m, nil
+
+		_, cmd := m.popup.Update(msg)
+		return m, cmd
 	}
 
 	if m.search {
@@ -429,11 +432,14 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return
 					}
 					go func() {
-						time.Sleep(time.Second * 2)
+						time.Sleep(time.Second / 2)
 						// Container was selected
 						model := ui.NewExecPopupModel(m.client, sel, name)
 						m.SetPopup(model)
-						m.Program.Send(model.Init())
+						cmd := model.Init()
+						if cmd != nil {
+							m.Program.Send(cmd())
+						}
 					}()
 				})
 			}

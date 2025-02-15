@@ -29,6 +29,7 @@ type execPopupModel struct {
 	cursorVisible bool
 	width         int
 	height        int
+	program       *tea.Program
 }
 
 func (p *execPopupModel) OnResize(width, height int) {
@@ -76,6 +77,10 @@ func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return p, nil
+}
+
+func (p *execPopupModel) Close() {
+	p.program.Send(PopupClose{})
 }
 
 func (p *execPopupModel) View() string {
@@ -167,7 +172,7 @@ func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, p
 	return nil
 }
 
-func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, containerName string) Popup {
+func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, containerName string, program *tea.Program) Popup {
 
 	// Create pipes for stdin
 	stdinReader, stdinWriter := io.Pipe()
@@ -175,7 +180,8 @@ func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, contain
 	stderrBuffer := new(bytes.Buffer)
 
 	model := &execPopupModel{
-		stdin: stdinWriter,
+		stdin:   stdinWriter,
+		program: program,
 	}
 
 	// Run the shell session in a goroutine
@@ -184,6 +190,7 @@ func NewExecPopupModel(client conn.KhronosConn, resource types.Resource, contain
 		if err != nil {
 			model.errMsg = fmt.Sprintf("Error: %v", err)
 		}
+		model.Close()
 	}()
 
 	// Continuously read output

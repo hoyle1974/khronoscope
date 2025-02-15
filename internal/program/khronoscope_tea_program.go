@@ -67,6 +67,9 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 
 func (m *KhronoscopeTeaProgram) SetPopup(popup ui.Popup) {
 	m.popup = popup
+	if rh, ok := m.popup.(ResizeHandler); ok {
+		rh.OnResize(m.width, m.height)
+	}
 }
 
 func (m *KhronoscopeTeaProgram) headerView(label string) string {
@@ -239,6 +242,10 @@ func (m *KhronoscopeTeaProgram) insertPopup(content string, popup ui.Popup) stri
 	return strings.Join(contentLines, "\n")
 }
 
+type ResizeHandler interface {
+	OnResize(width, height int)
+}
+
 // UPDATE
 func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
@@ -262,6 +269,10 @@ func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
 
 			m.detailView.Width = msg.Width - 1
 			m.detailView.Height = msg.Height/2 - verticalMarginHeight
+		}
+
+		if rh, ok := m.popup.(ResizeHandler); ok {
+			rh.OnResize(msg.Width, msg.Height)
 		}
 	}
 
@@ -344,7 +355,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	if m.popup != nil {
-		if _, ok := msg.(tea.QuitMsg); ok {
+		if _, ok := msg.(ui.PopupClose); ok {
 			m.SetPopup(nil)
 			return m, nil
 		}

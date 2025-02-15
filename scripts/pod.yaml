@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+spec:
+  containers:
+  - name: debug-container
+    image: alpine
+    command: ["/bin/sh", "-c", "sleep infinity"]

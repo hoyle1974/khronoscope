@@ -8,6 +8,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type PopupClose struct{}
+
+func Close() tea.Msg {
+	return PopupClose{}
+}
+
 type Popup interface {
 	Update(msg tea.Msg) (tea.Model, tea.Cmd)
 	View() string

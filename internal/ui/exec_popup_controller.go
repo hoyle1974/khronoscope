@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,6 +27,13 @@ type execPopupModel struct {
 	output        string
 	errMsg        string
 	cursorVisible bool
+	width         int
+	height        int
+}
+
+func (p *execPopupModel) OnResize(width, height int) {
+	p.width = width
+	p.height = height
 }
 
 type TickMsg time.Time
@@ -45,7 +54,7 @@ func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			return p, tea.Quit
+			return p, Close
 		case tea.KeyEnter:
 			_, _ = p.stdin.Write([]byte("\n")) // Send actual newline
 		case tea.KeyBackspace:
@@ -70,12 +79,12 @@ func (p *execPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p *execPopupModel) View() string {
-	b := lipgloss.RoundedBorder()
+	//b := lipgloss.RoundedBorder()
 	style := lipgloss.NewStyle().
-		BorderStyle(b).
-		Padding(1).
-		Width(120).
-		Height(50).
+		//BorderStyle(b).
+		Padding(0).
+		Width(p.width).
+		Height(p.height).
 		AlignHorizontal(lipgloss.Left).
 		AlignVertical(lipgloss.Top)
 
@@ -89,7 +98,33 @@ func (p *execPopupModel) View() string {
 		cursor = "█"
 	}
 
+	p.output = truncateOutput(p.output)
+
 	return style.Render(p.errMsg + "\n" + p.output + cursor)
+}
+
+// Truncate output when terminal is cleared and keep only last 100 lines
+func truncateOutput(output string) string {
+	// Regex to detect terminal clear sequences
+	re := regexp.MustCompile(`\x1b\[[0-9;]*[HJ]|\x1b\[2J|\x1b\[H|\x1bc`)
+
+	// Find the last occurrence of a clear sequence
+	loc := re.FindStringIndex(output)
+	if loc != nil {
+		// Truncate everything before and including the clear sequence
+		output = output[loc[1]:]
+	}
+
+	// Split into lines
+	lines := strings.Split(output, "\n")
+
+	// Keep only the last 100 lines if there are more
+	if len(lines) > 100 {
+		lines = lines[len(lines)-100:]
+	}
+
+	// Rejoin the truncated output
+	return strings.Join(lines, "\n")
 }
 
 func execInPod(clientset kubernetes.Interface, config *rest.Config, namespace, podName, containerName string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

@@ -445,11 +445,14 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.search = true
 			return m, nil
 		case m.cfg.KeyBindings.Save: // "s":
-			m.data.Save("temp.dat")
+			m.SetPopup(popup.NewSavePopup(func(filename string) {
+				if len(filename) > 0 {
+					m.data.Save(filename)
+				}
+			}))
 			return m, nil
 		case m.cfg.KeyBindings.Debug:
-			model := popup.NewDebugPopupModel(m.Program, m.ringBuffer)
-			m.SetPopup(model)
+			m.SetPopup(popup.NewDebugPopupModel(m.Program, m.ringBuffer))
 			return m, nil
 		case m.cfg.KeyBindings.Exec:
 			if sel := m.tv.GetSelected(); sel != nil && sel.GetKind() == "Pod" {

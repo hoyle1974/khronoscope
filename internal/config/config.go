@@ -31,6 +31,7 @@ type Keys struct {
 	DeleteResource   string `default:"ctrl+d"`
 	Exec             string `default:"s"`
 	Pod              string `default:"P"`
+	Debug            string `default:"ctrl+d"`
 }
 
 type Config struct {

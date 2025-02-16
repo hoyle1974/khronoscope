@@ -12,12 +12,16 @@ import (
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
 	"github.com/hoyle1974/khronoscope/internal/metrics"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	khronoscope "github.com/hoyle1974/khronoscope/internal/program"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/ui"
 )
 
 func main() {
+	ringBuffer := misc.NewRingBuffer(100) // Store last 5 log messages
+	log.SetOutput(ringBuffer)
+
 	// defer func() {
 	// 	if r := recover(); r != nil {
 	// 		log.Println("Recovered from panic:", r)
@@ -101,7 +105,7 @@ func main() {
 	// 	}
 	// }
 
-	appModel := khronoscope.NewProgram(watcher, d, logCollector, client, sel)
+	appModel := khronoscope.NewProgram(watcher, d, logCollector, client, sel, ringBuffer)
 	p := tea.NewProgram(appModel)
 	appModel.Program = p
 

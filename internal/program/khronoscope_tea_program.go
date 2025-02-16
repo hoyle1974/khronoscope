@@ -16,6 +16,7 @@ import (
 	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/types"
 	"github.com/hoyle1974/khronoscope/internal/ui"
@@ -43,6 +44,7 @@ type KhronoscopeTeaProgram struct {
 	client            conn.KhronosConn
 	forceSelect       *resources.Resource
 	Program           *tea.Program
+	ringBuffer        *misc.RingBuffer
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -70,6 +72,13 @@ func (m *KhronoscopeTeaProgram) SetPopup(popup ui.Popup) {
 	if rh, ok := m.popup.(ResizeHandler); ok {
 		rh.OnResize(m.width, m.height)
 	}
+	if popup != nil {
+		cmd := popup.Init()
+		if cmd != nil {
+			m.Program.Send(cmd())
+		}
+	}
+
 }
 
 func (m *KhronoscopeTeaProgram) headerView(label string) string {
@@ -133,7 +142,7 @@ func (m *KhronoscopeTeaProgram) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
-func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn, sel resources.Resource) *KhronoscopeTeaProgram {
+func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn, sel resources.Resource, ringBuffer *misc.RingBuffer) *KhronoscopeTeaProgram {
 	am := &KhronoscopeTeaProgram{
 		watcher:      watcher,
 		data:         d,
@@ -142,6 +151,7 @@ func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.L
 		cfg:          config.Get(),
 		client:       client,
 		forceSelect:  &sel,
+		ringBuffer:   ringBuffer,
 	}
 
 	return am
@@ -436,6 +446,10 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case m.cfg.KeyBindings.Save: // "s":
 			m.data.Save("temp.dat")
 			return m, nil
+		case m.cfg.KeyBindings.Debug:
+			model := ui.NewDebugPopupModel(m.Program, m.ringBuffer)
+			m.SetPopup(model)
+			return m, nil
 		case m.cfg.KeyBindings.Exec:
 			if sel := m.tv.GetSelected(); sel != nil && sel.GetKind() == "Pod" {
 				m.popup = ui.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
@@ -447,10 +461,6 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Container was selected
 						model := ui.NewExecPopupModel(m.client, sel, name, m.Program)
 						m.SetPopup(model)
-						cmd := model.Init()
-						if cmd != nil {
-							m.Program.Send(cmd())
-						}
 					}()
 				})
 			}

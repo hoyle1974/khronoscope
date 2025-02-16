@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -149,6 +150,8 @@ func (d *dataModelImpl) GetTimeRange() (time.Time, time.Time) {
 }
 
 func (d *dataModelImpl) AddResource(resource resources.Resource) {
+	log.Printf("Add %v\n", resource)
+
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -161,6 +164,8 @@ func (d *dataModelImpl) AddResource(resource resources.Resource) {
 }
 
 func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
+	log.Printf("Update %v\n", resource)
+
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -174,6 +179,7 @@ func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
 }
 
 func (d *dataModelImpl) DeleteResource(resource resources.Resource) {
+	log.Printf("Delete %v\n", resource)
 	d.lock.Lock()
 	defer d.lock.Unlock()
 

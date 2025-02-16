@@ -2,6 +2,8 @@ package resources
 
 import (
 	"fmt"
+	"log"
+	"reflect"
 	"sync"
 	"time"
 
@@ -117,6 +119,7 @@ func (w *K8sWatcher) Delete(r Resource) {
 }
 
 func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEventWatcher ResourceEventWatcher) {
+	log.Println("registerEventWatcher ", reflect.TypeOf(resourceEventWatcher))
 	RegisterResourceRenderer(resourceEventWatcher.Kind(), resourceEventWatcher.Renderer())
 	if w == nil {
 		return

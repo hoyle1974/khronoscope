@@ -74,8 +74,8 @@ func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	return r
 }
 
-func watchForReplicaSet(watcher *K8sWatcher, k conn.KhronosConn) error {
-	watchChan, err := k.Client.AppsV1().ReplicaSets("").Watch(context.Background(), v1.ListOptions{})
+func watchForReplicaSet(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {
+	watchChan, err := k.Client.AppsV1().ReplicaSets(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}

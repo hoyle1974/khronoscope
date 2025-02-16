@@ -47,8 +47,8 @@ func (n DaemonSetWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), format.FormatDaemonSetDetails(n.convert(obj)), nil)
 }
 
-func watchForDaemonSet(watcher *K8sWatcher, k conn.KhronosConn) error {
-	watchChan, err := k.Client.AppsV1().DaemonSets("").Watch(context.Background(), v1.ListOptions{})
+func watchForDaemonSet(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {
+	watchChan, err := k.Client.AppsV1().DaemonSets(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}

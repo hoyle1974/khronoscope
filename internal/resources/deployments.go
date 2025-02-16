@@ -47,8 +47,8 @@ func (n DeploymentWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), format.FormatDeploymentDetails(n.convert(obj)), nil)
 }
 
-func watchForDeployments(watcher *K8sWatcher, k conn.KhronosConn) error {
-	watchChan, err := k.Client.AppsV1().Deployments("").Watch(context.Background(), v1.ListOptions{})
+func watchForDeployments(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {
+	watchChan, err := k.Client.AppsV1().Deployments(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}

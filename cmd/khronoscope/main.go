@@ -70,6 +70,7 @@ func main() {
 	gob.Register(resources.PodExtra{})
 
 	filename := flag.String("file", "", "Filename to load")
+	namespace := flag.String("namespace", "", "Namespace to filter on")
 
 	client, err := conn.NewKhronosConnection()
 	if err != nil {
@@ -90,7 +91,7 @@ func main() {
 		logCollector = nil
 	}
 
-	err = watcher.Watch(client, d, logCollector)
+	err = watcher.Watch(client, d, logCollector, *namespace)
 	if err != nil {
 		panic(err)
 	}

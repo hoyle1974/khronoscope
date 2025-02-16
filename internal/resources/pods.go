@@ -278,8 +278,8 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), pod, format.FormatPodDetails(pod), extra)
 }
 
-func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO, lc *LogCollector) (*PodWatcher, error) {
-	watchChan, err := k.Client.CoreV1().Pods("").Watch(context.Background(), v1.ListOptions{})
+func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO, lc *LogCollector, ns string) (*PodWatcher, error) {
+	watchChan, err := k.Client.CoreV1().Pods(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

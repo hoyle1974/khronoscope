@@ -47,8 +47,8 @@ func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), n.convert(obj), format.FormatServiceDetails(n.convert(obj)), nil)
 }
 
-func watchForService(watcher *K8sWatcher, k conn.KhronosConn) error {
-	watchChan, err := k.Client.CoreV1().Services("").Watch(context.Background(), v1.ListOptions{})
+func watchForService(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {
+	watchChan, err := k.Client.CoreV1().Services(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}

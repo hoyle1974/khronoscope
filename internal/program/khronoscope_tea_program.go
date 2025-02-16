@@ -3,7 +3,9 @@ package program
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -43,9 +45,9 @@ type KhronoscopeTeaProgram struct {
 	tab               int
 	cfg               config.Config
 	client            conn.KhronosConn
-	forceSelect       *resources.Resource
-	Program           *tea.Program
-	ringBuffer        *misc.RingBuffer
+	// forceSelect       *resources.Resource
+	Program    *tea.Program
+	ringBuffer *misc.RingBuffer
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -143,7 +145,7 @@ func (m *KhronoscopeTeaProgram) footerView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
 }
 
-func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn, sel resources.Resource, ringBuffer *misc.RingBuffer) *KhronoscopeTeaProgram {
+func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.LogCollector, client conn.KhronosConn, ringBuffer *misc.RingBuffer) *KhronoscopeTeaProgram {
 	am := &KhronoscopeTeaProgram{
 		watcher:      watcher,
 		data:         d,
@@ -151,7 +153,6 @@ func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.L
 		logCollector: l,
 		cfg:          config.Get(),
 		client:       client,
-		forceSelect:  &sel,
 		ringBuffer:   ringBuffer,
 	}
 
@@ -259,6 +260,7 @@ type ResizeHandler interface {
 
 // UPDATE
 func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
+	log.Printf("windowResize %v\n", msg)
 	m.width = msg.Width
 	m.height = msg.Height
 
@@ -287,6 +289,7 @@ func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
 		}
 	}
 
+	log.Printf("Is read: %v", m.ready)
 	if !m.ready {
 		// Since this program is using the full size of the viewport we
 		// need to wait until we've received the window dimensions before
@@ -347,18 +350,20 @@ func (f logFilter) Description() string { return "Logging" }
 func (f logFilter) Highlight() string   { return "" }
 
 func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	log.Printf("Update %s : %v\n", reflect.TypeOf(msg), msg)
 
-	if m.forceSelect != nil {
-		popup.NewContainerPopupModel(m.client, m.forceSelect, m.width, m.height, func(name string) {
-			if name == "" {
-				return
-			}
-			// Container was selected
-			m.SetPopup(popup.NewExecPopupModel(m.client, m.forceSelect, name, m.Program))
-		})
-		m.forceSelect = nil
-		return m, nil
-	}
+	// if m.forceSelect != nil {
+	// 	log.Printf("Force Select Enabled")
+	// 	popup.NewContainerPopupModel(m.client, m.forceSelect, m.width, m.height, func(name string) {
+	// 		if name == "" {
+	// 			return
+	// 		}
+	// 		// Container was selected
+	// 		m.SetPopup(popup.NewExecPopupModel(m.client, m.forceSelect, name, m.Program))
+	// 	})
+	// 	m.forceSelect = nil
+	// 	return m, nil
+	// }
 
 	var (
 		cmd  tea.Cmd
@@ -366,6 +371,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	if m.popup != nil {
+		log.Printf("Popup Enabled")
 		if _, ok := msg.(popup.PopupClose); ok {
 			m.SetPopup(nil)
 			return m, nil

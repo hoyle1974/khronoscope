@@ -33,3 +33,5 @@ khronoscope
 *.pprof
 *.dat
 config.yaml
+*.khron
+session.khron

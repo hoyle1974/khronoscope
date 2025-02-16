@@ -1,4 +1,4 @@
-package ui
+package popup
 
 import (
 	"fmt"
@@ -34,11 +34,11 @@ func (p *containerPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.Down()
 			return p, nil
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return p, tea.Quit
+			return p, Close
 		case tea.KeyEnter:
 			// Save the label
 			p.OnContainerSelect(p.Containers[p.Select])
-			return p, tea.Quit
+			return p, Close
 		}
 	}
 

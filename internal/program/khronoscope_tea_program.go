@@ -20,6 +20,7 @@ import (
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/types"
 	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/khronoscope/internal/ui/popup"
 )
 
 type KhronoscopeTeaProgram struct {
@@ -34,7 +35,7 @@ type KhronoscopeTeaProgram struct {
 	lastWindowSizeMsg tea.WindowSizeMsg
 	tv                *ui.TreeController
 	VCR               *ui.PlaybackController
-	popup             ui.Popup
+	popup             popup.Popup
 	search            bool
 	searchFilter      ui.Filter
 	searchInput       textinput.Model
@@ -67,7 +68,7 @@ func calculatePercentageOfTime(min, max, value time.Time) float64 {
 	return percentage
 }
 
-func (m *KhronoscopeTeaProgram) SetPopup(popup ui.Popup) {
+func (m *KhronoscopeTeaProgram) SetPopup(popup popup.Popup) {
 	m.popup = popup
 	if rh, ok := m.popup.(ResizeHandler); ok {
 		rh.OnResize(m.width, m.height)
@@ -224,7 +225,7 @@ func (m *KhronoscopeTeaProgram) View() string {
 	return m.insertPopup(fmt.Sprintf("%s\n%s\n%s", top, temp, m.footerView()), m.popup)
 }
 
-func (m *KhronoscopeTeaProgram) insertPopup(content string, popup ui.Popup) string {
+func (m *KhronoscopeTeaProgram) insertPopup(content string, popup popup.Popup) string {
 	if popup == nil {
 		return content
 	}
@@ -348,12 +349,12 @@ func (f logFilter) Highlight() string   { return "" }
 func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.forceSelect != nil {
-		ui.NewContainerPopupModel(m.client, m.forceSelect, m.width, m.height, func(name string) {
+		popup.NewContainerPopupModel(m.client, m.forceSelect, m.width, m.height, func(name string) {
 			if name == "" {
 				return
 			}
 			// Container was selected
-			m.SetPopup(ui.NewExecPopupModel(m.client, m.forceSelect, name, m.Program))
+			m.SetPopup(popup.NewExecPopupModel(m.client, m.forceSelect, name, m.Program))
 		})
 		m.forceSelect = nil
 		return m, nil
@@ -365,7 +366,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	if m.popup != nil {
-		if _, ok := msg.(ui.PopupClose); ok {
+		if _, ok := msg.(popup.PopupClose); ok {
 			m.SetPopup(nil)
 			return m, nil
 		}
@@ -426,7 +427,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil // Can't toggle logs while in VCR mode
 			}
 			if sel := m.tv.GetSelected(); sel != nil {
-				m.popup = ui.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
+				m.popup = popup.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
 					if name == "" {
 						return
 					}
@@ -447,19 +448,19 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.data.Save("temp.dat")
 			return m, nil
 		case m.cfg.KeyBindings.Debug:
-			model := ui.NewDebugPopupModel(m.Program, m.ringBuffer)
+			model := popup.NewDebugPopupModel(m.Program, m.ringBuffer)
 			m.SetPopup(model)
 			return m, nil
 		case m.cfg.KeyBindings.Exec:
 			if sel := m.tv.GetSelected(); sel != nil && sel.GetKind() == "Pod" {
-				m.popup = ui.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
+				m.popup = popup.NewContainerPopupModel(m.client, sel, m.width, m.height, func(name string) {
 					if name == "" {
 						return
 					}
 					go func() {
 						time.Sleep(time.Second / 2)
 						// Container was selected
-						model := ui.NewExecPopupModel(m.client, sel, name, m.Program)
+						model := popup.NewExecPopupModel(m.client, sel, name, m.Program)
 						m.SetPopup(model)
 					}()
 				})
@@ -467,7 +468,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.cfg.KeyBindings.NewLabel: //"m":
 			m.VCR.Pause()
-			m.SetPopup(ui.NewLabelPopup(m.width, m.height, m))
+			m.SetPopup(popup.NewLabelPopup(m))
 			return m, nil
 		case m.cfg.KeyBindings.RotateViewToggle: //"tab":
 			m.viewMode++

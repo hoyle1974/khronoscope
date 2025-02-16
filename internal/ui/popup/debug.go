@@ -1,4 +1,4 @@
-package ui
+package popup
 
 import (
 	tea "github.com/charmbracelet/bubbletea"

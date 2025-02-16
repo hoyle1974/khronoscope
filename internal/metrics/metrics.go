@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -14,6 +15,15 @@ func Print() {
 	fmt.Println("Metrics:")
 	for k, v := range counter {
 		fmt.Printf("	%s: %d\n", k, v)
+	}
+}
+
+func Log() {
+	lock.Lock()
+	defer lock.Unlock()
+	log.Println("Metrics:")
+	for k, v := range counter {
+		log.Printf("	%s: %d\n", k, v)
 	}
 }
 

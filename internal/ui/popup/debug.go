@@ -11,6 +11,8 @@ type debugPopupModel struct {
 	height     int
 	program    *tea.Program
 	ringBuffer *misc.RingBuffer
+	paused     bool
+	lastBuffer string
 }
 
 func NewDebugPopupModel(program *tea.Program, ringBuffer *misc.RingBuffer) Popup {
@@ -20,40 +22,50 @@ func NewDebugPopupModel(program *tea.Program, ringBuffer *misc.RingBuffer) Popup
 	}
 }
 
-func (p *debugPopupModel) OnResize(width, height int) {
-	p.width = width
-	p.height = height
+func (model *debugPopupModel) OnResize(width, height int) {
+	model.width = width
+	model.height = height
 }
 
-func (p *debugPopupModel) Init() tea.Cmd {
+func (model *debugPopupModel) Init() tea.Cmd {
 	return nil
 }
 
-func (p *debugPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (model *debugPopupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc:
-			return p, Close
+			return model, Close
+		case tea.KeySpace:
+			model.paused = !model.paused
+			if model.paused {
+				model.lastBuffer = model.ringBuffer.String() + "{paused}"
+			}
+			return model, nil
 		}
 	}
 
-	return p, nil
+	return model, nil
 }
 
 func (p *debugPopupModel) Close() {
 	p.program.Send(PopupClose{})
 }
 
-func (p *debugPopupModel) View() string {
+func (model *debugPopupModel) View() string {
 	b := lipgloss.RoundedBorder()
 	style := lipgloss.NewStyle().
 		BorderStyle(b).
 		Padding(0).
-		Width(p.width - 2).
-		Height(p.height - 2).
+		Width(model.width - 2).
+		Height(model.height - 2).
 		AlignHorizontal(lipgloss.Left).
 		AlignVertical(lipgloss.Top)
 
-	return style.Render(p.ringBuffer.String())
+	if !model.paused {
+		model.lastBuffer = model.ringBuffer.String()
+	}
+
+	return style.Render(model.lastBuffer)
 }

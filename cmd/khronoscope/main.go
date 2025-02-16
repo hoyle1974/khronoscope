@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/hoyle1974/khronoscope/internal/config"
@@ -22,35 +23,33 @@ func main() {
 	ringBuffer := misc.NewRingBuffer(100) // Store last 5 log messages
 	log.SetOutput(ringBuffer)
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		log.Println("Recovered from panic:", r)
-	// 		fmt.Print("\033[H\033[2J") // Reset the terminal
-	// 		os.Exit(1)
-	// 	}
-	// }()
-
-	////////////////
-	// Put the terminal into raw mode to prevent it echoing characters twice.
-	// oldState, err := term.MakeRaw(0)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer func() {
-	// 	err := term.Restore(0, oldState)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }()
-
 	cfg, err := config.InitConfig()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(cfg)
+	log.Println(cfg)
 
+	done := make(chan bool)
+	defer func() {
+		done <- true
+	}()
 	if cfg.Metrics {
 		defer metrics.Print()
+
+		ticker := time.NewTicker(5 * time.Second)
+		defer func() {
+			ticker.Stop()
+		}()
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					metrics.Log()
+				}
+			}
+		}()
 	}
 
 	if cfg.Profiling {

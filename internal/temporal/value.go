@@ -1,7 +1,7 @@
 package temporal
 
 import (
-	"errors"
+	"fmt"
 	"sort"
 	"time"
 	"weak"
@@ -33,6 +33,49 @@ type keyFrame struct {
 	Value      []byte
 	DiffFrames []diffFrame
 	Last       []byte
+}
+
+func (frame *keyFrame) FindNextTime(timestamp time.Time, dir int) (time.Time, error) {
+	var times []time.Time
+
+	if dir != 1 && dir != -1 {
+		return time.Time{}, fmt.Errorf("invalid direction: %d", dir)
+	}
+
+	times = append(times, frame.Timestamp.Time)
+	for _, df := range frame.DiffFrames {
+		times = append(times, df.Timestamp.Time)
+	}
+
+	if dir == 1 {
+		for _, t := range times {
+			if t.After(timestamp) {
+				return t, nil
+			}
+		}
+	} else { // dir == -1
+		var prevTime time.Time
+		found := false
+		for _, t := range times {
+			if t.Before(timestamp) {
+				prevTime = t
+				found = true
+			}
+		}
+		if found {
+			return prevTime, nil
+		}
+
+	}
+
+	return time.Time{}, fmt.Errorf("no time found in direction %d after %s", dir, timestamp)
+}
+
+func (frame *keyFrame) MinMax() (time.Time, time.Time) {
+	if len(frame.DiffFrames) == 0 {
+		return frame.Timestamp.Time, frame.Timestamp.Time
+	}
+	return frame.Timestamp.Time, frame.DiffFrames[len(frame.DiffFrames)-1].Timestamp.Time
 }
 
 func (frame *keyFrame) CheckForErrors() error {
@@ -213,6 +256,11 @@ func (store *TimeValueStore) QueryValue(timestamp time.Time) []byte {
 	return store.queryValue(timestamp)
 }
 
+// for dir>0
+// Use sort.Search to search Keyframes that are after or equal timestamp
+// Use sort.Search to search DiffFrames that are after or equal to timestamp.
+//
+
 // Return the most recent value that was set on or before timestamp.
 func (store *TimeValueStore) queryValue(timestamp time.Time) []byte {
 	if len(store.Keyframes) == 0 { // No data
@@ -233,38 +281,23 @@ func (store *TimeValueStore) queryValue(timestamp time.Time) []byte {
 }
 
 func (store *TimeValueStore) FindNextTimeKey(timestamp time.Time, dir int) (time.Time, error) {
-	if len(store.Keyframes) == 0 {
-		return time.Time{}, errors.New("no keyframes available")
+	if dir == 0 {
+		return timestamp, fmt.Errorf("invalid direction: %d", dir)
 	}
 
-	var candidates []time.Time
-	for _, kf := range store.Keyframes {
-		candidates = append(candidates, kf.Timestamp.Time)
-		for _, df := range kf.DiffFrames {
-			candidates = append(candidates, df.Timestamp.Time)
-		}
-	}
-
-	sort.Slice(candidates, func(i, j int) bool { return candidates[i].Before(candidates[j]) })
-
-	index := sort.Search(len(candidates), func(j int) bool {
-		return !candidates[j].Before(timestamp) // Finds first element >= timestamp
+	index := sort.Search(len(store.Keyframes), func(j int) bool {
+		return store.Keyframes[j].Timestamp.Time.After(timestamp)
 	})
 
-	if dir == -1 { // Find previous timestamp
-		if index == 0 || (index < len(candidates) && candidates[index] == timestamp) {
-			return time.Time{}, errors.New("no previous timestamp available")
+	if dir > 0 {
+		if index >= len(store.Keyframes) {
+			index--
 		}
-		return candidates[index-1], nil
-	} else if dir == 1 { // Find next timestamp
-		if index < len(candidates) && candidates[index] == timestamp {
-			index++ // Skip exact match if looking for the next
-		}
-		if index == len(candidates) {
-			return time.Time{}, errors.New("no next timestamp available")
-		}
-		return candidates[index], nil
+		return store.Keyframes[index].FindNextTime(timestamp, dir)
+	}
+	if index >= len(store.Keyframes) {
+		index--
 	}
 
-	return time.Time{}, errors.New("invalid direction, must be -1 or 1")
+	return store.Keyframes[index].FindNextTime(timestamp, dir)
 }

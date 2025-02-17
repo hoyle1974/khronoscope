@@ -89,6 +89,57 @@ func Test_ManyValues(t *testing.T) {
 	}
 }
 
+func Test_Next(t *testing.T) {
+	store := NewTimeValueStore()
+
+	start := time.Now()
+
+	m1 := start.Add(time.Second)
+	store.AddValue(m1, []byte("value1"))
+
+	m2 := m1.Add(time.Second)
+	store.AddValue(m2, []byte("value2"))
+
+	m3 := m2.Add(time.Second)
+	store.AddValue(m3, []byte("value3"))
+
+	temp, err := store.FindNextTimeKey(start, 1)
+	if err != nil || !m1.Equal(temp) {
+		t.Fatalf("FindNextTimeKey start -> m1 failed")
+	}
+
+	temp, err = store.FindNextTimeKey(m1, 1)
+	if err != nil || !m2.Equal(temp) {
+		t.Fatalf("FindNextTimeKey m1 -> m2 failed")
+	}
+
+	temp, err = store.FindNextTimeKey(m2, 1)
+	if err != nil || !m3.Equal(temp) {
+		t.Fatalf("FindNextTimeKey m2 -> m3 failed")
+	}
+
+	_, err = store.FindNextTimeKey(m3, 1)
+	if err == nil {
+		t.Fatalf("FindNextTimeKey m3 -> err failed")
+	}
+
+	temp, err = store.FindNextTimeKey(m3, -1)
+	if err != nil || !m2.Equal(temp) {
+		t.Fatalf("FindNextTimeKey m3 -> m2 failed")
+	}
+
+	temp, err = store.FindNextTimeKey(m2, -1)
+	if err != nil || !m1.Equal(temp) {
+		t.Fatalf("FindNextTimeKey m2 -> m1 failed")
+	}
+
+	_, err = store.FindNextTimeKey(m1, -1)
+	if err == nil {
+		t.Fatalf("FindNextTimeKey m1 -> err failed")
+	}
+
+}
+
 // func Test_Crash(t *testing.T) {
 // 	gob.Register(resources.PodExtra{})
 // 	resources.RegisterResourceRenderer("Pod", resources.PodRenderer{})

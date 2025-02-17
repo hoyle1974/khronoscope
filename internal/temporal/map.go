@@ -3,6 +3,7 @@ package temporal
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"sync"
 	"time"
 
@@ -55,6 +56,7 @@ type Map interface {
 	Update(timestamp time.Time, key string, value []byte)
 	Remove(timestamp time.Time, key string)
 	GetStateAtTime(timestamp time.Time) map[string][]byte
+	FindNextTimeKey(timestamp time.Time, dir int, key string) (time.Time, error)
 }
 
 // Map represents a map-like data structure with time-ordered items.
@@ -183,4 +185,15 @@ func (tm *mapImpl) GetStateAtTime(timestamp time.Time) map[string][]byte {
 		}
 	}
 	return state
+}
+
+func (tm *mapImpl) FindNextTimeKey(timestamp time.Time, dir int, key string) (time.Time, error) {
+	tm.lock.RLock()
+	defer tm.lock.RUnlock()
+
+	if tvs, ok := tm.Items[key]; ok {
+		return tvs.FindNextTimeKey(timestamp, dir)
+	}
+
+	return timestamp, errors.New("no key found")
 }

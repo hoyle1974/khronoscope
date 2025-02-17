@@ -32,6 +32,8 @@ type Keys struct {
 	Exec             string `default:"s"`
 	Pod              string `default:"P"`
 	Debug            string `default:"ctrl+d"`
+	NextLabel        string `default:"shift+right"`
+	PrevLabel        string `default:"shift+left"`
 }
 
 type Config struct {

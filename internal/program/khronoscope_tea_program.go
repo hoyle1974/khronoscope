@@ -479,6 +479,12 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.VCR.Pause()
 			m.SetPopup(popup.NewLabelPopup(m))
 			return m, nil
+		case m.cfg.KeyBindings.NextLabel:
+			m.VCR.Pause()
+			m.VCR.SetTime(m.data.GetNextLabelTime(m.VCR.GetTimeToUse()))
+		case m.cfg.KeyBindings.PrevLabel:
+			m.VCR.Pause()
+			m.VCR.SetTime(m.data.GetPrevLabelTime(m.VCR.GetTimeToUse()))
 		case m.cfg.KeyBindings.RotateViewToggle: //"tab":
 			m.viewMode++
 			m.viewMode %= 2

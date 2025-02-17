@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"errors"
 	"sort"
 	"time"
 	"weak"
@@ -229,4 +230,41 @@ func (store *TimeValueStore) queryValue(timestamp time.Time) []byte {
 	} else { // Timestamp is within the keyframes
 		return store.Keyframes[index-1].queryValue(timestamp) // Use the keyframe *before*
 	}
+}
+
+func (store *TimeValueStore) FindNextTimeKey(timestamp time.Time, dir int) (time.Time, error) {
+	if len(store.Keyframes) == 0 {
+		return time.Time{}, errors.New("no keyframes available")
+	}
+
+	var candidates []time.Time
+	for _, kf := range store.Keyframes {
+		candidates = append(candidates, kf.Timestamp.Time)
+		for _, df := range kf.DiffFrames {
+			candidates = append(candidates, df.Timestamp.Time)
+		}
+	}
+
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].Before(candidates[j]) })
+
+	index := sort.Search(len(candidates), func(j int) bool {
+		return !candidates[j].Before(timestamp) // Finds first element >= timestamp
+	})
+
+	if dir == -1 { // Find previous timestamp
+		if index == 0 || (index < len(candidates) && candidates[index] == timestamp) {
+			return time.Time{}, errors.New("no previous timestamp available")
+		}
+		return candidates[index-1], nil
+	} else if dir == 1 { // Find next timestamp
+		if index < len(candidates) && candidates[index] == timestamp {
+			index++ // Skip exact match if looking for the next
+		}
+		if index == len(candidates) {
+			return time.Time{}, errors.New("no next timestamp available")
+		}
+		return candidates[index], nil
+	}
+
+	return time.Time{}, errors.New("invalid direction, must be -1 or 1")
 }

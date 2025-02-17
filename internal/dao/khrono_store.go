@@ -24,6 +24,8 @@ type KhronoStore interface {
 	DeleteResource(resource resources.Resource)
 	SetLabel(time.Time, string)
 	GetLabel(time time.Time) string
+	GetNextLabelTime(time.Time) time.Time
+	GetPrevLabelTime(time.Time) time.Time
 	Save(string)
 }
 
@@ -133,16 +135,34 @@ func (d *dataModelImpl) Save(filename string) {
 	}
 }
 
+const META_LABEL_KEY = "Meta.Label"
+
 func (d *dataModelImpl) SetLabel(time time.Time, label string) {
-	d.meta.Add(time, "Meta.Label", []byte(label))
+	d.meta.Add(time, META_LABEL_KEY, []byte(label))
 }
 
 func (d *dataModelImpl) GetLabel(time time.Time) string {
 	currentLabel := ""
-	if temp, ok := d.meta.GetStateAtTime(time)["Meta.Label"]; ok {
+	if temp, ok := d.meta.GetStateAtTime(time)[META_LABEL_KEY]; ok {
 		currentLabel = string(temp)
 	}
 	return currentLabel
+}
+
+func (d *dataModelImpl) GetNextLabelTime(time time.Time) time.Time {
+	if t, err := d.meta.FindNextTimeKey(time, 1, META_LABEL_KEY); err == nil {
+		return t
+	}
+	_, next := d.GetTimeRange()
+	return next
+}
+
+func (d *dataModelImpl) GetPrevLabelTime(time time.Time) time.Time {
+	if t, err := d.meta.FindNextTimeKey(time, -1, META_LABEL_KEY); err == nil {
+		return t
+	}
+	prev, _ := d.GetTimeRange()
+	return prev
 }
 
 func (d *dataModelImpl) GetTimeRange() (time.Time, time.Time) {

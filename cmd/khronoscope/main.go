@@ -68,7 +68,7 @@ func main() {
 	gob.Register(resources.ReplicaSetExtra{})
 	gob.Register(resources.NodeExtra{})
 	gob.Register(resources.PodExtra{})
-
+	//"/Users/jstrohm/code/khronoscope/session.khron"
 	filename := flag.String("file", "", "Filename to load")
 	namespace := flag.String("namespace", "", "Namespace to filter on")
 

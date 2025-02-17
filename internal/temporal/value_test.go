@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -92,50 +93,42 @@ func Test_ManyValues(t *testing.T) {
 func Test_Next(t *testing.T) {
 	store := NewTimeValueStore()
 
+	// Create arrays of times
 	start := time.Now()
-
-	m1 := start.Add(time.Second)
-	store.AddValue(m1, []byte("value1"))
-
-	m2 := m1.Add(time.Second)
-	store.AddValue(m2, []byte("value2"))
-
-	m3 := m2.Add(time.Second)
-	store.AddValue(m3, []byte("value3"))
-
-	temp, err := store.FindNextTimeKey(start, 1)
-	if err != nil || !m1.Equal(temp) {
-		t.Fatalf("FindNextTimeKey start -> m1 failed")
+	times := []time.Time{start}
+	for idx := 1; idx < 200; idx++ {
+		times = append(times, start.Add(time.Duration(idx)*time.Second))
+		store.AddValue(times[idx], []byte(fmt.Sprintf("value:%v", idx)))
 	}
 
-	temp, err = store.FindNextTimeKey(m1, 1)
-	if err != nil || !m2.Equal(temp) {
-		t.Fatalf("FindNextTimeKey m1 -> m2 failed")
-	}
+	for idx := 2; idx < len(times); idx++ {
+		temp, err := store.FindNextTimeKey(times[idx-1], 1)
+		if err != nil {
+			t.Fatalf("FindNextTimeKey %v -> %v failed, got %v",
+				times[idx-1].Sub(start),
+				times[idx].Sub(start),
+				err)
+		}
+		if err != nil || !times[idx].Equal(temp) {
+			t.Fatalf("FindNextTimeKey %v -> %v failed, got %v",
+				times[idx-1].Sub(start),
+				times[idx].Sub(start),
+				temp.Sub(start))
+		}
 
-	temp, err = store.FindNextTimeKey(m2, 1)
-	if err != nil || !m3.Equal(temp) {
-		t.Fatalf("FindNextTimeKey m2 -> m3 failed")
-	}
-
-	_, err = store.FindNextTimeKey(m3, 1)
-	if err == nil {
-		t.Fatalf("FindNextTimeKey m3 -> err failed")
-	}
-
-	temp, err = store.FindNextTimeKey(m3, -1)
-	if err != nil || !m2.Equal(temp) {
-		t.Fatalf("FindNextTimeKey m3 -> m2 failed")
-	}
-
-	temp, err = store.FindNextTimeKey(m2, -1)
-	if err != nil || !m1.Equal(temp) {
-		t.Fatalf("FindNextTimeKey m2 -> m1 failed")
-	}
-
-	_, err = store.FindNextTimeKey(m1, -1)
-	if err == nil {
-		t.Fatalf("FindNextTimeKey m1 -> err failed")
+		temp, err = store.FindNextTimeKey(times[idx], -1)
+		if err != nil {
+			t.Fatalf("FindNextTimeKey %v -> %v failed, got %v",
+				times[idx].Sub(start),
+				times[idx-1].Sub(start),
+				err)
+		}
+		if !times[idx-1].Equal(temp) {
+			t.Fatalf("FindNextTimeKey %v -> %v failed, got %v",
+				times[idx].Sub(start),
+				times[idx-1].Sub(start),
+				temp.Sub(start))
+		}
 	}
 
 }

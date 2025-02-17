@@ -1,7 +1,9 @@
 package temporal
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 	"weak"
@@ -285,19 +287,30 @@ func (store *TimeValueStore) FindNextTimeKey(timestamp time.Time, dir int) (time
 		return timestamp, fmt.Errorf("invalid direction: %d", dir)
 	}
 
-	index := sort.Search(len(store.Keyframes), func(j int) bool {
-		return store.Keyframes[j].Timestamp.Time.After(timestamp)
-	})
+	// We are just going to brute force it
+	times := []time.Time{}
+
+	for _, k := range store.Keyframes {
+		times = append(times, k.Timestamp.Time)
+		for _, d := range k.DiffFrames {
+			times = append(times, d.Timestamp.Time)
+		}
+	}
 
 	if dir > 0 {
-		if index >= len(store.Keyframes) {
-			index--
+		for _, t := range times {
+			if t.After(timestamp) {
+				return t, nil
+			}
 		}
-		return store.Keyframes[index].FindNextTime(timestamp, dir)
-	}
-	if index >= len(store.Keyframes) {
-		index--
+		return timestamp, errors.New("no next")
 	}
 
-	return store.Keyframes[index].FindNextTime(timestamp, dir)
+	slices.Reverse(times)
+	for _, t := range times {
+		if t.Before(timestamp) {
+			return t, nil
+		}
+	}
+	return timestamp, errors.New("no next")
 }

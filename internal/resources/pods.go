@@ -55,8 +55,8 @@ func (p PodExtra) Copy() Copyable {
 		Uptime:      p.Uptime,
 		StartTime:   p.StartTime,
 		Containers:  misc.DeepCopyMap(p.Containers),
-		Labels:      p.Labels,
-		Annotations: p.Annotations,
+		Labels:      misc.DeepCopyArray(p.Labels),
+		Annotations: misc.DeepCopyArray(p.Annotations),
 		Logs:        misc.DeepCopyArray(p.Logs),
 		Logging:     misc.DeepCopyArray(p.Logging),
 	}

@@ -7,6 +7,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// formatArray converts an array into a comma-separated string
+func FormatArray(arr []string) string {
+	if len(arr) == 0 {
+		return "<none>"
+	}
+	return fmt.Sprintf("[%s]", fmt.Sprintf("%s", arr))
+}
+
 func DeepCopyArray[K any](s []K) []K {
 	dest := make([]K, len(s))
 

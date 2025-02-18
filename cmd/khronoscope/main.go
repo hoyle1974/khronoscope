@@ -74,6 +74,7 @@ func main() {
 	gob.Register(resources.DeploymentExtra{})
 	gob.Register(resources.ReplicaSetExtra{})
 	gob.Register(resources.ConfigMapExtra{})
+	gob.Register(resources.SecretExtra{})
 
 	//"/Users/jstrohm/code/khronoscope/session.khron"
 	filename := flag.String("file", "", "Filename to load")

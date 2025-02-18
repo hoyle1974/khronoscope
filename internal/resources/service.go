@@ -132,9 +132,7 @@ func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 
 func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
 	s := n.convert(obj)
-
 	extra := newServiceExtra(s)
-
 	return NewK8sResource(n.Kind(), s, format.FormatServiceDetails(n.convert(obj)), extra)
 }
 

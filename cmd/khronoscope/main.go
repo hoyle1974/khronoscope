@@ -72,7 +72,6 @@ func main() {
 	gob.Register(resources.ServiceExtra{})
 	gob.Register(resources.DaemonSetExtra{})
 	gob.Register(resources.DeploymentExtra{})
-	gob.Register(resources.ReplicaSetExtra{})
 	gob.Register(resources.ConfigMapExtra{})
 	gob.Register(resources.SecretExtra{})
 	gob.Register(resources.StatefulSetExtra{})

@@ -60,6 +60,9 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, n
 	if _, err = watchForNodes(w, client, dao, podWatcher); err != nil {
 		return err
 	}
+	if err = watchForConfigMap(w, client, ns); err != nil {
+		return err
+	}
 	return nil
 }
 

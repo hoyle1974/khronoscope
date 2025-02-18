@@ -66,6 +66,12 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, n
 	if err = watchForSecret(w, client, ns); err != nil {
 		return err
 	}
+	if err = watchForStatefulSet(w, client, ns); err != nil {
+		return err
+	}
+	if err = watchForPersistentVolume(w, client); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -8,7 +8,7 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 
 - Connects to your current Kubernetes cluster
 - Supports the following resources: ConfigMap, DaemonSet, Deployments, Namespaces, Nodes, PersistantVolume, Pods, ReplicaSets, Secrets, and Services
-- Controls - Look at [config.go](https://github.com/hoyle1974/khronoscope/blob/main/config/config.go) for the existing key bindings.
+- Controls - Look at [config.go](https://github.com/hoyle1974/khronoscope/blob/main/internal/config/config.go) for the existing key bindings.
 
 # Disclaimer
 
@@ -43,7 +43,7 @@ go run .
 I'm happy to have folks add contributions.  I've already created some [Issues](https://github.com/hoyle1974/khronoscope/labels/good%20first%20issue) that are great places to start if you want to contribute something useful but easy and self contained.  For more complex stuff feel free to add comments to the issues and I'm happy to discuss or create your own issues.  I'm really looking for help on how to make this tool more usable in real world scenarios, specifically in UI controls and added features!
 
 # Internals
-This application create a connection to your kubernetes cluster and starts watching for resource changes.  It has a data structure called [TemporalMap](https://github.com/hoyle1974/khronoscope/blob/main/temporal_map.go) that is used to manage all the resource changes.  The structure allows you to add/update/delete values stored in it and then you can query the map for it's state at a specific point in time.  This let's the application show you the state of the cluster at any point since the start of the application.  The data in TemporalMap is actually stored as Keyframes and Diffs to reduce in memory pressure.  It's pretty efficient.
+This application create a connection to your kubernetes cluster and starts watching for resource changes.  It has a data structure called [TemporalMap](https://github.com/hoyle1974/khronoscope/blob/main/internal/internal/temporal/map.go) that is used to manage all the resource changes.  The structure allows you to add/update/delete values stored in it and then you can query the map for it's state at a specific point in time.  This let's the application show you the state of the cluster at any point since the start of the application.  The data in TemporalMap is actually stored as Keyframes and Diffs to reduce in memory pressure.  It's pretty efficient.
 
 Along with standard resource information the application also collects metrics data for Pods and Nodes al.  Logs can be collected form pods as needed.  You can mark pods for log collection and then jump between them to inspect the logs at any point in time.
 
@@ -53,7 +53,7 @@ I use [BubbleTea](https://github.com/charmbracelet/bubbletea) for rendering and 
 
 # Adding new k8s resource types
 
-A good example of how to add a new resource type can be seen in [service.go](https://github.com/hoyle1974/khronoscope/blob/main/service.go).  To be honest a few of these I used ChatGPT to generate for me because it's so boilerplate and repetitive.  This is an example of the prompt I did.
+A good example of how to add a new resource type can be seen in [service.go](https://github.com/hoyle1974/khronoscope/blob/main/internal/resources/service.go).  To be honest a few of these I used ChatGPT to generate for me because it's so boilerplate and repetitive.  This is an example of the prompt I did.
 
 ```Rewrite this for k8s {new resource}} instead of service:```
 

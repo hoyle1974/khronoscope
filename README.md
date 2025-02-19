@@ -8,8 +8,8 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 
 - Connects to your current Kubernetes cluster
 - Supports the following resources: ConfigMap, DaemonSet, Deployments, Namespaces, Nodes, PersistantVolume, Pods, ReplicaSets, Secrets, and Services
-- Controls - Look at [config.go](https://github.com/hoyle1974/khronoscope/blob/main/internal/config/config.go) for the existing key bindings.
-
+- Controls - To see the current keybindings run `khronoscope -k`
+  
 # Disclaimer
 
 This project is in its early stages of development and is not yet recommended for production use. While adjustments have been made to minimize load on the control plane, performance under heavy load has not yet been tested.

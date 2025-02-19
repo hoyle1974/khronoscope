@@ -14,6 +14,16 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 
 This project is in its early stages of development and is not yet recommended for production use. While adjustments have been made to minimize load on the control plane, performance under heavy load has not yet been tested.
 
+# 📖 Debugging the Past with Khronoscope
+
+Imagine inspecting your Kubernetes cluster when you notice something strange—a deployment with flapping pods. They start, crash, restart. Something’s off.
+
+You pause the cluster state and check related resources. Nothing obvious. Rewinding a few minutes, you see the pods failing right after startup. Fast-forwarding, you mark one to start collecting logs. More crashes. Rewinding again, you inspect the logs just before failure—each pod dies trying to connect to a missing service.
+
+Jumping to another namespace, you spot the issue: a critical infrastructure pod failed to start earlier. A quick fix, a restart, and everything stabilizes.
+
+With Khronoscope’s ability to navigate through time, track key logs, and inspect past states, you solve in minutes what could’ve taken hours.
+
 # Installation
 
 Currently Khronoscope has only been tested on MacOS.  To install the latest build with homebrew:

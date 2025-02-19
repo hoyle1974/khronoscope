@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +42,7 @@ type PodExtra struct {
 	Annotations []string
 	Logs        []string
 	Logging     []string
+	Details     []string
 }
 
 func (r PodExtra) GetValue(key string) any { return nil }
@@ -59,6 +59,7 @@ func (p PodExtra) Copy() Copyable {
 		Annotations: misc.DeepCopyArray(p.Annotations),
 		Logs:        misc.DeepCopyArray(p.Logs),
 		Logging:     misc.DeepCopyArray(p.Logging),
+		Details:     p.Details,
 	}
 }
 
@@ -105,7 +106,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 
 		out = append(out, extra.Labels...)
 		out = append(out, extra.Annotations...)
-		out = append(out, resource.Details...)
+		out = append(out, extra.Details...)
 
 	} else {
 		p := fmt.Sprintf("%v", extra.Phase)
@@ -251,6 +252,57 @@ func (n *PodWatcher) convert(obj runtime.Object) *corev1.Pod {
 	return ret
 }
 
+// FormatPodDetails formats the details of a Pod for display
+func formatPodDetails(pod *corev1.Pod) []string {
+	out := []string{}
+
+	out = append(out, fmt.Sprintf("Name:         %s", pod.Name))
+	out = append(out, fmt.Sprintf("Namespace:    %s", pod.Namespace))
+	out = append(out, fmt.Sprintf("Priority:     %d", *pod.Spec.Priority))
+	out = append(out, fmt.Sprintf("Node:         %s", pod.Spec.NodeName))
+	if pod.Status.StartTime != nil {
+		out = append(out, fmt.Sprintf("Start Time:   %s", pod.Status.StartTime.Time))
+	}
+
+	out = append(out, fmt.Sprintf("Phase:        %s", pod.Status.Phase))
+
+	out = append(out, misc.RenderMapOfStrings("Labels:", pod.Labels)...)
+	out = append(out, misc.RenderMapOfStrings("Annotations:", pod.Annotations)...)
+
+	out = append(out, "\nConditions:")
+	for _, condition := range pod.Status.Conditions {
+		out = append(out, fmt.Sprintf("  Type: %v", condition.Type))
+		out = append(out, fmt.Sprintf("    Status: %v", condition.Status))
+		out = append(out, fmt.Sprintf("    Reason: %v", condition.Reason))
+		if condition.Message != "" {
+			out = append(out, fmt.Sprintf("    Message: %v", condition.Message))
+		}
+	}
+
+	out = append(out, "\nContainers:")
+	for _, container := range pod.Spec.Containers {
+		out = append(out, fmt.Sprintf("  %s:", container.Name))
+		out = append(out, fmt.Sprintf("    Image:           %s", container.Image))
+		out = append(out, fmt.Sprintf("    Ports:           %v", container.Ports))
+		out = append(out, fmt.Sprintf("    Host Ports:      %v", container.Ports))
+		out = append(out, fmt.Sprintf("    Resource Limits: %v", container.Resources.Limits))
+		out = append(out, fmt.Sprintf("    Liveness:        %v", container.LivenessProbe))
+		out = append(out, fmt.Sprintf("    Readiness:       %v", container.ReadinessProbe))
+	}
+
+	out = append(out, "\nStatus:")
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		out = append(out, fmt.Sprintf("  %s:", containerStatus.Name))
+		out = append(out, fmt.Sprintf("    Ready: %v", containerStatus.Ready))
+		out = append(out, fmt.Sprintf("    Restart Count: %d", containerStatus.RestartCount))
+		out = append(out, fmt.Sprintf("    Image: %s", containerStatus.Image))
+		out = append(out, fmt.Sprintf("    Image ID: %s", containerStatus.ImageID))
+		out = append(out, fmt.Sprintf("    Container ID: %s", containerStatus.ContainerID))
+	}
+
+	return out
+}
+
 func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 	pod := n.convert(obj)
 
@@ -273,9 +325,10 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 		StartTime:   serializable.Time{Time: pod.CreationTimestamp.Time},
 		Labels:      misc.RenderMapOfStrings("Labels:", pod.GetLabels()),
 		Annotations: misc.RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
+		Details:     formatPodDetails(pod),
 	}
 
-	return NewK8sResource(n.Kind(), pod, format.FormatPodDetails(pod), extra)
+	return NewK8sResource(n.Kind(), pod, extra)
 }
 
 func watchForPods(watcher *K8sWatcher, k conn.KhronosConn, d DAO, lc *LogCollector, ns string) (*PodWatcher, error) {

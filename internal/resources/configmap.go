@@ -117,7 +117,7 @@ func (n ConfigMapWatcher) convert(obj runtime.Object) *corev1.ConfigMap {
 func (n ConfigMapWatcher) ToResource(obj runtime.Object) Resource {
 	cm := n.convert(obj)
 	extra := newConfigMapExtra(cm)
-	return NewK8sResource(n.Kind(), cm, []string{}, extra)
+	return NewK8sResource(n.Kind(), cm, extra)
 }
 
 func watchForConfigMap(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {

@@ -101,7 +101,7 @@ func RenderProgressBar(label string, percent float64) string {
 	return label + " " + bar
 }
 
-func RenderMapOfStrings(name string, t map[string]string) []string {
+func RenderMapOfStrings[V any](name string, t map[string]V) []string {
 	out := []string{}
 
 	out = append(out, name)

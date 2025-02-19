@@ -8,7 +8,6 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -127,7 +126,7 @@ func (n ReplicaSetWatcher) convert(obj runtime.Object) *appsv1.ReplicaSet {
 func (n ReplicaSetWatcher) ToResource(obj runtime.Object) Resource {
 	rs := n.convert(obj)
 	extra := newReplicaSetExtra(rs)
-	return NewK8sResource(n.Kind(), rs, format.FormatReplicaSetDetails(rs), extra)
+	return NewK8sResource(n.Kind(), rs, extra)
 }
 
 func watchForReplicaSet(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {

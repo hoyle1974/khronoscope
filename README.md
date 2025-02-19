@@ -8,7 +8,33 @@ This project is in it's VERY early stages, not in Alpha yet really but what it d
 
 - Connects to your current Kubernetes cluster
 - Supports the following resources: ConfigMap, DaemonSet, Deployments, Namespaces, Nodes, PersistantVolume, Pods, ReplicaSets, Secrets, and Services
-- Controls - To see the current keybindings run `khronoscope -k`
+- Controls - For the latest keybindings run `khronoscope -k`
+  - '1' - Press this to show the details of a resource
+  - '2' - Press this to show any collected logs of a resource
+  - 'L' - Filter resources by those currently logging
+  - 'l' - Toggle log collection for this pod
+  - '/' - Filter by a string
+  - 'q' - Save the recorded state to a file
+  - 'm' - Mark this timestamp with a label
+  - 'tab' - Rotate view
+  - 'ctrl+c' - Quit
+  - 'left' - In VCR mode, rewind, press multiple times to speed up
+  - 'right' - In VCR mode, fast forward, press multiple times to speed up
+  - ' ' - In VCR mode, toggle play/pause
+  - 'esc' - Exit VCR mode and resume at the latest timestamp
+  - 'enter' - Toggle folding the resource category/kind view
+  - 'shift+up' - Jump up in the details view by 10 lines
+  - 'shift+down' - Jump down in the details view by 10 lines
+  - 'up' - Go up a resource
+  - 'down' - Go down a resource
+  - 'alt+up' - Go up 10 resources
+  - 'alt+down' - Go down 10 resources
+  - 'ctrl+d' - Delete a resource
+  - 's' - Exec into a shell for this pod
+  - 'P' - Filter all pods
+  - 'ctrl+d' - Debug log window
+  - 'shift+right' - In VCR mode, jump to the next marked label
+  - 'shift+left' - In VCR mode, jump to the previous marked label
   
 # Disclaimer
 

@@ -5,14 +5,42 @@ import (
 	"math"
 
 	"github.com/charmbracelet/lipgloss"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/duration"
 )
+
+// formatCreationTimestamp ensures the timestamp is human-readable
+func FormatCreationTimestamp(timestamp *v1.Time) string {
+	if timestamp == nil {
+		return "<none>"
+	}
+	return duration.HumanDuration(v1.Now().Sub(timestamp.Time))
+}
+
+func FormatNilString(arr *string) string {
+	if arr == nil || len(*arr) == 0 {
+		return "<none>"
+	}
+	return *arr
+}
+
+// formatNilArray returns "<none>" if the array is nil or empty, otherwise it formats it as a comma-separated string
+func FormatNilArray(arr []string) string {
+	if len(arr) == 0 {
+		return "<none>"
+	}
+	return FormatArray(arr)
+}
 
 // formatArray converts an array into a comma-separated string
 func FormatArray(arr []string) string {
 	if len(arr) == 0 {
 		return "<none>"
 	}
-	return fmt.Sprintf("[%s]", fmt.Sprintf("%s", arr))
+	if len(arr) == 1 {
+		return arr[0]
+	}
+	return fmt.Sprintf("[%s]", arr)
 }
 
 func DeepCopyArray[K any](s []K) []K {
@@ -101,10 +129,11 @@ func RenderProgressBar(label string, percent float64) string {
 	return label + " " + bar
 }
 
-func RenderMapOfStrings[V any](name string, t map[string]V) []string {
+func RenderMapOfStrings[V any](t map[string]V) []string {
 	out := []string{}
-
-	out = append(out, name)
+	if len(t) == 0 {
+		out = append(out, "   <none>")
+	}
 
 	for k, v := range Range(t) {
 		out = append(out, fmt.Sprintf("   %v : %v", k, v))

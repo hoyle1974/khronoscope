@@ -48,9 +48,9 @@ func (p DeploymentExtra) Copy() Copyable {
 }
 
 func newDeploymentExtra(dep *appsv1.Deployment) DeploymentExtra {
-	labels := misc.RenderMapOfStrings("Labels", dep.Labels)
-	annotations := misc.RenderMapOfStrings("Annotations", dep.Annotations)
-	selector := misc.RenderMapOfStrings("Selector", dep.Spec.Selector.MatchLabels)
+	labels := misc.RenderMapOfStrings(dep.Labels)
+	annotations := misc.RenderMapOfStrings(dep.Annotations)
+	selector := misc.RenderMapOfStrings(dep.Spec.Selector.MatchLabels)
 
 	var conditions []string
 	for _, cond := range dep.Status.Conditions {

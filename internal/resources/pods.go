@@ -266,8 +266,8 @@ func formatPodDetails(pod *corev1.Pod) []string {
 
 	out = append(out, fmt.Sprintf("Phase:        %s", pod.Status.Phase))
 
-	out = append(out, misc.RenderMapOfStrings("Labels:", pod.Labels)...)
-	out = append(out, misc.RenderMapOfStrings("Annotations:", pod.Annotations)...)
+	out = append(out, misc.RenderMapOfStrings(pod.Labels)...)
+	out = append(out, misc.RenderMapOfStrings(pod.Annotations)...)
 
 	out = append(out, "\nConditions:")
 	for _, condition := range pod.Status.Conditions {
@@ -323,8 +323,8 @@ func (n *PodWatcher) ToResource(obj runtime.Object) Resource {
 		Node:        pod.Spec.NodeName,
 		Containers:  containerLimits,
 		StartTime:   serializable.Time{Time: pod.CreationTimestamp.Time},
-		Labels:      misc.RenderMapOfStrings("Labels:", pod.GetLabels()),
-		Annotations: misc.RenderMapOfStrings("Annotations:", pod.GetAnnotations()),
+		Labels:      misc.RenderMapOfStrings(pod.GetLabels()),
+		Annotations: misc.RenderMapOfStrings(pod.GetAnnotations()),
 		Details:     formatPodDetails(pod),
 	}
 

@@ -1,0 +1,51 @@
+
+
+Use the k8s.io/apimachinery/pkg/util/duration package to make Durations print prettier. example: duration.HumanDuration
+Make sure documentation is consistent, concise, and correct.
+Single command functions should be on one line.
+Protect the code you generate from nil references.  For example the resource this references may not fully be created
+If we have a timestamp in our Extra object it should be of time serializable.Time from package "github.com/hoyle1974/khronoscope/internal/serializable"
+We have the function func NewTime(t time.Time) Time in serializable to copy new times.
+When rendering, if an array is empty you can render <none> to denote this.
+Add as much information in the Extra is possible even if the Kubectl output example doesn’t contain it.  More is better, this will be used for debugging and triaging problems.
+In github.com/hoyle1974/khronoscope/internal/misc package I have some helper functions you will use:
+func FormatArray(arr []string) string // converts an array into a comma-separated string"
+func DeepCopyArray[K any](s []K) []K // Performs a deep copy of an array"
+func DeepCopyMap[K comparable, V any](m map[K]V) map[K]V // Performs a deep copy of a map"
+func RenderMapOfStrings[V any](t map[string]V) []string // Converts a map to an array of strings, if nil or empty map is passed in will output <none>
+func FormatCreationTimestamp(timestamp *v1.Time) string  // formatCreationTimestamp ensures the timestamp is human-readable
+func FormatNilArray(arr []string) string // formatNilArray returns "<none>" if the array is nil or empty, otherwise it formats it as a comma-separated string
+func FormatNilString(arr *string) string // Returns <none> if arr is nil
+
+
+Handle Possible nil References Gracefully: make sure all relevant fields that could be nil are handled similarly, especially when dereferencing nested structs. For example, svc.Labels and svc.Annotations might be nil, so we could add nil checks before calling helper functions like misc.RenderMapOfStrings.
+Add More Detail to Output: In the renderServiceExtra function, consider adding more details such as SessionAffinity, Internal Traffic Policy, or Events. Even if kubectl doesn't display them, adding them can be useful for debugging purposes. You can also render the complete Selector map in a more user-friendly format instead of a single string.  Take this advice and extend it to other Kubernetes objects where applicable.
+Ensure Concise Documentation: Review all comments for conciseness and accuracy. For instance, in Copy() and newServiceExtra, it may be beneficial to explicitly state that these functions are used to deep copy or convert the resource state to ensure no changes propagate unexpectedly.  Single line functions don’t need comments.
+Optimize Array and Map Processing: misc.FormatArray can be used in renderServiceExtra, but you may want to further optimize by ensuring empty arrays and maps are always rendered as <none>, so that empty fields don't clutter the output. Similarly, consider checking if Selector and Ports are empty and rendering <none> where appropriate.  Extends this to other types where applicable.
+Sort Arrays Consistently: In the newServiceExtra function, arrays like Ports, Selector, Labels, and Annotations are sorted, but we might also want to ensure this sorting is consistent across all places where arrays are used (e.g., ExternalIPs).
+Improve Tick() Function Documentation: The Tick() function in ServiceWatcher is empty, but there could be a comment explaining its intended purpose (e.g., periodic checks, metrics collection). If it's not used yet, consider adding a comment about that.
+Take extra care that the code you generate is compilable.  Make sure you don’t just arbitrarily cast Kubernetes structs to strings when that won’t work.
+When given the choice to store a string or an []string in Extra for a list of things, always choose the slice.
+When rendering an array of strings, if the array has just 1 item, then make it render on the same line, otherwise render multiline.
+When rendering an array or map of strings, for example Labels, the first item should be on the same line as the Title, in this example it would look like
+
+Label:   Label1
+         Label2
+         Label3
+
+Please note:
+- svc.Spec.IPFamilyPolicy of type  *IPFamilyPolicy can not be cast directly to a string.
+- svc.Spec.InternalTrafficPolicy of type *ServiceInternalTrafficPolicy can not be cast directly to a string.
+- k conn.KhronosConn is a structure and can not be nil
+- svc.Spec.LoadBalancerClass of type
+
+Also Resource which contains the Extra object looks like this, so these fields don’t need to be in the generated Extra:
+
+type Resource struct {
+    Uid       string            // The Uid of the k8s object
+    Timestamp serializable.Time // The timestamp that this resource is valid for
+    Kind      string            // The k8s kind of resource
+    Namespace string            // The k8s namespace, may be empty for things like namespace and node resources
+    Name      string            // The name of the resource
+    Extra     Copyable          // This should be a custom, gob registered and serializable object if used
+}

@@ -35,8 +35,8 @@ func (p StatefulSetExtra) Copy() Copyable {
 }
 
 func newStatefulSetExtra(ss *appsv1.StatefulSet) StatefulSetExtra {
-	labels := misc.RenderMapOfStrings("Labels", ss.Labels)
-	annotations := misc.RenderMapOfStrings("Annotations", ss.Annotations)
+	labels := misc.RenderMapOfStrings(ss.Labels)
+	annotations := misc.RenderMapOfStrings(ss.Annotations)
 
 	return StatefulSetExtra{
 		Name:              ss.Name,

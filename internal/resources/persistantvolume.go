@@ -39,8 +39,8 @@ func (p PersistentVolumeExtra) Copy() Copyable {
 }
 
 func newPersistentVolumeExtra(pv *corev1.PersistentVolume) PersistentVolumeExtra {
-	labels := misc.RenderMapOfStrings("Labels", pv.Labels)
-	annotations := misc.RenderMapOfStrings("Annotations", pv.Annotations)
+	labels := misc.RenderMapOfStrings(pv.Labels)
+	annotations := misc.RenderMapOfStrings(pv.Annotations)
 
 	// Get access modes
 	accessModes := make([]string, 0, len(pv.Spec.AccessModes))

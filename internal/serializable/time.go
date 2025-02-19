@@ -12,6 +12,10 @@ type Time struct {
 	Location string `deep:"-"`
 }
 
+func NewTime(t time.Time) Time {
+	return Time{Time: t}
+}
+
 // GobEncode implements the gob.GobEncoder interface
 func (st Time) GobEncode() ([]byte, error) {
 	// Serialize time and location

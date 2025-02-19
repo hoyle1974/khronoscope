@@ -32,10 +32,10 @@ type DaemonSetExtra struct {
 }
 
 func newDaemonSetExtra(ds *appsv1.DaemonSet) DaemonSetExtra {
-	labels := misc.RenderMapOfStrings("Labels", ds.Labels)
-	annotations := misc.RenderMapOfStrings("Annotations", ds.Annotations)
-	selector := misc.RenderMapOfStrings("Selector", ds.Spec.Selector.MatchLabels)
-	nodeSelector := misc.RenderMapOfStrings("NodeSelector", ds.Spec.Template.Spec.NodeSelector)
+	labels := misc.RenderMapOfStrings(ds.Labels)
+	annotations := misc.RenderMapOfStrings(ds.Annotations)
+	selector := misc.RenderMapOfStrings(ds.Spec.Selector.MatchLabels)
+	nodeSelector := misc.RenderMapOfStrings(ds.Spec.Template.Spec.NodeSelector)
 	tolerations := []string{}
 	for _, t := range ds.Spec.Template.Spec.Tolerations {
 		tolerations = append(tolerations, fmt.Sprintf("%s=%s:%s", t.Key, t.Value, t.Operator))

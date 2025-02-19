@@ -52,8 +52,8 @@ func newReplicaSetExtra(rs *appsv1.ReplicaSet) ReplicaSetExtra {
 	return ReplicaSetExtra{
 		Name:                 rs.Name,
 		Namespace:            rs.Namespace,
-		Labels:               misc.RenderMapOfStrings("Labels", rs.Labels),
-		Annotations:          misc.RenderMapOfStrings("Annotations", rs.Annotations),
+		Labels:               misc.RenderMapOfStrings(rs.Labels),
+		Annotations:          misc.RenderMapOfStrings(rs.Annotations),
 		Replicas:             *rs.Spec.Replicas,
 		AvailableReplicas:    rs.Status.AvailableReplicas,
 		ReadyReplicas:        rs.Status.ReadyReplicas,

@@ -3,110 +3,131 @@ package resources
 import (
 	"context"
 	"fmt"
-	"sort"
-	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/duration"
 )
 
+// ConfigMapExtra holds the complete config map state in a serializable form for GOB encoding
 type ConfigMapExtra struct {
-	Name              string
-	Namespace         string
-	UID               string
-	CreationTimestamp time.Time
-	Labels            []string
-	Annotations       []string
-	DataKeys          []string
-	BinaryDataKeys    []string
+	Name        string
+	Namespace   string
+	Labels      []string
+	Annotations []string
+	Data        map[string]string
+	BinaryData  map[string]string
+	Immutable   string
+	CreateTime  serializable.Time
 }
 
+// Copy performs a deep copy of ConfigMapExtra
 func (p ConfigMapExtra) Copy() Copyable {
 	return ConfigMapExtra{
-		Name:              p.Name,
-		Namespace:         p.Namespace,
-		UID:               p.UID,
-		CreationTimestamp: p.CreationTimestamp,
-		Labels:            misc.DeepCopyArray(p.Labels),
-		Annotations:       misc.DeepCopyArray(p.Annotations),
-		DataKeys:          misc.DeepCopyArray(p.DataKeys),
-		BinaryDataKeys:    misc.DeepCopyArray(p.BinaryDataKeys),
+		Name:        p.Name,
+		Namespace:   p.Namespace,
+		Labels:      misc.DeepCopyArray(p.Labels),
+		Annotations: misc.DeepCopyArray(p.Annotations),
+		Data:        misc.DeepCopyMap(p.Data),
+		BinaryData:  misc.DeepCopyMap(p.BinaryData),
+		Immutable:   p.Immutable,
+		CreateTime:  p.CreateTime,
 	}
 }
 
+// newConfigMapExtra constructs a ConfigMapExtra from a Kubernetes ConfigMap
 func newConfigMapExtra(cm *corev1.ConfigMap) ConfigMapExtra {
-	labels := misc.RenderMapOfStrings("Labels", cm.Labels)
-	annotations := misc.RenderMapOfStrings("Annotations", cm.Annotations)
-
-	dataKeys := make([]string, 0, len(cm.Data))
-	for k := range cm.Data {
-		dataKeys = append(dataKeys, k)
-	}
-	binaryDataKeys := make([]string, 0, len(cm.BinaryData))
-	for k := range cm.BinaryData {
-		binaryDataKeys = append(binaryDataKeys, k)
+	if cm == nil {
+		return ConfigMapExtra{}
 	}
 
-	sort.Strings(dataKeys)
-	sort.Strings(binaryDataKeys)
+	data := make(map[string]string, len(cm.Data))
+	for k, v := range cm.Data {
+		data[k] = string(v)
+	}
+
+	binaryData := make(map[string]string, len(cm.BinaryData))
+	for k, v := range cm.BinaryData {
+		binaryData[k] = string(v)
+	}
+
+	immutable := "<empty>"
+	if cm.Immutable != nil {
+		immutable = fmt.Sprintf("%v", *cm.Immutable)
+	}
 
 	return ConfigMapExtra{
-		Name:              cm.Name,
-		Namespace:         cm.Namespace,
-		UID:               string(cm.UID),
-		CreationTimestamp: cm.CreationTimestamp.Time,
-		Labels:            labels,
-		Annotations:       annotations,
-		DataKeys:          dataKeys,
-		BinaryDataKeys:    binaryDataKeys,
+		Name:        cm.Name,
+		Namespace:   cm.Namespace,
+		Labels:      misc.RenderMapOfStrings(cm.Labels),
+		Annotations: misc.RenderMapOfStrings(cm.Annotations),
+		Data:        data,
+		BinaryData:  binaryData,
+		Immutable:   immutable,
+		CreateTime:  serializable.NewTime(cm.CreationTimestamp.Time),
 	}
 }
 
+type ConfigMapRenderer struct{}
+
 func renderConfigMapExtra(extra ConfigMapExtra) []string {
+
+	createTime := duration.HumanDuration(v1.Now().Sub(extra.CreateTime.Time))
+
 	output := []string{
-		fmt.Sprintf("Name: %s", extra.Name),
-		fmt.Sprintf("Namespace: %s", extra.Namespace),
-		fmt.Sprintf("UID: %s", extra.UID),
-		fmt.Sprintf("CreationTimestamp: %s", extra.CreationTimestamp.Format(time.RFC3339)),
+		fmt.Sprintf("Name:                     %s", extra.Name),
+		fmt.Sprintf("Namespace:                %s", extra.Namespace),
+		fmt.Sprintf("Labels:                   %s", misc.FormatNilArray(extra.Labels)),
+		fmt.Sprintf("Annotations:              %s", misc.FormatNilArray(extra.Annotations)),
+		fmt.Sprintf("Immutable:                %s", extra.Immutable),
+		fmt.Sprintf("Creation Time:            %s", createTime),
 	}
-	output = append(output, extra.Labels...)
-	output = append(output, extra.Annotations...)
-	output = append(output, fmt.Sprintf("Data keys: %v", extra.DataKeys))
-	output = append(output, fmt.Sprintf("BinaryData keys: %v", extra.BinaryDataKeys))
+
+	// Add Data section if present
+	if len(extra.Data) > 0 {
+		output = append(output, "Data:")
+		for k, v := range extra.Data {
+			output = append(output, fmt.Sprintf("  %s: %s", k, v))
+		}
+	}
+
+	// Add BinaryData section if present
+	if len(extra.BinaryData) > 0 {
+		output = append(output, "Binary Data:")
+		for k, v := range extra.BinaryData {
+			output = append(output, fmt.Sprintf("  %s: %s", k, v))
+		}
+	}
+
 	return output
 }
 
-type ConfigMapRenderer struct {
-}
-
 func (r ConfigMapRenderer) Render(resource Resource, details bool) []string {
-	extra := resource.Extra.(ConfigMapExtra)
+	extra, ok := resource.Extra.(ConfigMapExtra)
+	if !ok {
+		return []string{"Error: Invalid extra type"}
+	}
 
 	if details {
 		return renderConfigMapExtra(extra)
 	}
-
 	return []string{resource.Key()}
 }
 
-type ConfigMapWatcher struct {
-}
+type ConfigMapWatcher struct{}
 
-func (n ConfigMapWatcher) Tick() {
-}
-
-func (n ConfigMapWatcher) Kind() string {
-	return "ConfigMap"
-}
-
-func (n ConfigMapWatcher) Renderer() ResourceRenderer {
-	return ConfigMapRenderer{}
-}
+func (n ConfigMapWatcher) Tick()                      {}
+func (n ConfigMapWatcher) Kind() string               { return "ConfigMap" }
+func (n ConfigMapWatcher) Renderer() ResourceRenderer { return ConfigMapRenderer{} }
 
 func (n ConfigMapWatcher) convert(obj runtime.Object) *corev1.ConfigMap {
+	if obj == nil {
+		return nil
+	}
 	ret, ok := obj.(*corev1.ConfigMap)
 	if !ok {
 		return nil
@@ -116,6 +137,9 @@ func (n ConfigMapWatcher) convert(obj runtime.Object) *corev1.ConfigMap {
 
 func (n ConfigMapWatcher) ToResource(obj runtime.Object) Resource {
 	cm := n.convert(obj)
+	if cm == nil {
+		return Resource{}
+	}
 	extra := newConfigMapExtra(cm)
 	return NewK8sResource(n.Kind(), cm, extra)
 }
@@ -123,10 +147,9 @@ func (n ConfigMapWatcher) ToResource(obj runtime.Object) Resource {
 func watchForConfigMap(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {
 	watchChan, err := k.Client.CoreV1().ConfigMaps(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to watch config maps: %w", err)
 	}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), ConfigMapWatcher{})
-
 	return nil
 }

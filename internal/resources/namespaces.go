@@ -6,90 +6,125 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
+	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/duration"
 )
 
-// NamespaceExtra holds all necessary namespace state
+// NamespaceExtra holds the complete namespace state in a serializable form for GOB encoding
 type NamespaceExtra struct {
-	Name              string
-	UID               string
-	CreationTimestamp string
-	Labels            []string
-	Annotations       []string
-	Status            string
+	Labels        []string
+	Annotations   []string
+	Status        string
+	Finalizers    []string
+	ResourceQuota []string
+	LimitRange    []string
+	Age           serializable.Time
 }
 
-// Copy creates a deep copy of NamespaceExtra
+// Copy performs a deep copy of NamespaceExtra
 func (p NamespaceExtra) Copy() Copyable {
 	return NamespaceExtra{
-		Name:              p.Name,
-		UID:               p.UID,
-		CreationTimestamp: p.CreationTimestamp,
-		Labels:            misc.DeepCopyArray(p.Labels),
-		Annotations:       misc.DeepCopyArray(p.Annotations),
-		Status:            p.Status,
+		Labels:        misc.DeepCopyArray(p.Labels),
+		Annotations:   misc.DeepCopyArray(p.Annotations),
+		Status:        p.Status,
+		Finalizers:    misc.DeepCopyArray(p.Finalizers),
+		ResourceQuota: misc.DeepCopyArray(p.ResourceQuota),
+		LimitRange:    misc.DeepCopyArray(p.LimitRange),
+		Age:           p.Age,
 	}
 }
 
-// newNamespaceExtra constructs a NamespaceExtra from a *corev1.Namespace
+// newNamespaceExtra constructs a NamespaceExtra from a Kubernetes Namespace
 func newNamespaceExtra(ns *corev1.Namespace) NamespaceExtra {
+	if ns == nil {
+		return NamespaceExtra{}
+	}
+
+	// Convert FinalizerName slice to string slice
+	finalizers := make([]string, len(ns.Spec.Finalizers))
+	for i, f := range ns.Spec.Finalizers {
+		finalizers[i] = string(f)
+	}
 
 	return NamespaceExtra{
-		Name:              ns.Name,
-		UID:               string(ns.UID),
-		CreationTimestamp: duration.HumanDuration(v1.Now().Sub(ns.CreationTimestamp.Time)),
-		Labels:            misc.RenderMapOfStrings("Labels", ns.Labels),
-		Annotations:       misc.RenderMapOfStrings("Annotations", ns.Annotations),
-		Status:            string(ns.Status.Phase),
+		Labels:        misc.RenderMapOfStrings(ns.Labels),
+		Annotations:   misc.RenderMapOfStrings(ns.Annotations),
+		Status:        string(ns.Status.Phase),
+		Finalizers:    finalizers,
+		ResourceQuota: []string{}, // Populated by external query
+		LimitRange:    []string{}, // Populated by external query
+		Age:           serializable.NewTime(ns.CreationTimestamp.Time),
 	}
 }
 
-type NamespaceRenderer struct {
-}
+type NamespaceRenderer struct{}
 
-// renderNamespaceExtra formats the data similar to `kubectl get namespaces`
 func renderNamespaceExtra(extra NamespaceExtra) []string {
 	output := []string{
-		fmt.Sprintf("Name:          %s", extra.Name),
-		fmt.Sprintf("UID:           %s", extra.UID),
-		fmt.Sprintf("Created:       %s ago", extra.CreationTimestamp),
-		fmt.Sprintf("Status:        %s", extra.Status),
+		fmt.Sprintf("Status:       %s", extra.Status),
 	}
 
-	output = append(output, extra.Labels...)
-	output = append(output, extra.Annotations...)
+	// Add Labels section
+	output = append(output, fmt.Sprintf("Labels:       %s", misc.FormatNilArray(extra.Labels)))
+
+	// Add Annotations section
+	output = append(output, fmt.Sprintf("Annotations:  %s", misc.FormatNilArray(extra.Annotations)))
+
+	// Add Finalizers if present
+	if len(extra.Finalizers) > 0 {
+		output = append(output, "Finalizers:")
+		for _, finalizer := range extra.Finalizers {
+			output = append(output, fmt.Sprintf("                %s", finalizer))
+		}
+	}
+
+	// Add Resource Quota section
+	output = append(output, "\nResource Quota:")
+	if len(extra.ResourceQuota) == 0 {
+		output = append(output, "No resource quota.")
+	} else {
+		for _, quota := range extra.ResourceQuota {
+			output = append(output, fmt.Sprintf("  %s", quota))
+		}
+	}
+
+	// Add Limit Range section
+	output = append(output, "\nLimit Range:")
+	if len(extra.LimitRange) == 0 {
+		output = append(output, "No LimitRange resource.")
+	} else {
+		for _, limit := range extra.LimitRange {
+			output = append(output, fmt.Sprintf("  %s", limit))
+		}
+	}
 
 	return output
 }
 
 func (r NamespaceRenderer) Render(resource Resource, details bool) []string {
-	extra := resource.Extra.(NamespaceExtra)
+	extra, ok := resource.Extra.(NamespaceExtra)
+	if !ok {
+		return []string{"Error: Invalid extra type"}
+	}
 
 	if details {
 		return renderNamespaceExtra(extra)
 	}
-
 	return []string{resource.Key()}
 }
 
-type NamespaceWatcher struct {
-}
+type NamespaceWatcher struct{}
 
-func (n NamespaceWatcher) Tick() {
-}
-
-func (n NamespaceWatcher) Kind() string {
-	return "Namespace"
-}
-
-func (n NamespaceWatcher) Renderer() ResourceRenderer {
-	return NamespaceRenderer{}
-}
+func (n NamespaceWatcher) Tick()                      {}
+func (n NamespaceWatcher) Kind() string               { return "Namespace" }
+func (n NamespaceWatcher) Renderer() ResourceRenderer { return NamespaceRenderer{} }
 
 func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
+	if obj == nil {
+		return nil
+	}
 	ret, ok := obj.(*corev1.Namespace)
 	if !ok {
 		return nil
@@ -99,6 +134,9 @@ func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 
 func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
 	ns := n.convert(obj)
+	if ns == nil {
+		return Resource{}
+	}
 	extra := newNamespaceExtra(ns)
 	return NewK8sResource(n.Kind(), ns, extra)
 }
@@ -106,10 +144,9 @@ func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
 func watchForNamespace(watcher *K8sWatcher, k conn.KhronosConn) error {
 	watchChan, err := k.Client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to watch namespaces: %w", err)
 	}
 
 	go watcher.registerEventWatcher(watchChan.ResultChan(), NamespaceWatcher{})
-
 	return nil
 }

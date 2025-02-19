@@ -36,8 +36,8 @@ func (p SecretExtra) Copy() Copyable {
 }
 
 func newSecretExtra(secret *corev1.Secret) SecretExtra {
-	labels := misc.RenderMapOfStrings("Labels", secret.Labels)
-	annotations := misc.RenderMapOfStrings("Annotations", secret.Annotations)
+	labels := misc.RenderMapOfStrings(secret.Labels)
+	annotations := misc.RenderMapOfStrings(secret.Annotations)
 
 	dataKeys := make([]string, 0, len(secret.Data))
 	for k := range secret.Data {

@@ -209,8 +209,8 @@ func formatNodeDetails(node *corev1.Node) []string {
 	}
 	out = append(out, fmt.Sprintf("Roles: %s", strings.Join(roles, ",")))
 
-	out = append(out, misc.RenderMapOfStrings("Labels:", node.GetLabels())...)
-	out = append(out, misc.RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
+	out = append(out, misc.RenderMapOfStrings(node.GetLabels())...)
+	out = append(out, misc.RenderMapOfStrings(node.GetAnnotations())...)
 
 	out = append(out, "\nSystem Info:")
 	out = append(out, fmt.Sprintf("  Machine ID:               %s", node.Status.NodeInfo.MachineID))

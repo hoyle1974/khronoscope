@@ -14,39 +14,11 @@ import (
 // the map given a time.Time.  Internally it is implemented as a map[string]*TemporalValue where
 // TemporalValue a sorted array of TemporalValuePairs. Once a key/value is inserted into a TemporalMap
 // it can never truly be deleted. It's just inserted as a new temporalValuePair
-// with an updated timestamp and a value of nil.
+// with an updated timestamp and a value of nil.  I'm added support internally for Keyframes and binary diffs.
 //
 // TemporalMap is threadsafe.
 //
 
-/*
-New Definition of Temporal Map
-
-TemporalMap is a thread safe map like data structure with this interface:
-
-type Map interface {
-	ToBytes() []byte // Serialize using GOB
-	GetTimeRange() (time.Time, time.Time) // Reports back the minimum and maximum time range within the map
-	Add(timestamp time.Time, key string, value any) // Add or updates a key/value pair to the map along with the timestamp of when that value was written
-	GetItem(timestamp time.Time, key string) any // Gets the value of a key at a specific time
-	Remove(timestamp time.Time, key string) // Deletes a key at a specific point in time.
-	GetStateAtTime(timestamp time.Time) map[string]any // Returns a snapshot of the map as it looked at a specific point in time.
-}
-
-Basically I can write values to the map, even delete them and provide time stamps for when those values are valid.
-I can then read the state of the map at any point in time.
-
-For efficiency sake I will provide 2 extra functions
-
-GenerateDiff(a any, b any) Diff // Generate a binary diff between any 2 objects that can be serialized via GOB
-ApplyDiff(a any, diff Diff) any // Applies a diff to an object and returns a new object
-
-Use these functions to more efficiently store the changes of values for a given key in this structure.
-
-One suggestion is to store "keyframes" along with diffs so that we can store things efficiently but also play back to any point in time quickly.const
-
-Do you have any questions?
-*/
 
 type Map interface {
 	ToBytes() []byte

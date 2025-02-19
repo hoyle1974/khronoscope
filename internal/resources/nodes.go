@@ -9,7 +9,6 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
@@ -26,6 +25,7 @@ type NodeExtra struct {
 	MemCapacity           int64
 	Uptime                time.Duration
 	PodMetrics            map[string]map[string]PodMetric
+	Details               []string
 }
 
 func (r NodeExtra) GetValue(key string) any { return nil }
@@ -38,6 +38,7 @@ func (n NodeExtra) Copy() Copyable {
 		MemCapacity:           n.MemCapacity,
 		Uptime:                n.Uptime,
 		PodMetrics:            misc.DeepCopyMap(n.PodMetrics),
+		Details:               n.Details,
 	}
 }
 
@@ -85,7 +86,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 
 		}
 
-		ret = append(ret, resource.Details...)
+		ret = append(ret, extra.Details...)
 
 		return ret
 	}
@@ -191,6 +192,64 @@ func (n *NodeWatcher) convert(obj runtime.Object) *corev1.Node {
 	return ret
 }
 
+// FormatNodeDetails formats the details of a Node for display
+func formatNodeDetails(node *corev1.Node) []string {
+	out := []string{}
+
+	// Get node roles
+	roles := []string{}
+	for label := range node.Labels {
+		if strings.HasPrefix(label, "node-role.kubernetes.io/") {
+			role := strings.TrimPrefix(label, "node-role.kubernetes.io/")
+			roles = append(roles, role)
+		}
+	}
+	if len(roles) == 0 {
+		roles = append(roles, "<none>")
+	}
+	out = append(out, fmt.Sprintf("Roles: %s", strings.Join(roles, ",")))
+
+	out = append(out, misc.RenderMapOfStrings("Labels:", node.GetLabels())...)
+	out = append(out, misc.RenderMapOfStrings("Annotations:", node.GetAnnotations())...)
+
+	out = append(out, "\nSystem Info:")
+	out = append(out, fmt.Sprintf("  Machine ID:               %s", node.Status.NodeInfo.MachineID))
+	out = append(out, fmt.Sprintf("  System UUID:              %s", node.Status.NodeInfo.SystemUUID))
+	out = append(out, fmt.Sprintf("  Boot ID:                  %s", node.Status.NodeInfo.BootID))
+	out = append(out, fmt.Sprintf("  Kernel Version:           %s", node.Status.NodeInfo.KernelVersion))
+	out = append(out, fmt.Sprintf("  OS Image:                 %s", node.Status.NodeInfo.OSImage))
+	out = append(out, fmt.Sprintf("  Container Runtime Version: %s", node.Status.NodeInfo.ContainerRuntimeVersion))
+	out = append(out, fmt.Sprintf("  Kubelet Version:          %s", node.Status.NodeInfo.KubeletVersion))
+	// out = append(out, fmt.Sprintf("  Kube-Proxy Version:       %s", node.Status.NodeInfo.KubeProxyVersion))
+	out = append(out, fmt.Sprintf("  Operating System:         %s", node.Status.NodeInfo.OperatingSystem))
+	out = append(out, fmt.Sprintf("  Architecture:             %s", node.Status.NodeInfo.Architecture))
+
+	out = append(out, "\nConditions:")
+	for _, condition := range node.Status.Conditions {
+		out = append(out, fmt.Sprintf("  %v", condition.Type))
+		out = append(out, fmt.Sprintf("    Status: %v", condition.Status))
+		out = append(out, fmt.Sprintf("    Reason: %v", condition.Reason))
+		out = append(out, fmt.Sprintf("    Message: %v", condition.Message))
+	}
+
+	out = append(out, "\nAddresses:")
+	for _, address := range node.Status.Addresses {
+		out = append(out, fmt.Sprintf("  %s: %s", address.Type, address.Address))
+	}
+
+	out = append(out, "\nCapacity:")
+	for resource, quantity := range node.Status.Capacity {
+		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
+	}
+
+	out = append(out, "\nAllocatable:")
+	for resource, quantity := range node.Status.Allocatable {
+		out = append(out, fmt.Sprintf("  %s: %s", resource, quantity.String()))
+	}
+
+	return out
+}
+
 func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	node := n.convert(obj)
 
@@ -202,9 +261,10 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 		MemCapacity:           memCapacity.Value(),
 		NodeCreationTimestamp: node.CreationTimestamp.Time,
 		Uptime:                time.Since(node.CreationTimestamp.Time).Truncate(time.Second),
+		Details:               formatNodeDetails(node),
 	}
 
-	return NewK8sResource(n.Kind(), node, format.FormatNodeDetails(node), extra)
+	return NewK8sResource(n.Kind(), node, extra)
 }
 
 func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) (*NodeWatcher, error) {

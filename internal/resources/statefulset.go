@@ -98,7 +98,7 @@ func (n StatefulSetWatcher) convert(obj runtime.Object) *appsv1.StatefulSet {
 func (n StatefulSetWatcher) ToResource(obj runtime.Object) Resource {
 	ss := n.convert(obj)
 	extra := newStatefulSetExtra(ss)
-	return NewK8sResource(n.Kind(), ss, []string{}, extra)
+	return NewK8sResource(n.Kind(), ss, extra)
 }
 
 // watchForStatefulSet now also fetches pods associated with the StatefulSet

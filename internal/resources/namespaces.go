@@ -6,30 +6,73 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/duration"
 )
 
-type NamespacedRenderer struct {
+// NamespaceExtra holds all necessary namespace state
+type NamespaceExtra struct {
+	Name              string
+	UID               string
+	CreationTimestamp string
+	Labels            []string
+	Annotations       []string
+	Status            string
 }
 
-func (r NamespacedRenderer) Render(resource Resource, details bool) []string {
+// Copy creates a deep copy of NamespaceExtra
+func (p NamespaceExtra) Copy() Copyable {
+	return NamespaceExtra{
+		Name:              p.Name,
+		UID:               p.UID,
+		CreationTimestamp: p.CreationTimestamp,
+		Labels:            misc.DeepCopyArray(p.Labels),
+		Annotations:       misc.DeepCopyArray(p.Annotations),
+		Status:            p.Status,
+	}
+}
+
+// newNamespaceExtra constructs a NamespaceExtra from a *corev1.Namespace
+func newNamespaceExtra(ns *corev1.Namespace) NamespaceExtra {
+
+	return NamespaceExtra{
+		Name:              ns.Name,
+		UID:               string(ns.UID),
+		CreationTimestamp: duration.HumanDuration(v1.Now().Sub(ns.CreationTimestamp.Time)),
+		Labels:            misc.RenderMapOfStrings("Labels", ns.Labels),
+		Annotations:       misc.RenderMapOfStrings("Annotations", ns.Annotations),
+		Status:            string(ns.Status.Phase),
+	}
+}
+
+type NamespaceRenderer struct {
+}
+
+// renderNamespaceExtra formats the data similar to `kubectl get namespaces`
+func renderNamespaceExtra(extra NamespaceExtra) []string {
+	output := []string{
+		fmt.Sprintf("Name:          %s", extra.Name),
+		fmt.Sprintf("UID:           %s", extra.UID),
+		fmt.Sprintf("Created:       %s ago", extra.CreationTimestamp),
+		fmt.Sprintf("Status:        %s", extra.Status),
+	}
+
+	output = append(output, extra.Labels...)
+	output = append(output, extra.Annotations...)
+
+	return output
+}
+
+func (r NamespaceRenderer) Render(resource Resource, details bool) []string {
 	extra := resource.Extra.(NamespaceExtra)
 
 	if details {
-		out := []string{}
-
-		out = append(out, fmt.Sprintf("Name: %s", resource.Name))
-		out = append(out, fmt.Sprintf("Status: %s", extra.Status))
-		out = append(out, extra.Labels...)
-		out = append(out, extra.Annotations...)
-
-		return out
+		return renderNamespaceExtra(extra)
 	}
 
-	return []string{resource.Name}
+	return []string{resource.Key()}
 }
 
 type NamespaceWatcher struct {
@@ -43,7 +86,7 @@ func (n NamespaceWatcher) Kind() string {
 }
 
 func (n NamespaceWatcher) Renderer() ResourceRenderer {
-	return NamespacedRenderer{}
+	return NamespaceRenderer{}
 }
 
 func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
@@ -54,33 +97,13 @@ func (n NamespaceWatcher) convert(obj runtime.Object) *corev1.Namespace {
 	return ret
 }
 
-type NamespaceExtra struct {
-	Status      string
-	Labels      []string
-	Annotations []string
-}
-
-func (p NamespaceExtra) Copy() Copyable {
-	return NamespaceExtra{
-		Status:      p.Status,
-		Labels:      misc.DeepCopyArray(p.Labels),
-		Annotations: misc.DeepCopyArray(p.Annotations),
-	}
-}
-
 func (n NamespaceWatcher) ToResource(obj runtime.Object) Resource {
 	ns := n.convert(obj)
-
-	extra := NamespaceExtra{
-		Status:      ns.Status.String(),
-		Labels:      misc.RenderMapOfStrings("Labels:", ns.GetLabels()),
-		Annotations: misc.RenderMapOfStrings("Annotations:", ns.GetAnnotations()),
-	}
-
-	return NewK8sResource(n.Kind(), ns, format.FormatNamespaceDetails(n.convert(obj)), extra)
+	extra := newNamespaceExtra(ns)
+	return NewK8sResource(n.Kind(), ns, extra)
 }
 
-func watchForNamespaces(watcher *K8sWatcher, k conn.KhronosConn) error {
+func watchForNamespace(watcher *K8sWatcher, k conn.KhronosConn) error {
 	watchChan, err := k.Client.CoreV1().Namespaces().Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return err

@@ -108,7 +108,7 @@ func (n SecretWatcher) convert(obj runtime.Object) *corev1.Secret {
 func (n SecretWatcher) ToResource(obj runtime.Object) Resource {
 	secret := n.convert(obj)
 	extra := newSecretExtra(secret)
-	return NewK8sResource(n.Kind(), secret, []string{}, extra)
+	return NewK8sResource(n.Kind(), secret, extra)
 }
 
 func watchForSecret(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {

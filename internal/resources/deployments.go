@@ -8,7 +8,6 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -134,7 +133,7 @@ func (n DeploymentWatcher) convert(obj runtime.Object) *appsv1.Deployment {
 func (n DeploymentWatcher) ToResource(obj runtime.Object) Resource {
 	d := n.convert(obj)
 	extra := newDeploymentExtra(d)
-	return NewK8sResource(n.Kind(), d, format.FormatDeploymentDetails(n.convert(obj)), extra)
+	return NewK8sResource(n.Kind(), d, extra)
 }
 
 func watchForDeployments(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {

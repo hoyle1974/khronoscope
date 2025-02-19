@@ -7,14 +7,14 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/misc/format"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/duration"
 )
 
-// ServiceExtra holds all necessary service state
+// ServiceExtra holds all necessary service state in a form that is serializable by GOB.
+// This type should be registered with GOB in main.go.
 type ServiceExtra struct {
 	Name              string
 	Namespace         string
@@ -29,7 +29,9 @@ type ServiceExtra struct {
 	Annotations       []string
 }
 
-// Copy creates a deep copy of ServiceExtra
+// Copy creates a deep copy of ServiceExtra.  We do this because when we detect changes to this
+// object we make a copy and modify the data that changed.  Internally our temporal.Map will
+// efficiently diff this object.
 func (p ServiceExtra) Copy() Copyable {
 	return ServiceExtra{
 		Name:              p.Name,
@@ -75,10 +77,11 @@ func newServiceExtra(svc *corev1.Service) ServiceExtra {
 	}
 }
 
+// Provides string rendering services for a Service resource
 type ServiceRenderer struct {
 }
 
-// renderServiceExtra formats the data similar to `kubectl get services`
+// renderServiceExtra formats the data similar to how `kubectl get services` might render it.
 func renderServiceExtra(extra ServiceExtra) []string {
 	output := []string{
 		fmt.Sprintf("Name:          %s", extra.Name),
@@ -98,6 +101,7 @@ func renderServiceExtra(extra ServiceExtra) []string {
 	return output
 }
 
+// Render the resource as either a simple or details rendering
 func (r ServiceRenderer) Render(resource Resource, details bool) []string {
 	extra := resource.Extra.(ServiceExtra)
 
@@ -108,20 +112,19 @@ func (r ServiceRenderer) Render(resource Resource, details bool) []string {
 	return []string{resource.Key()}
 }
 
+// Watches for changes in Service resources
 type ServiceWatcher struct {
 }
 
+// Used by more complex resources like Pod & Node where we collect logs and metrics
 func (n ServiceWatcher) Tick() {
 }
 
-func (n ServiceWatcher) Kind() string {
-	return "Service"
-}
+func (n ServiceWatcher) Kind() string               { return "Service" }
+func (n ServiceWatcher) Renderer() ResourceRenderer { return ServiceRenderer{} }
 
-func (n ServiceWatcher) Renderer() ResourceRenderer {
-	return ServiceRenderer{}
-}
-
+// Internal function to convert a kubernetes Object to the specific type we expect, in this case a corev1.Service
+// Returns nil for when this conversion fails.
 func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 	ret, ok := obj.(*corev1.Service)
 	if !ok {
@@ -130,18 +133,22 @@ func (n ServiceWatcher) convert(obj runtime.Object) *corev1.Service {
 	return ret
 }
 
+// Converts a kubernetes Object to a Khronoscope Resource
 func (n ServiceWatcher) ToResource(obj runtime.Object) Resource {
 	s := n.convert(obj)
 	extra := newServiceExtra(s)
-	return NewK8sResource(n.Kind(), s, format.FormatServiceDetails(n.convert(obj)), extra)
+	return NewK8sResource(n.Kind(), s, extra)
 }
 
+// Internal function to setup a watch for this resource type, Service
 func watchForService(watcher *K8sWatcher, k conn.KhronosConn, ns string) error {
+	// Efficiently watch for resource changes, optionally filter by a namespace
 	watchChan, err := k.Client.CoreV1().Services(ns).Watch(context.Background(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
+	// TODO fix this to handle cases where the watcher dies.
 	go watcher.registerEventWatcher(watchChan.ResultChan(), ServiceWatcher{})
 
 	return nil

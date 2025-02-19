@@ -75,7 +75,6 @@ func randomPod(r *rand.Rand) resources.Resource {
 		Namespace: "Default",
 		Name:      "PodName",
 		Extra:     extra,
-		Details:   randomStrings(r),
 	}
 }
 

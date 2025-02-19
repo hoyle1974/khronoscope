@@ -116,7 +116,7 @@ func (n PersistentVolumeWatcher) convert(obj runtime.Object) *corev1.PersistentV
 func (n PersistentVolumeWatcher) ToResource(obj runtime.Object) Resource {
 	pv := n.convert(obj)
 	extra := newPersistentVolumeExtra(pv)
-	return NewK8sResource(n.Kind(), pv, []string{}, extra)
+	return NewK8sResource(n.Kind(), pv, extra)
 }
 
 // watchForPersistentVolume watches for PersistentVolume events

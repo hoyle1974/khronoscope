@@ -50,7 +50,7 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, n
 	if err := watchForService(w, client, ns); err != nil {
 		return err
 	}
-	if err := watchForNamespaces(w, client); err != nil {
+	if err := watchForNamespace(w, client); err != nil {
 		return err
 	}
 	podWatcher, err := watchForPods(w, client, dao, lc, ns)

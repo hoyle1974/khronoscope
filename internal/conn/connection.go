@@ -1,7 +1,6 @@
 package conn
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,14 +20,11 @@ type KhronosConn struct {
 	Config        *rest.Config
 }
 
-var kubeConfigFlag = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-
-func NewKhronosConnection() (KhronosConn, error) {
+func NewKhronosConnection(kubeConfigFlag *string) (KhronosConn, error) {
 	// Disable the kubernetes logger otherwise it will mess output up from time to time.
 	klog.SetLogger(logr.Logger{})
 
 	// Otherwise use passed in flags
-	flag.Parse()
 	kubeConfigPath := *kubeConfigFlag
 
 	// Look for KUBECONFIG and use it if it exists

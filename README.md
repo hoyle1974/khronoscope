@@ -31,7 +31,7 @@ You can also compile from source:
 ```
 https://github.com/hoyle1974/khronoscope.git
 cd khronoscope
-go run .
+go run cmd/khronoscope/main.go
 ```
 
 # Example

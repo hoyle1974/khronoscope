@@ -64,7 +64,17 @@ func InitConfig() (Config, error) {
 	config.WithOptions(config.ParseEnv, config.ParseDefault)
 	config.AddDriver(yaml.Driver)
 
-	err := config.LoadExists("config.yaml", "~/.khronoscope/config.yaml", "../../config.yaml")
+	temp := map[string]any{
+		"metrics":     "false",
+		"profiling":   "false",
+		"keybindings": map[string]string{},
+	}
+	err := config.LoadData(temp)
+	if err != nil {
+		return cfg, fmt.Errorf("error loading data: %w", err)
+	}
+
+	err = config.LoadExists("config.yaml", "~/.khronoscope/config.yaml", "../../config.yaml")
 	if err != nil {
 		return cfg, fmt.Errorf("error loading config file: %w", err)
 	}

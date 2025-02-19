@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/gob"
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	flag "github.com/spf13/pflag"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/hoyle1974/khronoscope/internal/config"
@@ -28,7 +29,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Println(cfg)
+
+	//"/Users/jstrohm/code/khronoscope/session.khron"
+	filename := flag.StringP("file", "f", "", "Filename to load")
+	namespace := flag.StringP("namespace", "n", "", "Namespace to filter on")
+	showKeybindings := flag.BoolP("keybindings", "k", false, "Show keybindings")
+	kubeConfigFlag := flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	flag.Parse()
+
+	if *showKeybindings {
+		config.Get().KeyBindings.Print()
+		return
+	}
 
 	done := make(chan bool)
 	defer func() {
@@ -77,11 +89,7 @@ func main() {
 	gob.Register(resources.StatefulSetExtra{})
 	gob.Register(resources.PersistentVolumeExtra{})
 
-	//"/Users/jstrohm/code/khronoscope/session.khron"
-	filename := flag.String("file", "", "Filename to load")
-	namespace := flag.String("namespace", "", "Namespace to filter on")
-
-	client, err := conn.NewKhronosConnection()
+	client, err := conn.NewKhronosConnection(kubeConfigFlag)
 	if err != nil {
 		fmt.Printf("Error creating connection: %v", err)
 		return

@@ -38,7 +38,7 @@ type K8sWatcher struct {
 }
 
 func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
-	if err := watchForDeployments(w, client, ns); err != nil {
+	if err := watchForDeployment(w, client, ns); err != nil {
 		return err
 	}
 	if err := watchForDaemonSet(w, client, ns); err != nil {

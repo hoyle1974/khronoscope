@@ -149,12 +149,12 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 		return
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("Recovered in goroutine: %v\n", r)
-			panic(r) // Re-panic to crash
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		fmt.Printf("Recovered in goroutine: %v\n", r)
+	// 		panic(r) // Re-panic to crash
+	// 	}
+	// }()
 
 	ticker := time.NewTicker(WATCHER_STEP)
 	defer ticker.Stop()
@@ -163,7 +163,7 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 		select {
 		case event, ok := <-watcher:
 			if !ok {
-				fmt.Println("Channel closed")
+				// fmt.Println("Channel closed")
 				return
 			}
 
@@ -175,7 +175,7 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 			case watch.Deleted:
 				w.Delete(resourceEventWatcher.ToResource(event.Object))
 			case watch.Error:
-				fmt.Printf("Unknown error watching: %v\n", event.Object)
+				// fmt.Printf("Unknown error watching: %v\n", event.Object)
 			}
 		case <-ticker.C:
 			resourceEventWatcher.Tick()

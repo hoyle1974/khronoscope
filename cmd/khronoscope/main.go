@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-	ringBuffer := misc.NewRingBuffer(100) // Store last 5 log messages
+	ringBuffer := misc.NewRingBuffer(100) // Store last 100 log messages
 	log.SetOutput(ringBuffer)
 
 	cfg, err := config.InitConfig()
@@ -31,7 +31,6 @@ func main() {
 		panic(err)
 	}
 
-	//"/Users/jstrohm/code/khronoscope/session.khron"
 	filename := flag.StringP("file", "f", "", "Filename to load")
 	namespace := flag.StringP("namespace", "n", "", "Namespace to filter on")
 	showKeybindings := flag.BoolP("keybindings", "k", false, "Show keybindings")
@@ -43,11 +42,11 @@ func main() {
 		return
 	}
 
-	done := make(chan bool)
-	defer func() {
-		done <- true
-	}()
 	if cfg.Metrics {
+		done := make(chan bool)
+		defer func() {
+			done <- true
+		}()
 		defer metrics.Print()
 
 		ticker := time.NewTicker(5 * time.Second)

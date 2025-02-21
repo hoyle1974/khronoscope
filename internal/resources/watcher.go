@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"reflect"
@@ -38,15 +39,15 @@ type K8sWatcher struct {
 	onChange   func()
 }
 
-func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
+func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
 	// if err := watchForNamespace(w, client); err != nil {
 	// 	return err
 	// }
-	podWatcher, err := watchForPods(w, client, dao, lc, ns)
+	podWatcher, err := watchForPods(ctx, w, client, dao, lc, ns)
 	if err != nil {
 		return err
 	}
-	if _, err = watchForNodes(w, client, dao, podWatcher); err != nil {
+	if _, err = watchForNodes(ctx, w, client, dao, podWatcher); err != nil {
 		return err
 	}
 
@@ -65,7 +66,10 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, n
 		}
 
 		for _, resource := range list.APIResources {
-			if resource.Kind == "Node" || resource.Kind == "Pod" || resource.Kind == "" || !resource.Namespaced {
+			if resource.Kind == "Node" || resource.Kind == "Pod" || resource.Kind == "" {
+				continue
+			}
+			if !resource.Namespaced && resource.Kind != "Namespace" {
 				continue
 			}
 			gvr := schema.GroupVersionResource{
@@ -74,7 +78,7 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, n
 				Resource: resource.Name,
 			}
 			fmt.Printf("Found GVR: (%s,%s,%s)\n", gvr.Group, gvr.Version, gvr.Resource)
-			if err := watchForResource(w, client, GenericWatcher{kind: resource.Kind, resource: gvr}); err != nil {
+			if err := watchForResource(ctx, w, client, GenericWatcher{kind: resource.Kind, resource: gvr}); err != nil {
 				fmt.Printf("	error:%v", err)
 			}
 		}

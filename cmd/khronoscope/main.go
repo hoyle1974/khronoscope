@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"log"
@@ -100,7 +101,10 @@ func main() {
 		logCollector = nil
 	}
 
-	err = watcher.Watch(client, d, logCollector, *namespace)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err = watcher.Watch(ctx, client, d, logCollector, *namespace)
 	if err != nil {
 		panic(err)
 	}

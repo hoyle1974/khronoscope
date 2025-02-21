@@ -120,8 +120,8 @@ func (r GenericRenderer) Render(resource Resource, details bool) []string {
 	// []string{extra.RawJSON} // Mimics `kubectl` raw output
 }
 
-func watchForResource(watcher *K8sWatcher, k conn.KhronosConn, g GenericWatcher) error {
-	watchChan, err := k.DynamicClient.Resource(g.resource).Watch(context.Background(), v1.ListOptions{})
+func watchForResource(ctx context.Context, watcher *K8sWatcher, k conn.KhronosConn, g GenericWatcher) error {
+	watchChan, err := k.DynamicClient.Resource(g.resource).Watch(ctx, v1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to watch resource %s: %w", g.kind, err)
 	}

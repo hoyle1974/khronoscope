@@ -267,8 +267,8 @@ func (n *NodeWatcher) ToResource(obj runtime.Object) Resource {
 	return NewK8sResource(n.Kind(), node, extra)
 }
 
-func watchForNodes(watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) (*NodeWatcher, error) {
-	watchChan, err := k.Client.CoreV1().Nodes().Watch(context.Background(), v1.ListOptions{})
+func watchForNodes(ctx context.Context, watcher *K8sWatcher, k conn.KhronosConn, d DAO, pwm *PodWatcher) (*NodeWatcher, error) {
+	watchChan, err := k.Client.CoreV1().Nodes().Watch(ctx, v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

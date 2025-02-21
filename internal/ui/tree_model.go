@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/types"
 )
@@ -70,10 +71,44 @@ func (tl *treeLeaf) GetUid() string           { return tl.Resource.GetUID() }
 func (tl *treeLeaf) GetChildren() []misc.Node { return []misc.Node{} }
 
 type TreeModel struct {
-	root       *treeNode
-	namespaces *treeNode
-	nodes      *treeNode
-	details    *treeNode
+	shouldInitiallyCollapse *shouldInitiallyCollapse
+	root                    *treeNode
+	namespaces              *treeNode
+	nodes                   *treeNode
+	details                 *treeNode
+}
+
+type shouldInitiallyCollapse struct {
+	kinds      map[string]any
+	namespaces map[string]any
+}
+
+func (s *shouldInitiallyCollapse) ShouldCollapseNamespace(ns string) bool {
+	if _, ok := s.namespaces[ns]; ok {
+		delete(s.namespaces, ns)
+		return true
+	}
+
+	return false
+}
+
+func (s *shouldInitiallyCollapse) ShouldCollapseKind(kind string) bool {
+	if _, ok := s.kinds[kind]; ok {
+		return true
+	}
+
+	return false
+}
+
+func newShouldInitiallyCollapse() *shouldInitiallyCollapse {
+	filter := config.Get().Filter
+	kinds := misc.ConvertArrayToSet(filter.Collapse.Kinds)
+	namespaces := misc.ConvertArrayToSet(filter.Collapse.Namespaces)
+
+	return &shouldInitiallyCollapse{
+		kinds:      kinds,
+		namespaces: namespaces,
+	}
 }
 
 func NewTreeModel() TreeModel {
@@ -87,10 +122,11 @@ func NewTreeModel() TreeModel {
 		details,
 	}
 	return TreeModel{
-		root:       root,
-		namespaces: namespaces,
-		nodes:      nodes,
-		details:    details,
+		shouldInitiallyCollapse: newShouldInitiallyCollapse(),
+		root:                    root,
+		namespaces:              namespaces,
+		nodes:                   nodes,
+		details:                 details,
 	}
 }
 
@@ -168,6 +204,9 @@ func (m *TreeModel) UpdateResources(resourceList []types.Resource) {
 			}
 		}
 		m.details.AddChild(namespace)
+		if m.shouldInitiallyCollapse.ShouldCollapseNamespace(namespaceName) {
+			namespace.Expand = false
+		}
 
 		for _, kindName := range slices.Sorted(maps.Keys(other[namespaceName])) {
 			// Get or create a kind node
@@ -179,6 +218,10 @@ func (m *TreeModel) UpdateResources(resourceList []types.Resource) {
 				}
 			}
 			namespace.AddChild(kind)
+
+			if m.shouldInitiallyCollapse.ShouldCollapseKind(kindName) {
+				kind.Expand = false
+			}
 
 			for _, resourceUid := range slices.Sorted(maps.Keys(other[namespaceName][kindName])) {
 				kind.AddChild(&treeLeaf{Parent: kind, Resource: other[namespaceName][kindName][resourceUid], Expand: true})

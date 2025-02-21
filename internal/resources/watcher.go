@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -57,6 +58,8 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 		fmt.Println("Warning: Some API groups may not be accessible:", err)
 	}
 
+	filter := config.Get().Filter
+
 	// Extract GroupVersionResource information
 	for _, list := range apiGroupResources {
 		gv, err := schema.ParseGroupVersion(list.GroupVersion)
@@ -66,12 +69,13 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 		}
 
 		for _, resource := range list.APIResources {
-			if resource.Kind == "Node" || resource.Kind == "Pod" || resource.Kind == "" {
+			if resource.Kind == "Node" || resource.Kind == "Pod" || (filter.Standard && resource.Kind == "") {
 				continue
 			}
-			if !resource.Namespaced && resource.Kind != "Namespace" {
+			if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
 				continue
 			}
+
 			gvr := schema.GroupVersionResource{
 				Group:    gv.Group,
 				Version:  gv.Version,

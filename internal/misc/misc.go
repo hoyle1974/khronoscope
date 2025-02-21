@@ -9,6 +9,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/duration"
 )
 
+func ConvertArrayToSet[V comparable](arr []V) map[V]any {
+	set := make(map[V]any)
+	for _, val := range arr {
+		set[val] = true
+	}
+	return set
+}
+
 // formatCreationTimestamp ensures the timestamp is human-readable
 func FormatCreationTimestamp(timestamp *v1.Time) string {
 	if timestamp == nil {

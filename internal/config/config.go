@@ -48,10 +48,21 @@ func (k Keys) Print() {
 	}
 }
 
+type Collapse struct {
+	Namespaces []string
+	Kinds      []string
+}
+
+type Filter struct {
+	Standard bool `default:"true"`
+	Collapse Collapse
+}
+
 type Config struct {
 	Metrics     bool
 	Profiling   bool
 	KeyBindings Keys
+	Filter      Filter
 }
 
 var cfg = Config{}

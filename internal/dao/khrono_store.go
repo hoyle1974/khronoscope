@@ -27,6 +27,7 @@ type KhronoStore interface {
 	GetNextLabelTime(time.Time) time.Time
 	GetPrevLabelTime(time.Time) time.Time
 	Save(string)
+	Size() int
 }
 
 type dataModelImpl struct {
@@ -86,6 +87,16 @@ func NewFromFile(filename string) KhronoStore {
 	d.meta = temporal.FromBytes(data2)
 
 	return d
+}
+
+func (d *dataModelImpl) Size() int {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	resourceMap := d.resources.ToBytes()
+	metaMap := d.meta.ToBytes()
+
+	return len(resourceMap) + len(metaMap)
 }
 
 func (d *dataModelImpl) Save(filename string) {

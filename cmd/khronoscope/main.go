@@ -77,17 +77,9 @@ func main() {
 	}
 
 	gob.Register(resources.Resource{})
-	gob.Register(resources.ReplicaSetExtra{})
 	gob.Register(resources.NodeExtra{})
 	gob.Register(resources.PodExtra{})
-	gob.Register(resources.NamespaceExtra{})
-	gob.Register(resources.ServiceExtra{})
-	gob.Register(resources.DaemonSetExtra{})
-	gob.Register(resources.DeploymentExtra{})
-	gob.Register(resources.ConfigMapExtra{})
-	gob.Register(resources.SecretExtra{})
-	gob.Register(resources.StatefulSetExtra{})
-	gob.Register(resources.PersistentVolumeExtra{})
+	gob.Register(resources.GenericExtra{})
 
 	client, err := conn.NewKhronosConnection(kubeConfigFlag)
 	if err != nil {

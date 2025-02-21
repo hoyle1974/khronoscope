@@ -9,6 +9,7 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
@@ -38,21 +39,9 @@ type K8sWatcher struct {
 }
 
 func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
-	if err := watchForDeployment(w, client, ns); err != nil {
-		return err
-	}
-	if err := watchForDaemonSet(w, client, ns); err != nil {
-		return err
-	}
-	if err := watchForReplicaSet(w, client, ns); err != nil {
-		return err
-	}
-	if err := watchForService(w, client, ns); err != nil {
-		return err
-	}
-	if err := watchForNamespace(w, client); err != nil {
-		return err
-	}
+	// if err := watchForNamespace(w, client); err != nil {
+	// 	return err
+	// }
 	podWatcher, err := watchForPods(w, client, dao, lc, ns)
 	if err != nil {
 		return err
@@ -60,18 +49,37 @@ func (w *K8sWatcher) Watch(client conn.KhronosConn, dao DAO, lc *LogCollector, n
 	if _, err = watchForNodes(w, client, dao, podWatcher); err != nil {
 		return err
 	}
-	if err = watchForConfigMap(w, client, ns); err != nil {
-		return err
+
+	// Get API group resources
+	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
+	if err != nil {
+		fmt.Println("Warning: Some API groups may not be accessible:", err)
 	}
-	if err = watchForSecret(w, client, ns); err != nil {
-		return err
+
+	// Extract GroupVersionResource information
+	for _, list := range apiGroupResources {
+		gv, err := schema.ParseGroupVersion(list.GroupVersion)
+		if err != nil {
+			fmt.Println("Skipping invalid GroupVersion:", list.GroupVersion)
+			continue
+		}
+
+		for _, resource := range list.APIResources {
+			if resource.Kind == "Node" || resource.Kind == "Pod" || resource.Kind == "" || !resource.Namespaced {
+				continue
+			}
+			gvr := schema.GroupVersionResource{
+				Group:    gv.Group,
+				Version:  gv.Version,
+				Resource: resource.Name,
+			}
+			fmt.Printf("Found GVR: (%s,%s,%s)\n", gvr.Group, gvr.Version, gvr.Resource)
+			if err := watchForResource(w, client, GenericWatcher{kind: resource.Kind, resource: gvr}); err != nil {
+				fmt.Printf("	error:%v", err)
+			}
+		}
 	}
-	if err = watchForStatefulSet(w, client, ns); err != nil {
-		return err
-	}
-	if err = watchForPersistentVolume(w, client); err != nil {
-		return err
-	}
+
 	return nil
 }
 

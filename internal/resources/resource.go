@@ -66,6 +66,19 @@ func NewK8sResource(kind string, obj K8sResource, extra Copyable) Resource {
 	return r
 }
 
+func NewK8sResource2(kind string, uuid string, namespace string, name string, extra Copyable) Resource {
+	r := Resource{
+		Uid:       uuid,
+		Timestamp: serializable.Time{Time: time.Now()},
+		Kind:      kind,
+		Namespace: namespace,
+		Name:      name,
+		Extra:     extra,
+	}
+
+	return r
+}
+
 // Render the details of the Resource
 func (r Resource) GetDetails() []string {
 	rr := GetRenderer(r.Kind)

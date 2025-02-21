@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -15,9 +17,11 @@ import (
 )
 
 type KhronosConn struct {
-	Client        kubernetes.Interface
-	MetricsClient *metrics.Clientset
-	Config        *rest.Config
+	Client          kubernetes.Interface
+	DynamicClient   dynamic.Interface
+	MetricsClient   *metrics.Clientset
+	Config          *rest.Config
+	DiscoveryClient *discovery.DiscoveryClient
 }
 
 func NewKhronosConnection(kubeConfigFlag *string) (KhronosConn, error) {
@@ -59,10 +63,21 @@ func NewKhronosConnection(kubeConfigFlag *string) (KhronosConn, error) {
 		return KhronosConn{}, fmt.Errorf("unable to create a client: %v", err)
 	}
 
+	// Create dynamic client to interact with any resource
+	dynamicClient, err := dynamic.NewForConfig(kubeconfig)
+	if err != nil {
+		return KhronosConn{}, fmt.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(kubeconfig)
+	if err != nil {
+		panic(err)
+	}
+
 	mc, err := metrics.NewForConfig(kubeconfig)
 	if err != nil {
 		return KhronosConn{}, fmt.Errorf("unable to create a metric client: %v", err)
 	}
 
-	return KhronosConn{Client: client, MetricsClient: mc, Config: kubeconfig}, nil
+	return KhronosConn{Client: client, DynamicClient: dynamicClient, DiscoveryClient: discoveryClient, MetricsClient: mc, Config: kubeconfig}, nil
 }

@@ -39,7 +39,7 @@ func (n NodeExtra) Copy() Copyable {
 }
 
 type NodeRenderer struct {
-	d DAO
+	dao DAO
 }
 
 func (r NodeRenderer) Render(resource Resource, details bool) []string {
@@ -85,27 +85,27 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 }
 
 func updateResourceMetrics(podWatcher *PodWatcher, dao DAO, resource Resource) {
-	e := getNodeExtra(resource)
+	extra := getNodeExtra(resource)
 
 	resource.Timestamp = serializable.Time{Time: time.Now()}
 
 	metricsExtra := getMetricsForNode(resource)
 	if len(metricsExtra) > 0 {
-		e.NodeMetrics = metricsExtra
-		e.Uptime = time.Since(e.NodeCreationTimestamp).Truncate(time.Second)
+		extra.NodeMetrics = metricsExtra
+		extra.Uptime = time.Since(extra.NodeCreationTimestamp).Truncate(time.Second)
 	}
 
 	// Find pods on node
 	resources := dao.GetResourcesAt(resource.Timestamp.Time, "Pod", "")
-	e.PodMetrics = map[string]map[string]PodMetric{}
+	extra.PodMetrics = map[string]map[string]PodMetric{}
 	for _, podResource := range resources {
 		if podResource.Extra.(PodExtra).Node == resource.Name {
 			podMetrics := podWatcher.getPodMetricsForPod(podResource)
-			e.PodMetrics[podResource.Namespace+"/"+podResource.Name] = podMetrics
+			extra.PodMetrics[podResource.Namespace+"/"+podResource.Name] = podMetrics
 		}
 	}
 
-	resource.Extra = e
+	resource.Extra = extra
 
 	dao.UpdateResource(resource)
 
@@ -113,38 +113,38 @@ func updateResourceMetrics(podWatcher *PodWatcher, dao DAO, resource Resource) {
 
 var lastNodeMetrics atomic.Pointer[v1beta1.NodeMetricsList]
 
-type NodeMetadata struct {
+type nodeMetadata struct {
 	CreationTimestamp string `json:"creationTimestamp"`
 }
-type NodeStatus struct {
+type nodeStatus struct {
 	Capacity struct {
 		CPU    string `json:"cpu"`
 		Memory string `json:"memory"`
 	} `json:"capacity"`
 }
 
-type Node struct {
-	Metadata NodeMetadata `json:"metadata"`
-	Status   NodeStatus   `json:"status"`
+type node struct {
+	Metadata nodeMetadata `json:"metadata"`
+	Status   nodeStatus   `json:"status"`
 }
 
 func getNodeExtra(resource Resource) NodeExtra {
-	var e NodeExtra
+	var extra NodeExtra
 	if resource.Extra != nil {
-		e = resource.Extra.Copy().(NodeExtra)
+		extra = resource.Extra.Copy().(NodeExtra)
 	} else {
 		cores, mem, creationTime := getCapacity(resource)
-		e.CPUCapacity = cores * 1000
-		e.MemCapacity = mem
-		e.NodeCreationTimestamp = creationTime
-		e.Uptime = time.Since(creationTime).Truncate(time.Second)
+		extra.CPUCapacity = cores * 1000
+		extra.MemCapacity = mem
+		extra.NodeCreationTimestamp = creationTime
+		extra.Uptime = time.Since(creationTime).Truncate(time.Second)
 	}
 
-	return e
+	return extra
 }
 
 func getCapacity(resource Resource) (int64, int64, time.Time) {
-	var node Node
+	var node node
 	err := yaml.Unmarshal([]byte(resource.RawJSON), &node)
 	if err != nil {
 		log.Fatalf("error parsing YAML: %v", err)
@@ -169,7 +169,7 @@ func getCapacity(resource Resource) (int64, int64, time.Time) {
 }
 
 func getMetricsForNode(resource Resource) map[string]string {
-	e := getNodeExtra(resource)
+	extra := getNodeExtra(resource)
 
 	metricsExtra := map[string]string{}
 	lastNodeMetrics := lastNodeMetrics.Load()
@@ -181,8 +181,8 @@ func getMetricsForNode(resource Resource) map[string]string {
 			cpuUsage := nodeMetrics.Usage[corev1.ResourceCPU]
 			memUsage := nodeMetrics.Usage[corev1.ResourceMemory]
 
-			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), e.CPUCapacity)
-			memPercentage := calculatePercentage(memUsage.Value(), e.MemCapacity)
+			cpuPercentage := calculatePercentage(cpuUsage.MilliValue(), extra.CPUCapacity)
+			memPercentage := calculatePercentage(memUsage.Value(), extra.MemCapacity)
 
 			metricsExtra[resource.Name] = fmt.Sprintf("%s %s", misc.RenderProgressBar("CPU", cpuPercentage), misc.RenderProgressBar("Mem", memPercentage))
 

@@ -45,9 +45,6 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 	if err != nil {
 		return err
 	}
-	// if _, err = watchForNodes(ctx, w, client, dao, podWatcher); err != nil {
-	// 	return err
-	// }
 
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
@@ -89,7 +86,7 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 				ticker = func() {
 					NodeTicker(podWatcher, dao, client.MetricsClient)
 				}
-				renderer = NodeRenderer{d: dao}
+				renderer = NodeRenderer{dao: dao}
 			} else {
 				renderer = GenericRenderer{}
 			}

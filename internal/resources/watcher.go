@@ -69,9 +69,9 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 			if resource.Kind == "Pod" {
 				continue
 			}
-			// if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
-			// 	continue
-			// }
+			if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
+				continue
+			}
 
 			gvr := schema.GroupVersionResource{
 				Group:    gv.Group,

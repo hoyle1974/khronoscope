@@ -79,7 +79,6 @@ func main() {
 	gob.Register(resources.Resource{})
 	gob.Register(resources.NodeExtra{})
 	gob.Register(resources.PodExtra{})
-	gob.Register(resources.GenericExtra{})
 
 	client, err := conn.NewKhronosConnection(kubeConfigFlag)
 	if err != nil {

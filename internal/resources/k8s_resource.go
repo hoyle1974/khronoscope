@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/misc"
@@ -15,21 +16,29 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-type GenericExtra struct {
-	RawJSON string
-	Age     serializable.Time
-}
+// type GenericExtra struct {
+// 	RawJSON string
+// 	Age     serializable.Time
+// 	Extra   Copyable
+// }
 
-func (g GenericExtra) Copy() Copyable {
-	return GenericExtra{
-		RawJSON: g.RawJSON,
-		Age:     g.Age,
-	}
-}
+// func (g GenericExtra) Copy() Copyable {
+// 	var e Copyable
+// 	if g.Extra != nil {
+// 		e = g.Extra.Copy()
+// 	}
+// 	return GenericExtra{
+// 		RawJSON: g.RawJSON,
+// 		Age:     g.Age,
+// 		Extra:   e,
+// 	}
+// }
 
 type GenericWatcher struct {
 	kind     string
 	resource schema.GroupVersionResource
+	renderer ResourceRenderer
+	ticker   func()
 }
 
 func NewGenericWatcher(kind string, group, version, resource string) GenericWatcher {
@@ -43,9 +52,13 @@ func NewGenericWatcher(kind string, group, version, resource string) GenericWatc
 	}
 }
 
-func (g GenericWatcher) Tick()                      {}
+func (g GenericWatcher) Tick() {
+	if g.ticker != nil {
+		g.ticker()
+	}
+}
 func (g GenericWatcher) Kind() string               { return g.kind }
-func (g GenericWatcher) Renderer() ResourceRenderer { return GenericRenderer{} }
+func (g GenericWatcher) Renderer() ResourceRenderer { return g.renderer }
 
 func (g GenericWatcher) ToResource(obj runtime.Object) Resource {
 	unstructuredObj, ok := obj.(*unstructured.Unstructured)
@@ -58,44 +71,22 @@ func (g GenericWatcher) ToResource(obj runtime.Object) Resource {
 		rawBytes = []byte("{}")
 	}
 
-	extra := GenericExtra{
-		RawJSON: string(rawBytes),
-		Age:     serializable.NewTime(unstructuredObj.GetCreationTimestamp().Time),
+	return Resource{
+		Uid:       string(unstructuredObj.GetUID()),
+		Timestamp: serializable.Time{Time: time.Now()},
+		Kind:      unstructuredObj.GetKind(),
+		Namespace: unstructuredObj.GetNamespace(),
+		Name:      unstructuredObj.GetName(),
+		RawJSON:   string(rawBytes),
+		Extra:     nil,
 	}
-
-	uid := string(unstructuredObj.GetUID())
-	name := unstructuredObj.GetName()
-	namespace := unstructuredObj.GetNamespace()
-	return NewK8sResource2(g.Kind(), uid, namespace, name, extra)
-}
-
-func PrettyPrintJSON(jsonStr string) (string, error) {
-	var jsonData map[string]interface{}
-
-	// Unmarshal the JSON string into a map
-	err := json.Unmarshal([]byte(jsonStr), &jsonData)
-	if err != nil {
-		return "", err
-	}
-
-	// Marshal it back with indentation
-	prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
-	if err != nil {
-		return "", err
-	}
-
-	return string(prettyJSON), nil
 }
 
 type GenericRenderer struct{}
 
 func (r GenericRenderer) Render(resource Resource, details bool) []string {
-	extra, ok := resource.Extra.(GenericExtra)
-	if !ok {
-		return []string{"[Invalid Resource]"}
-	}
 	if details {
-		s, _ := misc.PrettyPrintYAMLFromJSON(extra.RawJSON)
+		s, _ := misc.PrettyPrintYAMLFromJSON(resource.RawJSON)
 		return strings.Split(s, "\n")
 	}
 	return []string{resource.Name}

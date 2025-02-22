@@ -43,7 +43,8 @@ type Resource struct {
 	Kind      string            // The k8s kind of resource
 	Namespace string            // The k8s namespace, may be empty for things like namespace and node resources
 	Name      string            // The name of the resource
-	Extra     Copyable          // This should be a custom, gob registered and serializable object if used
+	RawJSON   string
+	Extra     Copyable // This should be a custom, gob registered and serializable object if used
 }
 
 func (r Resource) GetUID() string          { return r.Uid }
@@ -66,18 +67,19 @@ func NewK8sResource(kind string, obj K8sResource, extra Copyable) Resource {
 	return r
 }
 
-func NewK8sResource2(kind string, uuid string, namespace string, name string, extra Copyable) Resource {
-	r := Resource{
-		Uid:       uuid,
-		Timestamp: serializable.Time{Time: time.Now()},
-		Kind:      kind,
-		Namespace: namespace,
-		Name:      name,
-		Extra:     extra,
-	}
+// func NewK8sResource2(kind string, uuid string, namespace string, name string, json string, extra Copyable) Resource {
+// 	r := Resource{
+// 		Uid:       uuid,
+// 		Timestamp: serializable.Time{Time: time.Now()},
+// 		Kind:      kind,
+// 		Namespace: namespace,
+// 		Name:      name,
+// 		RawJSON:   json,
+// 		Extra:     extra,
+// 	}
 
-	return r
-}
+// 	return r
+// }
 
 // Render the details of the Resource
 func (r Resource) GetDetails() []string {

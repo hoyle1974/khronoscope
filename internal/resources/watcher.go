@@ -41,16 +41,13 @@ type K8sWatcher struct {
 }
 
 func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
-	// if err := watchForNamespace(w, client); err != nil {
-	// 	return err
-	// }
 	podWatcher, err := watchForPods(ctx, w, client, dao, lc, ns)
 	if err != nil {
 		return err
 	}
-	if _, err = watchForNodes(ctx, w, client, dao, podWatcher); err != nil {
-		return err
-	}
+	// if _, err = watchForNodes(ctx, w, client, dao, podWatcher); err != nil {
+	// 	return err
+	// }
 
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
@@ -69,20 +66,35 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 		}
 
 		for _, resource := range list.APIResources {
-			if resource.Kind == "Node" || resource.Kind == "Pod" || (filter.Standard && resource.Kind == "") {
+			if filter.Standard && resource.Kind == "" {
 				continue
 			}
-			if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
+			if resource.Kind == "Pod" {
 				continue
 			}
+			// if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
+			// 	continue
+			// }
 
 			gvr := schema.GroupVersionResource{
 				Group:    gv.Group,
 				Version:  gv.Version,
 				Resource: resource.Name,
 			}
-			fmt.Printf("Found GVR: (%s,%s,%s)\n", gvr.Group, gvr.Version, gvr.Resource)
-			if err := watchForResource(ctx, w, client, GenericWatcher{kind: resource.Kind, resource: gvr}); err != nil {
+
+			var ticker func()
+			var renderer ResourceRenderer
+
+			if resource.Kind == "Node" {
+				ticker = func() {
+					NodeTicker(podWatcher, dao, client.MetricsClient)
+				}
+				renderer = NodeRenderer{d: dao}
+			} else {
+				renderer = GenericRenderer{}
+			}
+
+			if err := watchForResource(ctx, w, client, GenericWatcher{kind: resource.Kind, resource: gvr, renderer: renderer, ticker: ticker}); err != nil {
 				fmt.Printf("	error:%v", err)
 			}
 		}

@@ -4,12 +4,65 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/duration"
 )
+
+func ParseMemory(memory string) (int64, error) {
+	suffixes := []string{"Ti", "Gi", "Mi", "Ki", ""}
+	multipliers := []int64{
+		1024 * 1024 * 1024 * 1024, // Ti
+		1024 * 1024 * 1024,        // Gi
+		1024 * 1024,               // Mi
+		1024,                      // Ki
+		1,                         // bytes
+	}
+
+	if len(suffixes) != len(multipliers) {
+		return 0, fmt.Errorf("suffixes and multipliers arrays must have the same length")
+	}
+
+	for i, suffix := range suffixes {
+		if strings.HasSuffix(memory, suffix) {
+			value := strings.TrimSuffix(memory, suffix)
+			num, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+
+			// Check for potential overflow
+			if multipliers[i] > 1 && num > math.MaxInt64/multipliers[i] {
+				return 0, fmt.Errorf("memory size too large, potential overflow: %s", memory)
+			}
+
+			return num * multipliers[i], nil
+		}
+	}
+	return 0, fmt.Errorf("invalid memory format: %s", memory)
+}
+
+func PrettyPrintJSON(jsonStr string) (string, error) {
+	var jsonData map[string]interface{}
+
+	// Unmarshal the JSON string into a map
+	err := json.Unmarshal([]byte(jsonStr), &jsonData)
+	if err != nil {
+		return "", err
+	}
+
+	// Marshal it back with indentation
+	prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(prettyJSON), nil
+}
 
 func PrettyPrintYAMLFromJSON(jsonStr string) (string, error) {
 	var jsonData interface{}

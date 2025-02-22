@@ -19,7 +19,7 @@ import (
 )
 
 type NodeExtra struct {
-	Metrics               map[string]string
+	NodeMetrics           map[string]string
 	NodeCreationTimestamp time.Time
 	CPUCapacity           int64
 	MemCapacity           int64
@@ -32,13 +32,12 @@ func (r NodeExtra) GetValue(key string) any { return nil }
 
 func (n NodeExtra) Copy() Copyable {
 	return NodeExtra{
-		Metrics:               misc.DeepCopyMap(n.Metrics),
+		NodeMetrics:           misc.DeepCopyMap(n.NodeMetrics),
+		PodMetrics:            misc.DeepCopyMap(n.PodMetrics),
 		NodeCreationTimestamp: n.NodeCreationTimestamp,
 		CPUCapacity:           n.CPUCapacity,
 		MemCapacity:           n.MemCapacity,
 		Uptime:                n.Uptime,
-		PodMetrics:            misc.DeepCopyMap(n.PodMetrics),
-		Details:               n.Details,
 	}
 }
 
@@ -62,7 +61,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 
 		ret = append(ret, "")
 		ret = append(ret, "Metrics: ")
-		ret = append(ret, fmt.Sprintf("%v", extra.Metrics[resource.Name]))
+		ret = append(ret, fmt.Sprintf("%v", extra.NodeMetrics[resource.Name]))
 
 		ret = append(ret, "Pods: ")
 		for podName, podMetrics := range misc.Range(extra.PodMetrics) {
@@ -91,7 +90,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 		return ret
 	}
 
-	out := fmt.Sprintf("%v", extra.Metrics[resource.Name])
+	out := fmt.Sprintf("%v", extra.NodeMetrics[resource.Name])
 	out += " " + resource.Name
 	out += fmt.Sprintf(" %v", extra.Uptime)
 
@@ -138,7 +137,7 @@ func (n *NodeWatcher) updateResourceMetrics(resource Resource) {
 
 	metricsExtra := n.getMetricsForNode(resource)
 	if len(metricsExtra) > 0 {
-		e.Metrics = metricsExtra
+		e.NodeMetrics = metricsExtra
 		e.Uptime = time.Since(e.NodeCreationTimestamp).Truncate(time.Second)
 	}
 

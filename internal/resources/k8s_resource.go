@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/hoyle1974/khronoscope/internal/conn"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
-	"gopkg.in/yaml.v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,24 +87,6 @@ func PrettyPrintJSON(jsonStr string) (string, error) {
 	return string(prettyJSON), nil
 }
 
-func PrettyPrintYAMLFromJSON(jsonStr string) (string, error) {
-	var jsonData interface{}
-
-	// Decode JSON string
-	err := json.Unmarshal([]byte(jsonStr), &jsonData)
-	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal JSON: %v", err)
-	}
-
-	// Convert JSON to YAML
-	yamlData, err := yaml.Marshal(jsonData)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal YAML: %v", err)
-	}
-
-	return string(yamlData), nil
-}
-
 type GenericRenderer struct{}
 
 func (r GenericRenderer) Render(resource Resource, details bool) []string {
@@ -113,11 +95,10 @@ func (r GenericRenderer) Render(resource Resource, details bool) []string {
 		return []string{"[Invalid Resource]"}
 	}
 	if details {
-		s, _ := PrettyPrintYAMLFromJSON(extra.RawJSON)
+		s, _ := misc.PrettyPrintYAMLFromJSON(extra.RawJSON)
 		return strings.Split(s, "\n")
 	}
 	return []string{resource.Name}
-	// []string{extra.RawJSON} // Mimics `kubectl` raw output
 }
 
 func watchForResource(ctx context.Context, watcher *K8sWatcher, k conn.KhronosConn, g GenericWatcher) error {

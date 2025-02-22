@@ -1,13 +1,33 @@
 package misc
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 
 	"github.com/charmbracelet/lipgloss"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/duration"
 )
+
+func PrettyPrintYAMLFromJSON(jsonStr string) (string, error) {
+	var jsonData interface{}
+
+	// Decode JSON string
+	err := json.Unmarshal([]byte(jsonStr), &jsonData)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal JSON: %v", err)
+	}
+
+	// Convert JSON to YAML
+	yamlData, err := yaml.Marshal(jsonData)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal YAML: %v", err)
+	}
+
+	return string(yamlData), nil
+}
 
 func ConvertArrayToSet[V comparable](arr []V) map[V]any {
 	set := make(map[V]any)

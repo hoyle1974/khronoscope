@@ -84,7 +84,7 @@ func (r NodeRenderer) Render(resource Resource, details bool) []string {
 
 }
 
-func updateResourceMetrics(podWatcher *PodWatcher, dao DAO, resource Resource) {
+func updateNodeResourceMetrics(dao DAO, resource Resource) {
 	extra := getNodeExtra(resource)
 
 	resource.Timestamp = serializable.Time{Time: time.Now()}
@@ -99,8 +99,8 @@ func updateResourceMetrics(podWatcher *PodWatcher, dao DAO, resource Resource) {
 	resources := dao.GetResourcesAt(resource.Timestamp.Time, "Pod", "")
 	extra.PodMetrics = map[string]map[string]PodMetric{}
 	for _, podResource := range resources {
-		if podResource.Extra.(PodExtra).Node == resource.Name {
-			podMetrics := podWatcher.getPodMetricsForPod(podResource)
+		if podResource.Name == resource.Name {
+			podMetrics := getPodMetricsForPod(podResource)
 			extra.PodMetrics[podResource.Namespace+"/"+podResource.Name] = podMetrics
 		}
 	}
@@ -133,7 +133,7 @@ func getNodeExtra(resource Resource) NodeExtra {
 	if resource.Extra != nil {
 		extra = resource.Extra.Copy().(NodeExtra)
 	} else {
-		cores, mem, creationTime := getCapacity(resource)
+		cores, mem, creationTime := getNodeCapacity(resource)
 		extra.CPUCapacity = cores * 1000
 		extra.MemCapacity = mem
 		extra.NodeCreationTimestamp = creationTime
@@ -143,7 +143,7 @@ func getNodeExtra(resource Resource) NodeExtra {
 	return extra
 }
 
-func getCapacity(resource Resource) (int64, int64, time.Time) {
+func getNodeCapacity(resource Resource) (int64, int64, time.Time) {
 	var node node
 	err := yaml.Unmarshal([]byte(resource.RawJSON), &node)
 	if err != nil {
@@ -192,7 +192,7 @@ func getMetricsForNode(resource Resource) map[string]string {
 	return metricsExtra
 }
 
-func NodeTicker(podWatcher *PodWatcher, dao DAO, metricsClient *metrics.Clientset) {
+func NodeTicker(dao DAO, metricsClient *metrics.Clientset) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -205,6 +205,6 @@ func NodeTicker(podWatcher *PodWatcher, dao DAO, metricsClient *metrics.Clientse
 	// Get the current resources
 	resources := dao.GetResourcesAt(time.Now(), "Node", "")
 	for _, resource := range resources {
-		updateResourceMetrics(podWatcher, dao, resource)
+		updateNodeResourceMetrics(dao, resource)
 	}
 }

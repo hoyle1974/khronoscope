@@ -57,16 +57,12 @@ func newUuid(r *rand.Rand) string {
 
 func randomPod(r *rand.Rand) resources.Resource {
 	extra := resources.PodExtra{
-		Phase:       newUuid(r),
-		Node:        newUuid(r),
-		Metrics:     randomMetrics(r),
-		Uptime:      time.Duration(r.IntN(1000)),
-		StartTime:   serializable.Time{Time: time.Now()},
-		Containers:  randomContainerInfo(r),
-		Labels:      randomStrings(r),
-		Annotations: randomStrings(r),
-		Logs:        randomStrings(r),
-		Logging:     []string{"Container"},
+		Metrics:    randomMetrics(r),
+		Uptime:     time.Duration(r.IntN(1000)),
+		StartTime:  serializable.Time{Time: time.Now()},
+		Containers: randomContainerInfo(r),
+		Logs:       randomStrings(r),
+		Logging:    []string{"Container"},
 	}
 	return resources.Resource{
 		Uid:       "PodUid",

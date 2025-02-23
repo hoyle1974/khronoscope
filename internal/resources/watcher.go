@@ -41,11 +41,6 @@ type K8sWatcher struct {
 }
 
 func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
-	podWatcher, err := watchForPods(ctx, w, client, dao, lc, ns)
-	if err != nil {
-		return err
-	}
-
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
 	if err != nil {
@@ -66,9 +61,6 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 			if filter.Standard && resource.Kind == "" {
 				continue
 			}
-			if resource.Kind == "Pod" {
-				continue
-			}
 			if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
 				continue
 			}
@@ -84,9 +76,14 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 
 			if resource.Kind == "Node" {
 				ticker = func() {
-					NodeTicker(podWatcher, dao, client.MetricsClient)
+					NodeTicker(dao, client.MetricsClient)
 				}
 				renderer = NodeRenderer{dao: dao}
+			} else if resource.Kind == "Pod" {
+				ticker = func() {
+					PodTicker(dao, client.MetricsClient)
+				}
+				renderer = PodRenderer{dao: dao}
 			} else {
 				renderer = GenericRenderer{}
 			}

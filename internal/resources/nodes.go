@@ -97,10 +97,9 @@ func updateNodeResourceMetrics(dao DAO, resource Resource) {
 	}
 
 	// Find pods on node
-	resources := dao.GetResourcesAt(resource.Timestamp.Time, "Pod", "")
-	extra.PodMetrics = map[string]map[string]PodMetric{}
+	resources := dao.GetResourcesAt(resource.Timestamp.Time, "Pod", resource.Namespace)
 	for _, podResource := range resources {
-		if podResource.Name == resource.Name {
+		if getPodExtra(podResource).NodeName == resource.Name {
 			podMetrics := getPodMetricsForPod(podResource)
 			extra.PodMetrics[podResource.Namespace+"/"+podResource.Name] = podMetrics
 		}
@@ -139,6 +138,7 @@ func getNodeExtra(resource Resource) NodeExtra {
 		extra.MemCapacity = mem
 		extra.NodeCreationTimestamp = creationTime
 		extra.Uptime = time.Since(creationTime).Truncate(time.Second)
+		extra.PodMetrics = map[string]map[string]PodMetric{}
 	}
 
 	return extra

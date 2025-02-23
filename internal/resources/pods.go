@@ -125,6 +125,7 @@ type Pod struct {
 				} `json:"limits"`
 			} `json:"resources"`
 		} `json:"containers"`
+		NodeName string `json:"nodeName"`
 	} `json:"spec"`
 	Status struct {
 		Phase string `json:"phase"`
@@ -144,6 +145,7 @@ type ContainerInfo struct {
 
 type PodExtra struct {
 	Phase      string
+	NodeName   string
 	Metrics    map[string]PodMetric
 	Uptime     time.Duration
 	StartTime  serializable.Time
@@ -157,6 +159,7 @@ func (r PodExtra) GetValue(key string) any { return nil }
 func (p PodExtra) Copy() Copyable {
 	return PodExtra{
 		Phase:      p.Phase,
+		NodeName:   p.NodeName,
 		Metrics:    misc.DeepCopyMap(p.Metrics),
 		Uptime:     p.Uptime,
 		StartTime:  p.StartTime,
@@ -176,6 +179,7 @@ func getPodExtra(resource Resource) PodExtra {
 		extra.Metrics = map[string]PodMetric{}
 		if err := json.Unmarshal([]byte(resource.RawJSON), &pod); err == nil {
 			extra.Phase = pod.Status.Phase
+			extra.NodeName = pod.Spec.NodeName
 			for _, container := range pod.Spec.Containers {
 				cpuLimit, _ := strconv.Atoi(container.Resources.Limits.CPU)
 				memory, _ := misc.ParseMemory(container.Resources.Limits.Memory)

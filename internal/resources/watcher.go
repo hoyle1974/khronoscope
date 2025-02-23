@@ -29,7 +29,7 @@ type DAO interface {
 // Interface for watching resource events.
 type ResourceEventWatcher interface {
 	ToResource(obj runtime.Object) Resource // Converts a kubernetes object to a Resource
-	Tick()                                  // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics
+	Tick()                                  // Called at a regular interval and can be used to do any needed work to update Resources not handled by Add/Modified/Del like metrics & logs
 	Renderer() ResourceRenderer
 	Kind() string
 }

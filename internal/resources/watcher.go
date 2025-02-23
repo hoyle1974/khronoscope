@@ -90,12 +90,12 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 
 			if resource.Kind == "Node" {
 				ticker = func() {
-					NodeTicker(dao, client.MetricsClient)
+					nodeTicker(dao, client.MetricsClient)
 				}
-				renderer = NodeRenderer{dao: dao}
+				renderer = nodeRenderer{dao: dao}
 			} else if resource.Kind == "Pod" {
 				ticker = func() {
-					PodTicker(dao, client.MetricsClient)
+					podTicker(dao, client.MetricsClient)
 				}
 				renderer = PodRenderer{dao: dao}
 			} else {

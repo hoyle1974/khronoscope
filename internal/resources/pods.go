@@ -198,7 +198,7 @@ func getPodExtra(resource Resource) PodExtra {
 
 var lastPodMetrics atomic.Pointer[v1beta1.PodMetricsList]
 
-func PodTicker(dao DAO, metricsClient *metrics.Clientset) {
+func podTicker(dao DAO, metricsClient *metrics.Clientset) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 

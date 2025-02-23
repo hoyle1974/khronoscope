@@ -88,6 +88,7 @@ func Test_Store(t *testing.T) {
 	gob.Register(resources.PodExtra{})
 
 	store := dao.New()
+
 	resources.RegisterResourceRenderer("Pod", resources.PodRenderer{})
 
 	a := rand.Uint64()

@@ -39,11 +39,11 @@ func (n NodeExtra) Copy() Copyable {
 	}
 }
 
-type NodeRenderer struct {
+type nodeRenderer struct {
 	dao DAO
 }
 
-func (r NodeRenderer) Render(resource Resource, details bool) []string {
+func (r nodeRenderer) Render(resource Resource, details bool) []string {
 	extra := getNodeExtra(resource)
 
 	if details {
@@ -193,7 +193,7 @@ func getMetricsForNode(resource Resource) map[string]string {
 	return metricsExtra
 }
 
-func NodeTicker(dao DAO, metricsClient *metrics.Clientset) {
+func nodeTicker(dao DAO, metricsClient *metrics.Clientset) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 

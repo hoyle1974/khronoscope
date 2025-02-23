@@ -41,7 +41,7 @@ type K8sWatcher struct {
 	onChange   func()
 }
 
-func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
+func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
 	if err != nil {

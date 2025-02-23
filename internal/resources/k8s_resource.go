@@ -16,33 +16,22 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-type GenericWatcher struct {
+type watcher struct {
 	kind     string
 	resource schema.GroupVersionResource
 	renderer ResourceRenderer
 	ticker   func()
 }
 
-func NewGenericWatcher(kind string, group, version, resource string) GenericWatcher {
-	return GenericWatcher{
-		kind: kind,
-		resource: schema.GroupVersionResource{
-			Group:    group,
-			Version:  version,
-			Resource: resource,
-		},
-	}
-}
-
-func (g GenericWatcher) Tick() {
+func (g watcher) Tick() {
 	if g.ticker != nil {
 		g.ticker()
 	}
 }
-func (g GenericWatcher) Kind() string               { return g.kind }
-func (g GenericWatcher) Renderer() ResourceRenderer { return g.renderer }
+func (g watcher) Kind() string               { return g.kind }
+func (g watcher) Renderer() ResourceRenderer { return g.renderer }
 
-func (g GenericWatcher) ToResource(obj runtime.Object) Resource {
+func (g watcher) ToResource(obj runtime.Object) Resource {
 	unstructuredObj, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return Resource{}
@@ -64,9 +53,9 @@ func (g GenericWatcher) ToResource(obj runtime.Object) Resource {
 	}
 }
 
-type GenericRenderer struct{}
+type defaultRenderer struct{}
 
-func (r GenericRenderer) Render(resource Resource, details bool) []string {
+func (r defaultRenderer) Render(resource Resource, details bool) []string {
 	if details {
 		s, _ := misc.PrettyPrintYAMLFromJSON(resource.RawJSON)
 		return strings.Split(s, "\n")
@@ -74,7 +63,7 @@ func (r GenericRenderer) Render(resource Resource, details bool) []string {
 	return []string{resource.Name}
 }
 
-func watchForResource(ctx context.Context, watcher *K8sWatcher, k conn.KhronosConn, g GenericWatcher) error {
+func watchForResource(ctx context.Context, watcher *K8sWatcher, k conn.KhronosConn, g watcher) error {
 	watchChan, err := k.DynamicClient.Resource(g.resource).Watch(ctx, v1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to watch resource %s: %w", g.kind, err)

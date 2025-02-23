@@ -91,7 +91,7 @@ type podLogCollector struct {
 	onLog         func(logs string)
 }
 
-func NewPodLogCollector(l *LogCollector, client kubernetes.Interface, r types.Resource, containerName string, onLog func(logs string)) *podLogCollector {
+func newPodLogCollector(l *LogCollector, client kubernetes.Interface, r types.Resource, containerName string, onLog func(logs string)) *podLogCollector {
 	plc := &podLogCollector{
 		client:        client,
 		namespace:     r.GetNamespace(),
@@ -152,7 +152,7 @@ func (plc *podLogCollector) start(l *LogCollector, key string) {
 	}()
 }
 
-func (plc *podLogCollector) Stop() {
+func (plc *podLogCollector) stop() {
 	plc.mu.Lock()
 	defer plc.mu.Unlock()
 	select {
@@ -177,7 +177,7 @@ func key(r types.Resource, containerName string) string {
 func (l *LogCollector) start(r types.Resource, containerName string, onLog func(logs string)) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	l.collectors[key(r, containerName)] = NewPodLogCollector(l, l.client.Client, r, containerName, onLog)
+	l.collectors[key(r, containerName)] = newPodLogCollector(l, l.client.Client, r, containerName, onLog)
 }
 
 func (l *LogCollector) stop(r types.Resource, containerName string) {
@@ -187,7 +187,7 @@ func (l *LogCollector) stop(r types.Resource, containerName string) {
 	k := key(r, containerName)
 	plc, ok := l.collectors[k]
 	if ok {
-		go plc.Stop()
+		go plc.stop()
 		delete(l.collectors, k)
 		return
 	}

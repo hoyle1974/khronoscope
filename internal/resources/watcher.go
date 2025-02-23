@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"encoding/gob"
 	"fmt"
 	"reflect"
 	"sync"
@@ -42,6 +43,11 @@ type K8sWatcher struct {
 }
 
 func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn, dao DAO, lc *LogCollector, ns string) error {
+	// TODO find a new place for this
+	gob.Register(Resource{})
+	gob.Register(NodeExtra{})
+	gob.Register(PodExtra{})
+
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
 	if err != nil {
@@ -59,8 +65,18 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 		}
 
 		for _, resource := range list.APIResources {
-			if filter.Standard && (resource.Kind == "" || (!resource.Namespaced && resource.Kind != "Namespace")) {
-				continue
+			if resource.Kind == "Node" {
+				log.Warn().Msg("node")
+			}
+			if filter.Standard {
+				if resource.Kind == "" {
+					continue
+				}
+				if !resource.Namespaced {
+					if resource.Kind != "Node" && resource.Kind != "Pod" {
+						continue
+					}
+				}
 			}
 
 			gvr := schema.GroupVersionResource{
@@ -83,10 +99,10 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 				}
 				renderer = PodRenderer{dao: dao}
 			} else {
-				renderer = GenericRenderer{}
+				renderer = defaultRenderer{}
 			}
 
-			if err := watchForResource(ctx, w, client, GenericWatcher{kind: resource.Kind, resource: gvr, renderer: renderer, ticker: ticker}); err != nil {
+			if err := watchForResource(ctx, w, client, watcher{kind: resource.Kind, resource: gvr, renderer: renderer, ticker: ticker}); err != nil {
 				fmt.Printf("	error:%v", err)
 			}
 		}
@@ -157,13 +173,6 @@ func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEv
 	if w == nil {
 		return
 	}
-
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		fmt.Printf("Recovered in goroutine: %v\n", r)
-	// 		panic(r) // Re-panic to crash
-	// 	}
-	// }()
 
 	ticker := time.NewTicker(WATCHER_STEP)
 	defer ticker.Stop()

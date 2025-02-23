@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"os"
 	"runtime/pprof"
@@ -88,11 +87,6 @@ func main() {
 			defer pprof.StopCPUProfile()
 		}
 	}
-
-	// TODO find a new place for this
-	gob.Register(resources.Resource{})
-	gob.Register(resources.NodeExtra{})
-	gob.Register(resources.PodExtra{})
 
 	// Connect to k8s
 	client, err := conn.NewKhronosConnection(kubeConfigFlag)

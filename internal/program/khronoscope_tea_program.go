@@ -3,11 +3,12 @@ package program
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -260,7 +261,6 @@ type ResizeHandler interface {
 
 // UPDATE
 func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
-	log.Printf("windowResize %v\n", msg)
 	m.width = msg.Width
 	m.height = msg.Height
 
@@ -289,7 +289,6 @@ func (m *KhronoscopeTeaProgram) windowResize(msg tea.WindowSizeMsg) {
 		}
 	}
 
-	log.Printf("Is read: %v", m.ready)
 	if !m.ready {
 		// Since this program is using the full size of the viewport we
 		// need to wait until we've received the window dimensions before
@@ -350,7 +349,7 @@ func (f logFilter) Description() string { return "Logging" }
 func (f logFilter) Highlight() string   { return "" }
 
 func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Printf("Update %s : %v\n", reflect.TypeOf(msg), msg)
+	log.Debug().Any("Type", reflect.TypeOf(msg)).Any("TeaMsg", msg).Msg("Update")
 
 	// if m.forceSelect != nil {
 	// 	log.Printf("Force Select Enabled")
@@ -371,7 +370,7 @@ func (m *KhronoscopeTeaProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	if m.popup != nil {
-		log.Printf("Popup Enabled")
+		log.Debug().Msg("Popup Enabled")
 		if _, ok := msg.(popup.PopupClose); ok {
 			m.SetPopup(nil)
 			return m, nil

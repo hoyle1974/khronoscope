@@ -3,11 +3,12 @@ package resources
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
@@ -147,17 +148,17 @@ func getNodeCapacity(resource Resource) (int64, int64, time.Time) {
 	var node node
 	err := yaml.Unmarshal([]byte(resource.RawJSON), &node)
 	if err != nil {
-		log.Fatalf("error parsing YAML: %v", err)
+		log.Panic().Err(err).Msg("error parsing YAML")
 	}
 	// Convert CPU to int
 	cpuCores, err := strconv.Atoi(node.Status.Capacity.CPU)
 	if err != nil {
-		log.Fatalf("error parsing CPU: %v", err)
+		log.Panic().Err(err).Msg("error parsing CPU")
 	}
 	// Convert Memory to bytes
 	memoryBytes, err := misc.ParseMemory(node.Status.Capacity.Memory)
 	if err != nil {
-		log.Fatalf("error parsing memory: %v : %s", err, node.Status.Capacity.Memory)
+		log.Panic().Err(err).Any("Memory", node.Status.Capacity.Memory).Msg("error parsing memory")
 	}
 
 	creationTime, err := time.Parse(time.RFC3339, node.Metadata.CreationTimestamp)

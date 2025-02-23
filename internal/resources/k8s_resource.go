@@ -16,24 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// type GenericExtra struct {
-// 	RawJSON string
-// 	Age     serializable.Time
-// 	Extra   Copyable
-// }
-
-// func (g GenericExtra) Copy() Copyable {
-// 	var e Copyable
-// 	if g.Extra != nil {
-// 		e = g.Extra.Copy()
-// 	}
-// 	return GenericExtra{
-// 		RawJSON: g.RawJSON,
-// 		Age:     g.Age,
-// 		Extra:   e,
-// 	}
-// }
-
 type GenericWatcher struct {
 	kind     string
 	resource schema.GroupVersionResource

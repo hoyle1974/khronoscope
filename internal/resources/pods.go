@@ -185,10 +185,8 @@ func getPodExtra(resource Resource) PodExtra {
 					MemoryLimit: memory,
 					CPULimit:    int64(cpuLimit * 1000),
 				}
-
 			}
 		}
-
 	}
 
 	return extra

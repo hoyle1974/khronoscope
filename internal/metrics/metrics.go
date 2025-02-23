@@ -2,8 +2,9 @@ package metrics
 
 import (
 	"fmt"
-	"log"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 )
 
 var lock = sync.Mutex{}
@@ -21,10 +22,11 @@ func Print() {
 func Log() {
 	lock.Lock()
 	defer lock.Unlock()
-	log.Println("Metrics:")
+	l := log.Info()
 	for k, v := range counter {
-		log.Printf("	%s: %d\n", k, v)
+		l.Any(k, v)
 	}
+	l.Msg("Metrics)")
 }
 
 func Count(key string, value int) {

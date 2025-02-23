@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	flag "github.com/spf13/pflag"
 
@@ -23,8 +25,13 @@ import (
 )
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
 	ringBuffer := misc.NewRingBuffer(100) // Store last 100 log messages
-	log.SetOutput(ringBuffer)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: ringBuffer})
+	defer func() {
+		fmt.Println(ringBuffer.String()) // Output log on exit
+	}()
 
 	cfg, err := config.InitConfig()
 	if err != nil {
@@ -67,10 +74,10 @@ func main() {
 
 	if cfg.Profiling {
 		if f, err := os.Create("khronoscope.pprof"); err != nil {
-			log.Fatal(err)
+			log.Panic().Err(err).Msg("error creating khronoscope.pprof file")
 		} else {
 			if err := pprof.StartCPUProfile(f); err != nil {
-				log.Fatal(err)
+				log.Panic().Err(err).Msg("error starting CPU profile")
 			}
 			defer pprof.StopCPUProfile()
 		}
@@ -82,8 +89,7 @@ func main() {
 
 	client, err := conn.NewKhronosConnection(kubeConfigFlag)
 	if err != nil {
-		fmt.Printf("Error creating connection: %v", err)
-		return
+		log.Panic().Err(err).Msg("could not create khronos connection")
 	}
 
 	d := dao.New()
@@ -104,7 +110,7 @@ func main() {
 
 	err = watcher.Watch(ctx, client, d, logCollector, *namespace)
 	if err != nil {
-		panic(err)
+		log.Panic().Err(err).Msg("watch failed")
 	}
 
 	appModel := khronoscope.NewProgram(watcher, d, logCollector, client, ringBuffer)
@@ -126,7 +132,7 @@ func main() {
 	})
 
 	if _, err := p.Run(); err != nil {
-		panic(err)
+		log.Panic().Err(err).Msg("program exited")
 	}
 
 	ui.ResetTerminal()

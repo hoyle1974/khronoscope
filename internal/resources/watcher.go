@@ -3,10 +3,11 @@ package resources
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/conn"
@@ -44,7 +45,7 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
 	if err != nil {
-		fmt.Println("Warning: Some API groups may not be accessible:", err)
+		log.Warn().Err(err).Msg("Warning: Some API groups may not be accessible")
 	}
 
 	filter := config.Get().Filter
@@ -53,15 +54,12 @@ func (w *K8sWatcher) Watch(ctx context.Context, client conn.KhronosConn, dao DAO
 	for _, list := range apiGroupResources {
 		gv, err := schema.ParseGroupVersion(list.GroupVersion)
 		if err != nil {
-			fmt.Println("Skipping invalid GroupVersion:", list.GroupVersion)
+			log.Warn().Err(err).Any("GroupVersion", list.GroupVersion).Msg("Skipping invalid GroupVersion:")
 			continue
 		}
 
 		for _, resource := range list.APIResources {
-			if filter.Standard && resource.Kind == "" {
-				continue
-			}
-			if filter.Standard && (!resource.Namespaced && resource.Kind != "Namespace") {
+			if filter.Standard && (resource.Kind == "" || (!resource.Namespaced && resource.Kind != "Namespace")) {
 				continue
 			}
 
@@ -153,7 +151,8 @@ func (w *K8sWatcher) Delete(r Resource) {
 }
 
 func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEventWatcher ResourceEventWatcher) {
-	log.Println("registerEventWatcher ", reflect.TypeOf(resourceEventWatcher))
+	log.Info().Any("Watcher", reflect.TypeOf(resourceEventWatcher)).Msg("registerEventWatcher")
+
 	RegisterResourceRenderer(resourceEventWatcher.Kind(), resourceEventWatcher.Renderer())
 	if w == nil {
 		return

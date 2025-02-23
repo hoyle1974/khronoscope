@@ -5,10 +5,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
@@ -181,7 +182,7 @@ func (d *dataModelImpl) GetTimeRange() (time.Time, time.Time) {
 }
 
 func (d *dataModelImpl) AddResource(resource resources.Resource) {
-	log.Printf("Add %v\n", resource)
+	log.Debug().Str("Resource", resource.Name).Str("Uid", resource.Uid).Msg("Add")
 
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -195,7 +196,7 @@ func (d *dataModelImpl) AddResource(resource resources.Resource) {
 }
 
 func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
-	log.Printf("Update %v\n", resource)
+	log.Debug().Str("Resource", resource.Name).Str("Uid", resource.Uid).Msg("Update")
 
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -210,7 +211,7 @@ func (d *dataModelImpl) UpdateResource(resource resources.Resource) {
 }
 
 func (d *dataModelImpl) DeleteResource(resource resources.Resource) {
-	log.Printf("Delete %v\n", resource)
+	log.Debug().Str("Resource", resource.Name).Str("Uid", resource.Uid).Msg("Delete")
 	d.lock.Lock()
 	defer d.lock.Unlock()
 

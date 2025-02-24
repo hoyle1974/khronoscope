@@ -3,7 +3,6 @@ package resources
 import (
 	"context"
 	"encoding/gob"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -103,7 +102,7 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 			}
 
 			if err := watchForResource(ctx, w, client, watcher{kind: resource.Kind, resource: gvr, renderer: renderer, ticker: ticker}); err != nil {
-				fmt.Printf("	error:%v", err)
+				log.Error().Err(err).Msg("error watching for resource")
 			}
 		}
 	}

@@ -17,11 +17,25 @@ import (
 )
 
 type KhronosConn struct {
+	CurrentUser     string
 	Client          kubernetes.Interface
 	DynamicClient   dynamic.Interface
 	MetricsClient   *metrics.Clientset
 	Config          *rest.Config
 	DiscoveryClient *discovery.DiscoveryClient
+}
+
+func getCurrentUserFromKubeconfig() (string, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+
+	rawConfig, err := kubeConfig.RawConfig()
+	if err != nil {
+		return "", err
+	}
+
+	return rawConfig.CurrentContext, nil
 }
 
 func NewKhronosConnection(kubeConfigFlag *string) (KhronosConn, error) {
@@ -79,5 +93,10 @@ func NewKhronosConnection(kubeConfigFlag *string) (KhronosConn, error) {
 		return KhronosConn{}, fmt.Errorf("unable to create a metric client: %v", err)
 	}
 
-	return KhronosConn{Client: client, DynamicClient: dynamicClient, DiscoveryClient: discoveryClient, MetricsClient: mc, Config: kubeconfig}, nil
+	userName, err := getCurrentUserFromKubeconfig()
+	if err != nil {
+		return KhronosConn{}, fmt.Errorf("unable to figure out username: %v", err)
+	}
+
+	return KhronosConn{CurrentUser: userName, Client: client, DynamicClient: dynamicClient, DiscoveryClient: discoveryClient, MetricsClient: mc, Config: kubeconfig}, nil
 }

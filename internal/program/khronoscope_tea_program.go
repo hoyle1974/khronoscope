@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hoyle1974/khronoscope/internal/access"
 	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
@@ -49,6 +50,7 @@ type KhronoscopeTeaProgram struct {
 	// forceSelect       *resources.Resource
 	Program    *tea.Program
 	ringBuffer *misc.RingBuffer
+	ac         *access.AccessController
 }
 
 func (m *KhronoscopeTeaProgram) SetLabel(label string) {
@@ -155,6 +157,7 @@ func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.L
 		cfg:          config.Get(),
 		client:       client,
 		ringBuffer:   ringBuffer,
+		ac:           access.NewAccessController(client),
 	}
 
 	return am
@@ -165,9 +168,16 @@ func (s *KhronoscopeTeaProgram) Init() tea.Cmd { return nil }
 func (m *KhronoscopeTeaProgram) View() string {
 	timeToUse := m.VCR.GetTimeToUse()
 	resourcesNow := m.data.GetResourcesAt(timeToUse, "", "")
-	convResources := make([]types.Resource, len(resourcesNow))
+
+	convResources := make([]types.Resource, 0, len(resourcesNow))
 	for i := 0; i < len(resourcesNow); i++ {
-		convResources[i] = resourcesNow[i]
+		switch accessStatus, _ := m.ac.CanViewResource(resourcesNow[i]); accessStatus {
+		case access.AccessNo:
+		case access.AccessOk:
+			convResources = append(convResources, resourcesNow[i])
+		case access.AccessMaybe:
+			convResources = append(convResources, types.NewPendingResource(resourcesNow[i]))
+		}
 	}
 	m.tv.UpdateResources(convResources)
 

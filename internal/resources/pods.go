@@ -154,6 +154,30 @@ type PodExtra struct {
 	Logging    []string
 }
 
+// mapToPodExtra converts a map[string]any to a PodExtra struct.
+func podExtraFromMap(e map[string]any) (PodExtra, bool) {
+	if e == nil {
+		return PodExtra{}, false
+	}
+
+	// Convert the map to JSON bytes
+	jsonBytes, err := json.Marshal(e)
+	if err != nil {
+		panic(err)
+		// return PodExtra{}, false
+	}
+
+	// Unmarshal the JSON bytes into a PodExtra struct
+	var pe PodExtra
+	err = json.Unmarshal(jsonBytes, &pe)
+	if err != nil {
+		panic(err)
+		// return PodExtra{}, false
+	}
+
+	return pe, true
+}
+
 // podExtraToMap converts a PodExtra struct back to a map[string]any.
 func (pe PodExtra) toMap() (map[string]any, bool) {
 	// Convert the PodExtra struct to JSON bytes
@@ -170,27 +194,6 @@ func (pe PodExtra) toMap() (map[string]any, bool) {
 	}
 
 	return m, true
-}
-
-func podExtraFromMap(e map[string]any) (PodExtra, bool) {
-	if e == nil {
-		return PodExtra{}, false
-	}
-
-	// Convert the map to JSON bytes
-	jsonBytes, err := json.Marshal(e)
-	if err != nil {
-		return PodExtra{}, false
-	}
-
-	// Unmarshal the JSON bytes into a PodExtra struct
-	var pe PodExtra
-	err = json.Unmarshal(jsonBytes, &pe)
-	if err != nil {
-		return PodExtra{}, false
-	}
-
-	return pe, true
 }
 
 func (r PodExtra) GetValue(key string) any { return nil }

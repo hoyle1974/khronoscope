@@ -29,24 +29,7 @@ type NodeExtra struct {
 	PodMetrics            map[string]map[string]PodMetric
 }
 
-// toMap converts a NodeExtra struct back to a map[string]any.
-func (pe NodeExtra) toMap() (map[string]any, bool) {
-	// Convert the PodExtra struct to JSON bytes
-	jsonBytes, err := json.Marshal(pe)
-	if err != nil {
-		return nil, false
-	}
-
-	// Unmarshal the JSON bytes into a map[string]any
-	var m map[string]any
-	err = json.Unmarshal(jsonBytes, &m)
-	if err != nil {
-		return nil, false
-	}
-
-	return m, true
-}
-
+// mapToPodExtra converts a map[string]any to a PodExtra struct.
 func nodeExtraFromMap(e map[string]any) (NodeExtra, bool) {
 	if e == nil {
 		return NodeExtra{}, false
@@ -55,17 +38,39 @@ func nodeExtraFromMap(e map[string]any) (NodeExtra, bool) {
 	// Convert the map to JSON bytes
 	jsonBytes, err := json.Marshal(e)
 	if err != nil {
-		return NodeExtra{}, false
+		panic(err)
+		// return NodeExtra{}, false
 	}
 
 	// Unmarshal the JSON bytes into a PodExtra struct
 	var ne NodeExtra
 	err = json.Unmarshal(jsonBytes, &ne)
 	if err != nil {
-		return NodeExtra{}, false
+		panic(err)
+		// return NodeExtra{}, false
 	}
 
 	return ne, true
+}
+
+// podExtraToMap converts a PodExtra struct back to a map[string]any.
+func (ne NodeExtra) toMap() (map[string]any, bool) {
+	// Convert the PodExtra struct to JSON bytes
+	jsonBytes, err := json.Marshal(ne)
+	if err != nil {
+		panic(err)
+		// return nil, false
+	}
+
+	// Unmarshal the JSON bytes into a map[string]any
+	var m map[string]any
+	err = json.Unmarshal(jsonBytes, &m)
+	if err != nil {
+		panic(err)
+		// return nil, false
+	}
+
+	return m, true
 }
 
 type nodeRenderer struct {

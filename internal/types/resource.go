@@ -11,7 +11,7 @@ type Resource interface {
 	GetTimestamp() time.Time
 	GetDetails() []string
 	String() string
-	GetExtra() any
+	GetExtra() map[string]any
 }
 
 func NewPendingResource(r Resource) Resource {
@@ -22,11 +22,11 @@ type pendingResource struct {
 	r Resource
 }
 
-func (p pendingResource) GetUID() string          { return p.r.GetUID() }
-func (p pendingResource) GetKind() string         { return p.r.GetKind() }
-func (p pendingResource) GetNamespace() string    { return p.r.GetNamespace() }
-func (p pendingResource) GetName() string         { return "pending . . ." }
-func (p pendingResource) GetTimestamp() time.Time { return p.r.GetTimestamp() }
-func (p pendingResource) GetDetails() []string    { return []string{"pending . . . "} }
-func (p pendingResource) String() string          { return "pending . . ." }
-func (p pendingResource) GetExtra() any           { return nil }
+func (p pendingResource) GetUID() string           { return p.r.GetUID() }
+func (p pendingResource) GetKind() string          { return p.r.GetKind() }
+func (p pendingResource) GetNamespace() string     { return p.r.GetNamespace() }
+func (p pendingResource) GetName() string          { return "pending . . ." }
+func (p pendingResource) GetTimestamp() time.Time  { return p.r.GetTimestamp() }
+func (p pendingResource) GetDetails() []string     { return []string{"pending . . . "} }
+func (p pendingResource) String() string           { return "pending . . ." }
+func (p pendingResource) GetExtra() map[string]any { return map[string]any{} }

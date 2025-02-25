@@ -47,6 +47,12 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 	gob.Register(PodExtra{})
 	gob.Register(map[string]any{})
 	gob.Register([]any{})
+	gob.Register(time.Duration(0))
+	gob.Register(PodMetric{})
+	gob.Register(map[string]PodMetric{})
+	gob.Register(map[string]ContainerInfo{})
+	gob.Register(map[string]map[string]PodMetric{})
+	gob.Register(map[string]string{})
 
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()

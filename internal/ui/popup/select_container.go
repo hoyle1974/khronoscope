@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hoyle1974/khronoscope/internal/conn"
-	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/types"
 )
 
@@ -68,19 +67,21 @@ func NewContainerPopupModel(client conn.KhronosConn, resource types.Resource, wi
 		return nil
 	}
 
-	extra := resource.GetExtra().(resources.PodExtra)
+	//extra := resource.GetExtra().(resources.PodExtra)
+	extraContainers := resource.GetExtra()["Containers"] // map[string]any
+	fmt.Println(extraContainers)
 
 	containers := []string{}
-	for k := range extra.Containers {
-		containers = append(containers, k)
-	}
-	if len(containers) == 0 {
-		return nil
-	}
-	if len(containers) == 1 {
-		selector(containers[0])
-		return nil
-	}
+	// for k := range extraContainers {
+	// 	containers = append(containers, k)
+	// }
+	// if len(containers) == 0 {
+	// 	return nil
+	// }
+	// if len(containers) == 1 {
+	// 	selector(containers[0])
+	// 	return nil
+	// }
 
 	return &containerPopupModel{
 		Containers:        containers,

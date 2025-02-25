@@ -28,7 +28,7 @@ func NewESSource() KhronoStore {
 
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating Elasticsearch client")
+		log.Fatal().Stack().Err(err).Msg("Error creating Elasticsearch client")
 	}
 
 	return &esImpl{es: es}
@@ -152,7 +152,7 @@ func (d *esImpl) indexResource(action string, resource resources.Resource) {
 
 	docJSON, err := json.Marshal(esr)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error marshaling document to JSON")
+		log.Fatal().Stack().Err(err).Msg("Error marshaling document to JSON")
 	}
 
 	req := esapi.IndexRequest{
@@ -168,12 +168,12 @@ func (d *esImpl) indexResource(action string, resource resources.Resource) {
 
 	res, err := req.Do(ctx, d.es)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error indexing document")
+		log.Fatal().Stack().Err(err).Stack().Msg("Error indexing document")
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
-		log.Fatal().Err(err).Str("Result", res.String()).Msg("Error indexing document")
+		log.Fatal().Err(err).Any("JSON", docJSON).Str("Result", res.String()).Msg("Error indexing document")
 	}
 }
 

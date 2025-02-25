@@ -16,31 +16,31 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func toPodExtra(r types.Resource) (PodExtra, bool) {
-	if r.GetKind() != "Pod" {
-		return PodExtra{}, false
-	}
-	extra := r.GetExtra()
-	if extra == nil {
-		return PodExtra{}, false
-	}
+// func toPodExtra(r types.Resource) (PodExtra, bool) {
+// 	if r.GetKind() != "Pod" {
+// 		return PodExtra{}, false
+// 	}
+// 	extra := r.GetExtra()
+// 	if extra == nil {
+// 		return PodExtra{}, false
+// 	}
 
-	if extra, ok := extra.(PodExtra); ok { // Type assertion with ok check
-		return extra, true
-	}
+// 	if extra, ok := extra.(PodExtra); ok { // Type assertion with ok check
+// 		return extra, true
+// 	}
 
-	return PodExtra{}, false
-}
+// 	return PodExtra{}, false
+// }
 
 func IsLogging(r types.Resource) bool {
-	if pe, ok := toPodExtra(r); ok {
+	if pe, ok := podExtraFromMap(r.GetExtra()); ok {
 		return len(pe.Logging) > 0
 	}
 	return false
 }
 
 func ToggleLogs(r types.Resource, containerName string) {
-	if extra, ok := toPodExtra(r); ok {
+	if extra, ok := podExtraFromMap(r.GetExtra()); ok {
 		if rs, ok := r.(Resource); ok {
 
 			found := false

@@ -353,9 +353,9 @@ func (f logFilter) Matches(r types.Resource) bool {
 		return false
 	}
 	if r.GetExtra() != nil {
-		if pe, ok := r.GetExtra().(resources.PodExtra); ok {
-			return len(pe.Logging) > 0
-		}
+		temp := r.GetExtra()
+		l := temp["Logging"].(map[string]any)
+		return len(l) > 0
 	}
 	return false
 }

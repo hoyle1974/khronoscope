@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -44,12 +43,12 @@ type Resource struct {
 	Extra     map[string]any    // This should be a custom, gob registered and serializable object if used
 }
 
-func (r Resource) GetUID() string          { return r.Uid }
-func (r Resource) GetKind() string         { return r.Kind }
-func (r Resource) GetNamespace() string    { return r.Namespace }
-func (r Resource) GetName() string         { return r.Name }
-func (r Resource) GetTimestamp() time.Time { return r.Timestamp.Time }
-func (r Resource) GetExtra() any           { return r.Extra }
+func (r Resource) GetUID() string           { return r.Uid }
+func (r Resource) GetKind() string          { return r.Kind }
+func (r Resource) GetNamespace() string     { return r.Namespace }
+func (r Resource) GetName() string          { return r.Name }
+func (r Resource) GetTimestamp() time.Time  { return r.Timestamp.Time }
+func (r Resource) GetExtra() map[string]any { return r.Extra }
 
 func NewK8sResource(kind string, obj K8sResource, extra map[string]any) Resource {
 	r := Resource{
@@ -58,7 +57,7 @@ func NewK8sResource(kind string, obj K8sResource, extra map[string]any) Resource
 		Kind:      kind,
 		Namespace: obj.GetObjectMeta().GetNamespace(),
 		Name:      obj.GetObjectMeta().GetName(),
-		Extra:     misc.DeepCopyMap(extra),
+		Extra:     nil,
 	}
 
 	return r
@@ -80,16 +79,6 @@ func (r Resource) String() string {
 		return r.Key()
 	}
 	return strings.Join(rr.Render(r, false), " ")
-}
-
-func NewResource(uuid string, timestmap time.Time, kind string, namespace string, name string) Resource {
-	return Resource{
-		Uid:       uuid,
-		Timestamp: serializable.Time{Time: timestmap},
-		Kind:      kind,
-		Namespace: namespace,
-		Name:      name,
-	}
 }
 
 func (r Resource) Key() string {

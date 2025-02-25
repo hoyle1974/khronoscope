@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 
 	flag "github.com/spf13/pflag"
 
@@ -24,6 +25,8 @@ import (
 )
 
 func main() {
+
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	// Init logging
 	ringBuffer := misc.NewRingBuffer(100) // Store last 100 log messages

@@ -45,7 +45,7 @@ type KhronoscopeTeaProgram struct {
 	searchInput       textinput.Model
 	logCollector      *resources.LogCollector
 	tab               int
-	cfg               config.Config
+	cfg               config.ClientConfig
 	client            conn.KhronosConn
 	// forceSelect       *resources.Resource
 	Program    *tea.Program
@@ -154,7 +154,7 @@ func NewProgram(watcher *resources.K8sWatcher, d dao.KhronoStore, l *resources.L
 		data:         d,
 		tv:           ui.NewTreeView(),
 		logCollector: l,
-		cfg:          config.Get(),
+		cfg:          config.GetClientConfig(),
 		client:       client,
 		ringBuffer:   ringBuffer,
 		ac:           access.NewAccessController(client),
@@ -195,7 +195,12 @@ func (m *KhronoscopeTeaProgram) View() string {
 	resource := m.tv.GetSelected()
 	if resource != nil {
 		if m.tab == 1 && resource.GetKind() == "Pod" {
-			logs := resource.(resources.Resource).Extra.(resources.PodExtra).Logs
+			r, _ := resource.(resources.Resource)
+			logsAny := r.Extra["Logs"] //.Extra.(resources.PodExtra).Logs
+			logs := []string{}
+			if logsAny != nil {
+				logs = logsAny.([]string)
+			}
 			m.detailView.SetContent(strings.Join(logs, "\n"))
 		} else {
 			detailContent := fmt.Sprintf("UID: %s\n", resource.GetUID()) + strings.Join(resource.GetDetails(), "\n")

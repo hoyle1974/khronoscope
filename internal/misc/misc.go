@@ -64,6 +64,16 @@ func PrettyPrintJSON(jsonStr string) (string, error) {
 	return string(prettyJSON), nil
 }
 
+func PrettyPrintYamlFromAny(data map[string]any) (string, error) {
+	// Convert JSON to YAML
+	yamlData, err := yaml.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal YAML: %v", err)
+	}
+
+	return string(yamlData), nil
+}
+
 func PrettyPrintYAMLFromJSON(jsonStr string) (string, error) {
 	var jsonData interface{}
 

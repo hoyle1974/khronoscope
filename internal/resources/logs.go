@@ -42,7 +42,6 @@ func IsLogging(r types.Resource) bool {
 func ToggleLogs(r types.Resource, containerName string) {
 	if extra, ok := toPodExtra(r); ok {
 		if rs, ok := r.(Resource); ok {
-			extra = extra.Copy().(PodExtra)
 
 			found := false
 			for i, v := range extra.Logging {
@@ -56,7 +55,7 @@ func ToggleLogs(r types.Resource, containerName string) {
 				extra.Logging = append(extra.Logging, containerName)
 			}
 
-			rs.Extra = extra
+			rs.Extra, _ = extra.toMap()
 			rs.Timestamp = serializable.Time{Time: time.Now()}
 
 			go _watcher.Update(rs)
@@ -65,9 +64,9 @@ func ToggleLogs(r types.Resource, containerName string) {
 				_logCollector.start(r, containerName, func(logs string) {
 					// Get the latest resource
 					if rs, err := _watcher.data.GetResourceAt(time.Now(), r.GetUID()); err == nil {
-						extra = rs.Extra.Copy().(PodExtra)
+						extra, _ = podExtraFromMap(rs.Extra)
 						extra.Logs = append(extra.Logs, strings.Split(logs, "\n")...)
-						rs.Extra = extra
+						rs.Extra, _ = extra.toMap()
 						rs.Timestamp = serializable.Time{Time: time.Now()}
 						go _watcher.Update(rs)
 					}

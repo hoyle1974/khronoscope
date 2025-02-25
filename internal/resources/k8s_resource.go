@@ -2,7 +2,6 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -37,18 +36,13 @@ func (g watcher) ToResource(obj runtime.Object) Resource {
 		return Resource{}
 	}
 
-	rawBytes, err := json.Marshal(unstructuredObj.Object)
-	if err != nil {
-		rawBytes = []byte("{}")
-	}
-
 	return Resource{
 		Uid:       string(unstructuredObj.GetUID()),
 		Timestamp: serializable.Time{Time: time.Now()},
 		Kind:      unstructuredObj.GetKind(),
 		Namespace: unstructuredObj.GetNamespace(),
 		Name:      unstructuredObj.GetName(),
-		RawJSON:   string(rawBytes),
+		RawJSON:   unstructuredObj.Object,
 		Extra:     nil,
 	}
 }
@@ -57,7 +51,7 @@ type defaultRenderer struct{}
 
 func (r defaultRenderer) Render(resource Resource, details bool) []string {
 	if details {
-		s, _ := misc.PrettyPrintYAMLFromJSON(resource.RawJSON)
+		s, _ := misc.PrettyPrintYamlFromAny(resource.RawJSON)
 		return strings.Split(s, "\n")
 	}
 	return []string{resource.Name}

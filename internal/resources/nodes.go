@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,15 +29,43 @@ type NodeExtra struct {
 	PodMetrics            map[string]map[string]PodMetric
 }
 
-func (n NodeExtra) Copy() Copyable {
-	return NodeExtra{
-		NodeMetrics:           misc.DeepCopyMap(n.NodeMetrics),
-		PodMetrics:            misc.DeepCopyMap(n.PodMetrics),
-		NodeCreationTimestamp: n.NodeCreationTimestamp,
-		CPUCapacity:           n.CPUCapacity,
-		MemCapacity:           n.MemCapacity,
-		Uptime:                n.Uptime,
+// toMap converts a NodeExtra struct back to a map[string]any.
+func (pe NodeExtra) toMap() (map[string]any, bool) {
+	// Convert the PodExtra struct to JSON bytes
+	jsonBytes, err := json.Marshal(pe)
+	if err != nil {
+		return nil, false
 	}
+
+	// Unmarshal the JSON bytes into a map[string]any
+	var m map[string]any
+	err = json.Unmarshal(jsonBytes, &m)
+	if err != nil {
+		return nil, false
+	}
+
+	return m, true
+}
+
+func nodeExtraFromMap(e map[string]any) (NodeExtra, bool) {
+	if e == nil {
+		return NodeExtra{}, false
+	}
+
+	// Convert the map to JSON bytes
+	jsonBytes, err := json.Marshal(e)
+	if err != nil {
+		return NodeExtra{}, false
+	}
+
+	// Unmarshal the JSON bytes into a PodExtra struct
+	var ne NodeExtra
+	err = json.Unmarshal(jsonBytes, &ne)
+	if err != nil {
+		return NodeExtra{}, false
+	}
+
+	return ne, true
 }
 
 type nodeRenderer struct {
@@ -71,7 +100,7 @@ func (r nodeRenderer) Render(resource Resource, details bool) []string {
 
 		}
 
-		s, _ := misc.PrettyPrintYAMLFromJSON(resource.RawJSON)
+		s, _ := misc.PrettyPrintYamlFromAny(resource.RawJSON)
 		ret = append(ret, strings.Split(s, "\n")...)
 
 		return ret
@@ -105,7 +134,8 @@ func updateNodeResourceMetrics(dao DAO, resource Resource) {
 		}
 	}
 
-	resource.Extra = extra
+	m, _ := extra.toMap()
+	resource.Extra = m
 
 	dao.UpdateResource(resource)
 
@@ -131,7 +161,7 @@ type node struct {
 func getNodeExtra(resource Resource) NodeExtra {
 	var extra NodeExtra
 	if resource.Extra != nil {
-		extra = resource.Extra.Copy().(NodeExtra)
+		extra, _ = nodeExtraFromMap(resource.Extra)
 	} else {
 		cores, mem, creationTime := getNodeCapacity(resource)
 		extra.CPUCapacity = cores * 1000
@@ -146,7 +176,11 @@ func getNodeExtra(resource Resource) NodeExtra {
 
 func getNodeCapacity(resource Resource) (int64, int64, time.Time) {
 	var node node
-	err := yaml.Unmarshal([]byte(resource.RawJSON), &node)
+
+	// TODO make this better
+	b, _ := json.Marshal(resource.RawJSON)
+
+	err := yaml.Unmarshal(b, &node)
 	if err != nil {
 		log.Panic().Err(err).Msg("error parsing YAML")
 	}

@@ -29,7 +29,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		return []string{}
 	}
 
-	extra := resource.Extra.(PodExtra)
+	extra, _ := podExtraFromMap(resource.Extra)
 	out := []string{}
 	s := ""
 
@@ -57,7 +57,7 @@ func (r PodRenderer) Render(resource Resource, details bool) []string {
 		for containerName, containerInfo := range extra.Containers {
 			out = append(out, fmt.Sprintf("   %s - %s : %s", containerName, containerInfo.Image, ""))
 		}
-		s, _ := misc.PrettyPrintYAMLFromJSON(resource.RawJSON)
+		s, _ := misc.PrettyPrintYamlFromAny(resource.RawJSON)
 		out = append(out, strings.Split(s, "\n")...)
 
 	} else {
@@ -154,30 +154,60 @@ type PodExtra struct {
 	Logging    []string
 }
 
-func (r PodExtra) GetValue(key string) any { return nil }
-
-func (p PodExtra) Copy() Copyable {
-	return PodExtra{
-		Phase:      p.Phase,
-		NodeName:   p.NodeName,
-		Metrics:    misc.DeepCopyMap(p.Metrics),
-		Uptime:     p.Uptime,
-		StartTime:  p.StartTime,
-		Containers: misc.DeepCopyMap(p.Containers),
-		Logs:       misc.DeepCopyArray(p.Logs),
-		Logging:    misc.DeepCopyArray(p.Logging),
+// podExtraToMap converts a PodExtra struct back to a map[string]any.
+func (pe PodExtra) toMap() (map[string]any, bool) {
+	// Convert the PodExtra struct to JSON bytes
+	jsonBytes, err := json.Marshal(pe)
+	if err != nil {
+		return nil, false
 	}
+
+	// Unmarshal the JSON bytes into a map[string]any
+	var m map[string]any
+	err = json.Unmarshal(jsonBytes, &m)
+	if err != nil {
+		return nil, false
+	}
+
+	return m, true
 }
+
+func podExtraFromMap(e map[string]any) (PodExtra, bool) {
+	if e == nil {
+		return PodExtra{}, false
+	}
+
+	// Convert the map to JSON bytes
+	jsonBytes, err := json.Marshal(e)
+	if err != nil {
+		return PodExtra{}, false
+	}
+
+	// Unmarshal the JSON bytes into a PodExtra struct
+	var pe PodExtra
+	err = json.Unmarshal(jsonBytes, &pe)
+	if err != nil {
+		return PodExtra{}, false
+	}
+
+	return pe, true
+}
+
+func (r PodExtra) GetValue(key string) any { return nil }
 
 func getPodExtra(resource Resource) PodExtra {
 	var extra PodExtra
 	if resource.Extra != nil {
-		extra = resource.Extra.Copy().(PodExtra)
+		extra, _ = podExtraFromMap(resource.Extra)
 	} else {
 		var pod Pod
 		extra.Containers = map[string]ContainerInfo{}
 		extra.Metrics = map[string]PodMetric{}
-		if err := json.Unmarshal([]byte(resource.RawJSON), &pod); err == nil {
+
+		// TODO make this better
+		b, _ := json.Marshal(resource.RawJSON)
+
+		if err := json.Unmarshal(b, &pod); err == nil {
 			extra.Phase = pod.Status.Phase
 			extra.NodeName = pod.Spec.NodeName
 			for _, container := range pod.Spec.Containers {
@@ -255,7 +285,7 @@ func getPodMetricsForPod(resource Resource) map[string]PodMetric {
 }
 
 func updatePodResourceMetrics(dao DAO, resource Resource) {
-	extra := getPodExtra(resource).Copy().(PodExtra)
+	extra := getPodExtra(resource)
 
 	metricsExtra := getPodMetricsForPod(resource)
 	if len(metricsExtra) > 0 {
@@ -263,6 +293,7 @@ func updatePodResourceMetrics(dao DAO, resource Resource) {
 	}
 	extra.Uptime = time.Since(extra.StartTime.Time).Truncate(time.Second)
 	resource.Timestamp = serializable.Time{Time: time.Now()}
-	resource.Extra = extra
+	m, _ := extra.toMap()
+	resource.Extra = m
 	dao.UpdateResource(resource)
 }

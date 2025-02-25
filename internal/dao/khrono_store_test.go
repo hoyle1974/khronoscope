@@ -2,7 +2,6 @@ package dao_test
 
 import (
 	"encoding/gob"
-	"fmt"
 	"math/rand/v2"
 	"testing"
 	"time"
@@ -15,55 +14,48 @@ import (
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 )
 
-func randomStrings(r *rand.Rand) []string {
-	ret := []string{}
+// func randomStrings(r *rand.Rand) []string {
+// 	ret := []string{}
 
-	for t := 0; t < 5; t++ {
-		if r.IntN(2) == 0 {
-			ret = append(ret, fmt.Sprintf("RandomString:%d", t))
-		}
-	}
+// 	for t := 0; t < 5; t++ {
+// 		if r.IntN(2) == 0 {
+// 			ret = append(ret, fmt.Sprintf("RandomString:%d", t))
+// 		}
+// 	}
 
-	return ret
-}
+// 	return ret
+// }
 
-func randomMetrics(r *rand.Rand) map[string]resources.PodMetric {
-	ret := map[string]resources.PodMetric{}
-	ret["A"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
-	ret["B"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
-	ret["C"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
-	ret["D"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
-	if r.Float32() > .5 {
-		ret["E"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
-	}
-	return ret
-}
+// func randomMetrics(r *rand.Rand) map[string]resources.PodMetric {
+// 	ret := map[string]resources.PodMetric{}
+// 	ret["A"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
+// 	ret["B"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
+// 	ret["C"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
+// 	ret["D"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
+// 	if r.Float32() > .5 {
+// 		ret["E"] = resources.PodMetric{CPUPercentage: r.Float64(), MemoryPercentage: r.Float64()}
+// 	}
+// 	return ret
+// }
 
-func randomContainerInfo(r *rand.Rand) map[string]resources.ContainerInfo {
-	ret := map[string]resources.ContainerInfo{}
-	ret["A"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
-	ret["B"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
-	ret["C"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
-	ret["D"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
-	if r.Float32() > .5 {
-		ret["E"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
-	}
-	return ret
-}
+// func randomContainerInfo(r *rand.Rand) map[string]resources.ContainerInfo {
+// 	ret := map[string]resources.ContainerInfo{}
+// 	ret["A"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
+// 	ret["B"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
+// 	ret["C"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
+// 	ret["D"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
+// 	if r.Float32() > .5 {
+// 		ret["E"] = resources.ContainerInfo{Image: newUuid(r), CPULimit: r.Int64(), MemoryLimit: r.Int64()}
+// 	}
+// 	return ret
+// }
 
-func newUuid(r *rand.Rand) string {
-	return fmt.Sprintf("UUID:%v", r.Int64())
-}
+// func newUuid(r *rand.Rand) string {
+// 	return fmt.Sprintf("UUID:%v", r.Int64())
+// }
 
 func randomPod(r *rand.Rand) resources.Resource {
-	extra := resources.PodExtra{
-		Metrics:    randomMetrics(r),
-		Uptime:     time.Duration(r.IntN(1000)),
-		StartTime:  serializable.Time{Time: time.Now()},
-		Containers: randomContainerInfo(r),
-		Logs:       randomStrings(r),
-		Logging:    []string{"Container"},
-	}
+	extra := map[string]any{}
 	return resources.Resource{
 		Uid:       "PodUid",
 		Timestamp: serializable.Time{Time: time.Now()},

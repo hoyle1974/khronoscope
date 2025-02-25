@@ -101,7 +101,7 @@ func (s *shouldInitiallyCollapse) ShouldCollapseKind(kind string) bool {
 }
 
 func newShouldInitiallyCollapse() *shouldInitiallyCollapse {
-	filter := config.Get().Filter
+	filter := config.GetClientConfig().Filter
 	kinds := misc.ConvertArrayToSet(filter.Collapse.Kinds)
 	namespaces := misc.ConvertArrayToSet(filter.Collapse.Namespaces)
 

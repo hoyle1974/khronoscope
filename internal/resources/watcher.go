@@ -3,7 +3,6 @@ package resources
 import (
 	"context"
 	"encoding/gob"
-	"reflect"
 	"sync"
 	"time"
 
@@ -46,6 +45,8 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 	gob.Register(Resource{})
 	gob.Register(NodeExtra{})
 	gob.Register(PodExtra{})
+	gob.Register(map[string]any{})
+	gob.Register([]any{})
 
 	// Get API group resources
 	apiGroupResources, err := client.DiscoveryClient.ServerPreferredResources()
@@ -53,7 +54,7 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 		log.Warn().Err(err).Msg("Warning: Some API groups may not be accessible")
 	}
 
-	filter := config.Get().Filter
+	filter := config.GetClientConfig().Filter
 
 	// Extract GroupVersionResource information
 	for _, list := range apiGroupResources {
@@ -76,6 +77,18 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 						continue
 					}
 				}
+			}
+			if resource.Kind == "NodeMetrics" ||
+				resource.Kind == "Binding" ||
+				resource.Kind == "PodMetrics" ||
+				resource.Kind == "SelfSubjectReview" ||
+				resource.Kind == "TokenReview" ||
+				resource.Kind == "SelfSubjectAccessReview" ||
+				resource.Kind == "SubjectAccessReview" ||
+				resource.Kind == "SelfSubjectRulesReview" ||
+				resource.Kind == "ComponentStatus" ||
+				resource.Kind == "LocalSubjectAccessReview" {
+				continue
 			}
 
 			gvr := schema.GroupVersionResource{
@@ -100,6 +113,8 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 			} else {
 				renderer = defaultRenderer{}
 			}
+
+			log.Debug().Any("resource", gvr).Msg("watchForResource")
 
 			if err := watchForResource(ctx, w, client, watcher{kind: resource.Kind, resource: gvr, renderer: renderer, ticker: ticker}); err != nil {
 				log.Error().Err(err).Msg("error watching for resource")
@@ -166,7 +181,7 @@ func (w *K8sWatcher) Delete(r Resource) {
 }
 
 func (w *K8sWatcher) registerEventWatcher(watcher <-chan watch.Event, resourceEventWatcher ResourceEventWatcher) {
-	log.Info().Any("Watcher", reflect.TypeOf(resourceEventWatcher)).Msg("registerEventWatcher")
+	log.Info().Any("Kind", resourceEventWatcher.Kind()).Msg("registerEventWatcher")
 
 	RegisterResourceRenderer(resourceEventWatcher.Kind(), resourceEventWatcher.Renderer())
 	if w == nil {

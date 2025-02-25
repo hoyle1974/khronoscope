@@ -37,3 +37,4 @@ config.yaml
 session.khron
 scripts/*.prompt
 scripts/*.txt
+elasticsearch-data

@@ -34,7 +34,7 @@ func main() {
 	}()
 
 	// Init config
-	cfg, err := config.InitConfig()
+	cfg, err := config.InitClientConfig()
 	if err != nil {
 		log.Panic().Err(err).Msg("problem initializing config")
 	}
@@ -48,7 +48,7 @@ func main() {
 
 	// Show keybindings and then exit
 	if *showKeybindings {
-		config.Get().KeyBindings.Print()
+		config.GetClientConfig().KeyBindings.Print()
 		return
 	}
 

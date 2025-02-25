@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,18 +34,14 @@ type K8sResource interface {
 	GetObjectMeta() v1.Object
 }
 
-type Copyable interface {
-	Copy() Copyable
-}
-
 type Resource struct {
 	Uid       string            // The Uid of the k8s object
 	Timestamp serializable.Time // The timestamp that this resource is valid for
 	Kind      string            // The k8s kind of resource
 	Namespace string            // The k8s namespace, may be empty for things like namespace and node resources
 	Name      string            // The name of the resource
-	RawJSON   string            // Raw json for this k8s resource
-	Extra     Copyable          // This should be a custom, gob registered and serializable object if used
+	RawJSON   map[string]any    // Raw json for this k8s resource
+	Extra     map[string]any    // This should be a custom, gob registered and serializable object if used
 }
 
 func (r Resource) GetUID() string          { return r.Uid }
@@ -54,14 +51,14 @@ func (r Resource) GetName() string         { return r.Name }
 func (r Resource) GetTimestamp() time.Time { return r.Timestamp.Time }
 func (r Resource) GetExtra() any           { return r.Extra }
 
-func NewK8sResource(kind string, obj K8sResource, extra Copyable) Resource {
+func NewK8sResource(kind string, obj K8sResource, extra map[string]any) Resource {
 	r := Resource{
 		Uid:       string(obj.GetObjectMeta().GetUID()),
 		Timestamp: serializable.Time{Time: time.Now()},
 		Kind:      kind,
 		Namespace: obj.GetObjectMeta().GetNamespace(),
 		Name:      obj.GetObjectMeta().GetName(),
-		Extra:     extra,
+		Extra:     misc.DeepCopyMap(extra),
 	}
 
 	return r

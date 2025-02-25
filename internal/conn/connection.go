@@ -40,7 +40,7 @@ func getCurrentUserFromKubeconfig() (string, error) {
 
 func NewKhronosConnection(kubeConfigFlag *string) (KhronosConn, error) {
 	// Disable the kubernetes logger otherwise it will mess output up from time to time.
-	klog.SetLogger(logr.Logger{})
+	klog.SetLogger(logr.Logger{}) // TODO switch this to zerolog
 
 	// Otherwise use passed in flags
 	kubeConfigPath := *kubeConfigFlag

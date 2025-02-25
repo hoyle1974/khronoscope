@@ -28,7 +28,7 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	// Init config
-	cfg, err := config.InitConfig()
+	cfg, err := config.InitServerConfig()
 	if err != nil {
 		log.Panic().Err(err).Msg("problem initializing config")
 	}
@@ -81,7 +81,7 @@ func main() {
 	}
 
 	// Create a new data and if we need to replace it from one from a file
-	d = dao.New()
+	d = dao.NewESSource()
 
 	// Start the k8s resource watcher
 	var watcher = resources.GetK8sWatcher(d)

@@ -18,6 +18,7 @@ import (
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
 	"github.com/hoyle1974/khronoscope/internal/metrics"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 )
 
@@ -81,7 +82,8 @@ func main() {
 	}
 
 	// Create a new data and if we need to replace it from one from a file
-	d = dao.NewPersist()
+	bs := misc.NewMemoryBlockStorage()
+	d = dao.NewPersist(bs)
 
 	// Start the k8s resource watcher
 	var watcher = resources.GetK8sWatcher(d)

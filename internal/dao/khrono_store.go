@@ -3,6 +3,7 @@ package dao
 import (
 	"time"
 
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/temporal"
 )
@@ -29,8 +30,8 @@ func New() KhronoStore {
 	}
 }
 
-func NewPersist() KhronoStore {
+func NewPersist(bs misc.BlockStorage) KhronoStore {
 	return &persistImpl{
-		resources: temporal.NewDiskMap(),
+		resources: temporal.NewDiskMap(bs),
 	}
 }

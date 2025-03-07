@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -17,6 +18,14 @@ import (
 */
 
 const CHUNK_SIZE = 60
+
+func timeToPathAndKeys(t time.Time) (string, string, string) {
+	// Truncate the time to CHUNK_SIZE
+	t = t.Truncate(time.Minute) // Assuming CHUNK_SIZE is minute-based for simplicity
+
+	// Return the formatted time strings
+	return t.Format("20060102"), t.Format("15"), t.Format(time.RFC3339)
+}
 
 // Converts a time to a UTC version of that time at a 60 second granularity
 func timeToKey60(t time.Time) string {
@@ -150,7 +159,6 @@ type compressedChunk struct {
 	KeyFrame frozen_frame
 	Diffs    []diffFrame2
 	Range    TimeRange
-	size     int
 }
 
 func newCompressedChunk(f []frame) compressedChunk {
@@ -158,8 +166,6 @@ func newCompressedChunk(f []frame) compressedChunk {
 	for idx, frame := range f {
 		ff[idx] = frame.Freeze()
 	}
-
-	size := len(ff[0].Resources)
 
 	c := compressedChunk{
 		KeyFrame: f[0].Freeze(),
@@ -169,10 +175,7 @@ func newCompressedChunk(f []frame) compressedChunk {
 
 	for idx := 1; idx < len(ff); idx++ {
 		c.Diffs[idx-1] = newDiffFrame2(ff[idx-1], ff[idx])
-		size += len(c.Diffs[idx-1].Patch)
 	}
-
-	c.size = size
 
 	return c
 }
@@ -204,22 +207,20 @@ func (c compressedChunk) GetStateAtTime(timestamp time.Time) map[string][]byte {
 
 // Map represents a map-like data structure with time-ordered items.
 type DiskMapImpl struct {
-	lock       sync.RWMutex
-	Chunk      chunk
-	Compressed []compressedChunk
-	Range      TimeRange
-	Index      map[string]int
+	lock        sync.RWMutex
+	ActiveChunk chunk
+	Range       TimeRange
+	Block       misc.BlockStorage
 }
 
-func NewDiskMap() *DiskMapImpl {
+func NewDiskMap(bs misc.BlockStorage) *DiskMapImpl {
 	return &DiskMapImpl{
-		Chunk:      newChunk(),
-		Compressed: []compressedChunk{},
+		ActiveChunk: newChunk(),
+		Block:       bs,
 		Range: TimeRange{
 			serializable.NewTime(time.Now()),
 			serializable.NewTime(time.Now()),
 		},
-		Index: map[string]int{},
 	}
 }
 
@@ -230,27 +231,36 @@ func (m *DiskMapImpl) GetTimeRange() (time.Time, time.Time) {
 func (m *DiskMapImpl) Update(timestamp time.Time, key string, value []byte) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m.Chunk.Add(timestamp, key, value)
+	m.ActiveChunk.Add(timestamp, key, value)
 	m.Range.Adjust(timestamp)
 
 	// We have 60 seconds of frames, let's take them and compress them
-	if len(m.Chunk.Frames) > CHUNK_SIZE {
-		timeIdx := timeToKey60(m.Chunk.Frames[0].Timestamp)
+	if len(m.ActiveChunk.Frames) > CHUNK_SIZE {
+		year, hour, timeIdx := timeToPathAndKeys(m.ActiveChunk.Frames[0].Timestamp)
 		toCompress := []frame{}
-		for idx, f := range m.Chunk.Frames {
+		for idx, f := range m.ActiveChunk.Frames {
 			if timeToKey60(f.Timestamp) != timeIdx {
-				copy(m.Chunk.Frames, m.Chunk.Frames[idx:]) // Shift elements left
-				m.Chunk.Frames = m.Chunk.Frames[:len(m.Chunk.Frames)-idx]
+				copy(m.ActiveChunk.Frames, m.ActiveChunk.Frames[idx:]) // Shift elements left
+				m.ActiveChunk.Frames = m.ActiveChunk.Frames[:len(m.ActiveChunk.Frames)-idx]
 				break
 			} else {
 				toCompress = append(toCompress, f)
 			}
 		}
-		m.Compressed = append(m.Compressed, newCompressedChunk(toCompress))
-		m.Index[timeIdx] = len(m.Compressed) - 1
-		m.Chunk.Range = TimeRange{
-			Min: serializable.NewTime(m.Chunk.Frames[0].Timestamp),
-			Max: serializable.NewTime(m.Chunk.Frames[len(m.Chunk.Frames)-1].Timestamp),
+
+		compressed := newCompressedChunk(toCompress)
+		b, err := json.Marshal(compressed)
+		if err != nil {
+			panic(err)
+		}
+		err = m.Block.SaveData(fmt.Sprintf("%s/%s/cc.%s.dat", year, hour, timeIdx), b)
+		if err != nil {
+			panic(err)
+		}
+
+		m.ActiveChunk.Range = TimeRange{
+			Min: serializable.NewTime(m.ActiveChunk.Frames[0].Timestamp),
+			Max: serializable.NewTime(m.ActiveChunk.Frames[len(m.ActiveChunk.Frames)-1].Timestamp),
 		}
 	}
 }
@@ -258,7 +268,7 @@ func (m *DiskMapImpl) Update(timestamp time.Time, key string, value []byte) {
 func (m *DiskMapImpl) Remove(timestamp time.Time, key string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m.Chunk.Remove(timestamp, key)
+	m.ActiveChunk.Remove(timestamp, key)
 	m.Range.Adjust(timestamp)
 
 }
@@ -267,19 +277,29 @@ func (m *DiskMapImpl) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	defer m.lock.Unlock()
 	timestamp = timestamp.Add(-time.Second)
 
-	if m.Chunk.Range.Min.Time.Before(timestamp) {
-		temp := m.Chunk.GetStateAtTime(timestamp)
+	if m.ActiveChunk.Range.Min.Time.Before(timestamp) {
+		temp := m.ActiveChunk.GetStateAtTime(timestamp)
 		if len(temp) == 0 {
-			temp = m.Chunk.GetStateAtTime(timestamp)
+			temp = m.ActiveChunk.GetStateAtTime(timestamp)
 			log.Info().Any("timestamp", timestamp).Any("size", len(temp)).Msg("chunk size")
 		}
 		return temp
 	}
-	if idx, ok := m.Index[timeToKey60(timestamp)]; ok {
-		return m.Compressed[idx].GetStateAtTime(timestamp)
+	year, hour, timeIdx := timeToPathAndKeys(timestamp)
+	b, err := m.Block.LoadData(fmt.Sprintf("%s/%s/cc.%s.dat", year, hour, timeIdx))
+	if err != nil {
+		panic(err)
+	}
+	if b == nil {
+		return map[string][]byte{}
+	}
+	var cc compressedChunk
+	err = json.Unmarshal(b, &cc)
+	if err != nil {
+		panic(err)
 	}
 
-	return map[string][]byte{}
+	return cc.GetStateAtTime(timestamp)
 }
 
 func (m *DiskMapImpl) SetMeta(timestamp time.Time, value []byte) {

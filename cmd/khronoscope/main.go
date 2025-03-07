@@ -98,7 +98,8 @@ func main() {
 	}
 
 	// Create a new data and if we need to replace it from one from a file
-	d := dao.NewPersist()
+	bs := misc.NewDiskBlockStorage("data")
+	d := dao.NewPersist(bs)
 	if filename != nil && len(*filename) > 0 {
 		d = dao.NewFromFile(*filename)
 	}

@@ -98,7 +98,7 @@ func main() {
 	}
 
 	// Create a new data and if we need to replace it from one from a file
-	d := dao.New()
+	d := dao.NewPersist()
 	if filename != nil && len(*filename) > 0 {
 		d = dao.NewFromFile(*filename)
 	}

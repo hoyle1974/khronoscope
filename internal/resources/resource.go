@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,73 @@ func (r Resource) GetNamespace() string     { return r.Namespace }
 func (r Resource) GetName() string          { return r.Name }
 func (r Resource) GetTimestamp() time.Time  { return r.Timestamp.Time }
 func (r Resource) GetExtra() map[string]any { return r.Extra }
+func (r Resource) ToMap() map[string]any {
+	jsonBytes, err := json.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+
+	var m map[string]any
+	err = json.Unmarshal(jsonBytes, &m)
+	if err != nil {
+		panic(err)
+	}
+
+	return sanitizeKeys(m)
+}
+
+func sanitizeList(l []any) []any {
+	for idx, value := range l {
+		if subMap, ok := value.(map[string]any); ok {
+			l[idx] = sanitizeKeys(subMap)
+		} else if subList, ok := value.([]any); ok {
+			l[idx] = sanitizeList(subList)
+		}
+	}
+	return l
+}
+
+func sanitizeKeys(m map[string]any) map[string]any {
+	sanitized := make(map[string]any)
+	for k, v := range m {
+		// Replace "." with "_" to make it valid for Elasticsearch
+		newKey := strings.ReplaceAll(k, ".", "_")
+
+		// Recursively process nested maps
+		if subMap, ok := v.(map[string]any); ok {
+			sanitized[newKey] = sanitizeKeys(subMap)
+		} else if subList, ok := v.([]any); ok {
+			sanitized[newKey] = sanitizeList(subList)
+		} else {
+			sanitized[newKey] = v
+		}
+	}
+	return sanitized
+}
+
+// mapToPodExtra converts a map[string]any to a PodExtra struct.
+func ResourceFromMap(e map[string]any) Resource {
+	if e == nil {
+		return Resource{}
+	}
+
+	// Convert the map to JSON bytes
+	jsonBytes, err := json.Marshal(e)
+	if err != nil {
+		panic(err)
+		// return PodExtra{}, false
+	}
+
+	// Unmarshal the JSON bytes into a PodExtra struct
+	var r Resource
+	err = json.Unmarshal(jsonBytes, &r)
+	if err != nil {
+		panic(err)
+		// return PodExtra{}, false
+	}
+
+	return r
+}
 
 func NewK8sResource(kind string, obj K8sResource, extra map[string]any) Resource {
 	r := Resource{

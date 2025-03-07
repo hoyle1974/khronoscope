@@ -81,7 +81,7 @@ func main() {
 	}
 
 	// Create a new data and if we need to replace it from one from a file
-	d = dao.NewESSource()
+	d = dao.NewPersist()
 
 	// Start the k8s resource watcher
 	var watcher = resources.GetK8sWatcher(d)

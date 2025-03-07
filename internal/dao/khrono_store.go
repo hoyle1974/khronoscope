@@ -28,3 +28,10 @@ func New() KhronoStore {
 		resources: temporal.New(),
 	}
 }
+
+func NewPersist() KhronoStore {
+	return &persistImpl{
+		meta:      temporal.NewDiskMap(),
+		resources: temporal.NewDiskMap(),
+	}
+}

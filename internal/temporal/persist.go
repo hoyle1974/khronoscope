@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/misc"
-	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/serializable"
 	"github.com/rs/zerolog/log"
 )
@@ -32,15 +31,15 @@ func timeToKey1(t time.Time) string {
 
 type Resources []byte
 
-func NewResource(r map[string]resources.Resource) Resources {
+func NewResource(r map[string][]byte) Resources {
 	b, err := json.Marshal(r)
 	if err != nil {
 		panic(err)
 	}
 	return b
 }
-func (r Resources) ToMap() map[string]resources.Resource {
-	v := map[string]resources.Resource{}
+func (r Resources) ToMap() map[string][]byte {
+	v := map[string][]byte{}
 	err := json.Unmarshal(r, &v)
 	if err != nil {
 		panic(err)
@@ -50,7 +49,7 @@ func (r Resources) ToMap() map[string]resources.Resource {
 
 type frame struct {
 	Timestamp time.Time
-	Resources map[string]resources.Resource
+	Resources map[string][]byte
 }
 
 func (f frame) contains(timestamp time.Time) bool {
@@ -104,13 +103,13 @@ func newChunk() chunk {
 	}
 }
 
-func (c chunk) GetStateAtTime(timestamp time.Time) map[string]resources.Resource {
+func (c chunk) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	for _, frame := range c.Frames {
 		if frame.contains(timestamp) {
 			return frame.Resources
 		}
 	}
-	return map[string]resources.Resource{}
+	return map[string][]byte{}
 }
 
 func (c chunk) Remove(timestamp time.Time, key string) {
@@ -121,25 +120,13 @@ func (c chunk) Remove(timestamp time.Time, key string) {
 	}
 }
 
-func (c chunk) Get(timestamp time.Time, key string) *resources.Resource {
-	for idx, frame := range c.Frames {
-		if frame.contains(timestamp) {
-			if r, ok := c.Frames[idx].Resources[key]; ok {
-				return &r
-			}
-			return nil
-		}
-	}
-	return nil
-}
-
-func (c *chunk) Add(timestamp time.Time, key string, value resources.Resource) {
+func (c *chunk) Add(timestamp time.Time, key string, value []byte) {
 	defer c.Range.Adjust(timestamp)
 
 	tt := timestamp.Truncate(time.Second)
 	for c.CurrentTime.Before(tt) {
 		c.CurrentTime = c.CurrentTime.Add(time.Second)
-		lastResource := map[string]resources.Resource{}
+		lastResource := map[string][]byte{}
 		if len(c.Frames) > 0 {
 			lastResource = misc.DeepCopyMap(c.Frames[len(c.Frames)-1].Resources)
 		}
@@ -190,7 +177,7 @@ func newCompressedChunk(f []frame) compressedChunk {
 	return c
 }
 
-func (c compressedChunk) GetStateAtTime(timestamp time.Time) map[string]resources.Resource {
+func (c compressedChunk) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	if timestamp.Truncate(time.Second).Equal(c.KeyFrame.Timestamp) {
 		return c.KeyFrame.Resources.ToMap()
 	}
@@ -203,7 +190,7 @@ func (c compressedChunk) GetStateAtTime(timestamp time.Time) map[string]resource
 			panic(err)
 		}
 		if timestamp.Truncate(time.Second).Equal(d.Timestamp.Truncate(time.Second)) {
-			v := map[string]resources.Resource{}
+			v := map[string][]byte{}
 			err = json.Unmarshal(last, &v)
 			if err != nil {
 				panic(err)
@@ -213,14 +200,6 @@ func (c compressedChunk) GetStateAtTime(timestamp time.Time) map[string]resource
 	}
 
 	panic("not found!")
-}
-
-func (c compressedChunk) Get(timestamp time.Time, key string) *resources.Resource {
-	r, ok := c.GetStateAtTime(timestamp)[key]
-	if !ok {
-		return nil
-	}
-	return &r
 }
 
 // Map represents a map-like data structure with time-ordered items.
@@ -248,7 +227,7 @@ func (m *DiskMapImpl) GetTimeRange() (time.Time, time.Time) {
 	return m.Range.Min.Time, m.Range.Max.Time
 }
 
-func (m *DiskMapImpl) Update(timestamp time.Time, key string, value resources.Resource) {
+func (m *DiskMapImpl) Update(timestamp time.Time, key string, value []byte) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.Chunk.Add(timestamp, key, value)
@@ -276,19 +255,6 @@ func (m *DiskMapImpl) Update(timestamp time.Time, key string, value resources.Re
 	}
 }
 
-func (m *DiskMapImpl) GetItem(timestamp time.Time, key string) *resources.Resource {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	if m.Chunk.Range.Contains(timestamp) {
-		return m.Chunk.Get(timestamp, key)
-	}
-	if idx, ok := m.Index[timeToKey60(timestamp)]; ok {
-		return m.Compressed[idx].Get(timestamp, key)
-	}
-	return nil
-}
-
 func (m *DiskMapImpl) Remove(timestamp time.Time, key string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -296,7 +262,7 @@ func (m *DiskMapImpl) Remove(timestamp time.Time, key string) {
 	m.Range.Adjust(timestamp)
 
 }
-func (m *DiskMapImpl) GetStateAtTime(timestamp time.Time) map[string]resources.Resource {
+func (m *DiskMapImpl) GetStateAtTime(timestamp time.Time) map[string][]byte {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	timestamp = timestamp.Add(-time.Second)
@@ -313,12 +279,24 @@ func (m *DiskMapImpl) GetStateAtTime(timestamp time.Time) map[string]resources.R
 		return m.Compressed[idx].GetStateAtTime(timestamp)
 	}
 
-	return map[string]resources.Resource{}
+	return map[string][]byte{}
 }
 
-func (m *DiskMapImpl) FindNextTimeKey(timestamp time.Time, dir int, key string) (time.Time, error) {
+func (m *DiskMapImpl) SetMeta(timestamp time.Time, value []byte) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+}
+
+func (m *DiskMapImpl) GetMeta(timestamp time.Time) ([]byte, bool) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	return time.Now(), nil
+	return []byte{}, false
+}
+
+func (m *DiskMapImpl) FindMetaTime(timestamp time.Time, dir int) (time.Time, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	return timestamp, nil
 }

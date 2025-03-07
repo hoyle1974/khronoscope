@@ -34,6 +34,39 @@ type K8sResource interface {
 	GetObjectMeta() v1.Object
 }
 
+func ResourceToBytes(r Resource) []byte {
+	b, err := json.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func BytesToResource(b []byte) Resource {
+	var r Resource
+	err := json.Unmarshal(b, &r)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func ConvertResourceMapTo(r map[string]Resource) map[string][]byte {
+	out := make(map[string][]byte, len(r))
+	for k, v := range r {
+		out[k] = ResourceToBytes(v)
+	}
+	return out
+}
+
+func ConvertToResourceMap(r map[string][]byte) map[string]Resource {
+	out := make(map[string]Resource, len(r))
+	for k, v := range r {
+		out[k] = BytesToResource(v)
+	}
+	return out
+}
+
 type Resource struct {
 	Uid       string            // The Uid of the k8s object
 	Timestamp serializable.Time // The timestamp that this resource is valid for

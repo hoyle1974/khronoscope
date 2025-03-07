@@ -12,7 +12,6 @@ import (
 
 type persistImpl struct {
 	lock      sync.Mutex
-	meta      *temporal.DiskMapImpl
 	resources *temporal.DiskMapImpl
 }
 
@@ -24,33 +23,31 @@ func (d *persistImpl) Save(filename string) {
 }
 
 func (d *persistImpl) SetLabel(time time.Time, label string) {
-	//d.meta.Add(time, META_LABEL_KEY, []byte(label))
+	d.resources.SetMeta(time, []byte(label))
 }
 
 func (d *persistImpl) GetLabel(time time.Time) string {
 	currentLabel := ""
-	// if temp, ok := d.meta.GetStateAtTime(time)[META_LABEL_KEY]; ok {
-	// 	currentLabel = string(temp)
-	// }
+	if temp, ok := d.resources.GetMeta(time); ok {
+		currentLabel = string(temp)
+	}
 	return currentLabel
 }
 
 func (d *persistImpl) GetNextLabelTime(time time.Time) time.Time {
-	// if t, err := d.meta.FindNextTimeKey(time, 1, META_LABEL_KEY); err == nil {
-	// 	return t
-	// }
-	// _, next := d.GetTimeRange()
-	// return next
-	return time
+	if t, err := d.resources.FindMetaTime(time, 1); err == nil {
+		return t
+	}
+	_, next := d.GetTimeRange()
+	return next
 }
 
 func (d *persistImpl) GetPrevLabelTime(time time.Time) time.Time {
-	// if t, err := d.meta.FindNextTimeKey(time, -1, META_LABEL_KEY); err == nil {
-	// 	return t
-	// }
-	// prev, _ := d.GetTimeRange()
-	// return prev
-	return time
+	if t, err := d.resources.FindMetaTime(time, -1); err == nil {
+		return t
+	}
+	prev, _ := d.GetTimeRange()
+	return prev
 }
 
 func (d *persistImpl) GetTimeRange() (time.Time, time.Time) {
@@ -63,7 +60,7 @@ func (d *persistImpl) AddResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	d.resources.Update(resource.Timestamp.Time, resource.Key(), resource)
+	d.resources.Update(resource.Timestamp.Time, resource.Key(), resources.ResourceToBytes(resource))
 }
 
 func (d *persistImpl) UpdateResource(resource resources.Resource) {
@@ -72,7 +69,7 @@ func (d *persistImpl) UpdateResource(resource resources.Resource) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	d.resources.Update(resource.Timestamp.Time, resource.Key(), resource)
+	d.resources.Update(resource.Timestamp.Time, resource.Key(), resources.ResourceToBytes(resource))
 
 }
 
@@ -88,12 +85,12 @@ func (d *persistImpl) GetResourceAt(timestamp time.Time, uid string) (resources.
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	r := d.resources.GetItem(timestamp, uid)
-	if r == nil {
+	r, ok := d.resources.GetStateAtTime(timestamp)[uid]
+	if !ok {
 		return resources.Resource{}, errors.New("no resource found")
 	}
 
-	return *r, nil
+	return resources.BytesToResource(r), nil
 }
 
 func (d *persistImpl) GetResourcesAt(timestamp time.Time, kind string, namespace string) []resources.Resource {
@@ -103,7 +100,8 @@ func (d *persistImpl) GetResourcesAt(timestamp time.Time, kind string, namespace
 
 	// Create a slice of keys
 	values := make([]resources.Resource, 0, len(m))
-	for _, r := range m {
+	for _, b := range m {
+		r := resources.BytesToResource(b)
 		if kind != "" && kind != r.Kind {
 			continue
 		}

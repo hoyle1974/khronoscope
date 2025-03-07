@@ -26,9 +26,9 @@ func TestNewCompressedChunk(t *testing.T) {
 	r2 := createResource("r2", "resource2")
 	r3 := createResource("r3", "resource3")
 
-	f1 := frame{Timestamp: time.Date(2023, 10, 27, 10, 30, 0, 0, time.UTC), Resources: map[string]resources.Resource{"r1": r1}}
-	f2 := frame{Timestamp: time.Date(2023, 10, 27, 10, 30, 1, 0, time.UTC), Resources: map[string]resources.Resource{"r1": r1, "r2": r2}}
-	f3 := frame{Timestamp: time.Date(2023, 10, 27, 10, 30, 2, 0, time.UTC), Resources: map[string]resources.Resource{"r1": r1, "r2": r2, "r3": r3}}
+	f1 := frame{Timestamp: time.Date(2023, 10, 27, 10, 30, 0, 0, time.UTC), Resources: resources.ConvertResourceMapTo(map[string]resources.Resource{"r1": r1})}
+	f2 := frame{Timestamp: time.Date(2023, 10, 27, 10, 30, 1, 0, time.UTC), Resources: resources.ConvertResourceMapTo(map[string]resources.Resource{"r1": r1, "r2": r2})}
+	f3 := frame{Timestamp: time.Date(2023, 10, 27, 10, 30, 2, 0, time.UTC), Resources: resources.ConvertResourceMapTo(map[string]resources.Resource{"r1": r1, "r2": r2, "r3": r3})}
 	frames := []frame{f1, f2, f3}
 
 	c := newCompressedChunk(frames)

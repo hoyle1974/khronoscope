@@ -13,6 +13,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/duration"
 )
 
+func Filter[T any](ss []T, test func(T) bool) (ret []T) {
+	for _, s := range ss {
+		if test(s) {
+			ret = append(ret, s)
+		}
+	}
+	return
+}
+
 func ParseMemory(memory string) (int64, error) {
 	suffixes := []string{"Ti", "Gi", "Mi", "Ki", ""}
 	multipliers := []int64{

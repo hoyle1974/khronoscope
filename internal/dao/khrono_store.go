@@ -3,9 +3,10 @@ package dao
 import (
 	"time"
 
-	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
-	"github.com/hoyle1974/khronoscope/internal/temporal"
+
+	temp "github.com/hoyle1974/temporal"
+	"github.com/hoyle1974/temporal/storage"
 )
 
 type KhronoStore interface {
@@ -23,15 +24,14 @@ type KhronoStore interface {
 	Size() int
 }
 
-func New() KhronoStore {
-	return &inMemoryImpl{
-		meta:      temporal.New(),
-		resources: temporal.New(),
+func NewStore(storageManager storage.System) (KhronoStore, error) {
+	m, err := temp.NewMap(storageManager)
+	if err != nil {
+		return nil, err
 	}
-}
+	s := &storeImpl{
+		storage: m,
+	}
 
-func NewPersist(bs misc.BlockStorage) KhronoStore {
-	return &persistImpl{
-		resources: temporal.NewDiskMap(bs),
-	}
+	return s, nil
 }

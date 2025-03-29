@@ -12,6 +12,7 @@ import (
 type BlockStorage interface {
 	SaveData(key string, data []byte) error
 	LoadData(key string) ([]byte, error)
+	List(path string) ([]string, error)
 }
 
 type DiskBlockStorage struct {
@@ -22,6 +23,19 @@ func NewDiskBlockStorage(path string) *DiskBlockStorage {
 	return &DiskBlockStorage{
 		path: path,
 	}
+}
+
+func (m *DiskBlockStorage) List(path string) ([]string, error) {
+	ret := []string{}
+
+	files, err := os.ReadDir(filepath.Join(m.path, path))
+	if err != nil {
+		return ret, err
+	}
+	for _, file := range files {
+		ret = append(ret, file.Name())
+	}
+	return ret, err
 }
 
 // SaveData compresses the data and saves it to a file with the given key.

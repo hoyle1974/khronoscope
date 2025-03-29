@@ -38,3 +38,6 @@ session.khron
 scripts/*.prompt
 scripts/*.txt
 elasticsearch-data
+data
+data-server
+*.tgz

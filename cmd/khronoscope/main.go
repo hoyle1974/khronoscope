@@ -22,6 +22,7 @@ import (
 	khronoscope "github.com/hoyle1974/khronoscope/internal/program"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/temporal/storage"
 )
 
 func main() {
@@ -97,11 +98,15 @@ func main() {
 		log.Panic().Err(err).Msg("could not create khronos connection")
 	}
 
-	// Create a new data and if we need to replace it from one from a file
-	bs := misc.NewDiskBlockStorage("data")
-	d := dao.NewPersist(bs)
-	if filename != nil && len(*filename) > 0 {
-		d = dao.NewFromFile(*filename)
+	//storage := storage.NewDiskStorage("/Users/jstrohm/code/khronoscope/data")
+	storage := storage.NewMemoryStorage()
+	if err != nil {
+		log.Panic().Err(err).Msg("error creating new storage manager")
+	}
+
+	d, err := dao.NewStore(storage)
+	if err != nil {
+		log.Panic().Err(err).Msg("could not create dao")
 	}
 
 	// Start the k8s resource watcher

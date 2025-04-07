@@ -86,6 +86,8 @@ func (w *K8sWatcher) StartWatching(ctx context.Context, client conn.KhronosConn,
 			}
 			if resource.Kind == "NodeMetrics" ||
 				resource.Kind == "Binding" ||
+				resource.Kind == "Event" ||
+				resource.Kind == "Lease" ||
 				resource.Kind == "PodMetrics" ||
 				resource.Kind == "SelfSubjectReview" ||
 				resource.Kind == "TokenReview" ||

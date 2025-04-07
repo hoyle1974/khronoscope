@@ -22,6 +22,7 @@ import (
 	khronoscope "github.com/hoyle1974/khronoscope/internal/program"
 	"github.com/hoyle1974/khronoscope/internal/resources"
 	"github.com/hoyle1974/khronoscope/internal/ui"
+	"github.com/hoyle1974/temporal"
 	"github.com/hoyle1974/temporal/storage"
 )
 
@@ -104,7 +105,17 @@ func main() {
 		log.Panic().Err(err).Msg("error creating new storage manager")
 	}
 
-	d, err := dao.NewStore(storage)
+	temporalMap, err := temporal.NewMapWithConfig(storage, temporal.MapConfig{
+		MaxChunkTargetSize: 8 * 1024 * 1024,
+		MaxChunkAge:        1 * time.Minute,
+		Logger:             misc.ZeroLogTemporalLoggerAdapter{},
+		Metrics:            metrics.TemporalMetricsAdapter{},
+	})
+	if err != nil {
+		log.Panic().Err(err).Msg("error creating new temporal map")
+	}
+
+	d, err := dao.NewStore(temporalMap)
 	if err != nil {
 		log.Panic().Err(err).Msg("could not create dao")
 	}

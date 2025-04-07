@@ -41,3 +41,4 @@ elasticsearch-data
 data
 data-server
 *.tgz
+server-data

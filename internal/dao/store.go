@@ -7,6 +7,7 @@ import (
 
 	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
+	"github.com/rs/zerolog/log"
 
 	temp "github.com/hoyle1974/temporal"
 )
@@ -103,6 +104,8 @@ func (s *storeImpl) AddResource(resource resources.Resource) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	log.Debug().Str("kind", resource.GetKind()).Str("name", resource.GetName()).Str("ns", resource.GetNamespace()).Msg("AddResource")
+
 	data, err := misc.EncodeToBytes(resource)
 	if err != nil {
 		return
@@ -117,6 +120,8 @@ func (s *storeImpl) UpdateResource(resource resources.Resource) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	log.Debug().Str("kind", resource.GetKind()).Str("name", resource.GetName()).Str("ns", resource.GetNamespace()).Msg("UpdateResource")
+
 	data, err := misc.EncodeToBytes(resource)
 	if err != nil {
 		return
@@ -130,7 +135,7 @@ func (s *storeImpl) UpdateResource(resource resources.Resource) {
 func (s *storeImpl) DeleteResource(resource resources.Resource) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
+	log.Debug().Str("kind", resource.GetKind()).Str("name", resource.GetName()).Str("ns", resource.GetNamespace()).Msg("DeleteResource")
 	err := s.storage.Del(context.TODO(), resource.GetTimestamp(), resource.GetUID())
 	if err != nil {
 		return

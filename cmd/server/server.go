@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -17,22 +16,36 @@ import (
 	"github.com/hoyle1974/khronoscope/internal/config"
 	"github.com/hoyle1974/khronoscope/internal/conn"
 	"github.com/hoyle1974/khronoscope/internal/dao"
+	"github.com/hoyle1974/khronoscope/internal/endpoints"
 	"github.com/hoyle1974/khronoscope/internal/metrics"
+	"github.com/hoyle1974/khronoscope/internal/misc"
 	"github.com/hoyle1974/khronoscope/internal/resources"
+	"github.com/hoyle1974/temporal"
 
 	"github.com/hoyle1974/temporal/storage"
 )
 
-var d dao.KhronoStore
+func logErr(err error, msg string) {
+	log.Error().Any("stack", fmt.Sprintf("%+v", err)).Err(err).Msg(msg)
+	fmt.Println("---------------------------------")
+	fmt.Printf("%+v", err)
+}
 
 func main() {
+
 	// Init logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{
+		Out:        os.Stderr,
+		TimeFormat: time.RFC3339,
+	})
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	// Init config
 	cfg, err := config.InitServerConfig()
 	if err != nil {
-		log.Panic().Err(err).Msg("problem initializing config")
+		log.Error().Err(err).Msg("problem initializing config")
 	}
 
 	// Get flags
@@ -67,10 +80,12 @@ func main() {
 	// Are we profiling?
 	if cfg.Profiling {
 		if f, err := os.Create("khronoscope.pprof"); err != nil {
-			log.Panic().Err(err).Msg("error creating khronoscope.pprof file")
+			logErr(err, "error creating khronoscope.pprof file")
+			return
 		} else {
 			if err := pprof.StartCPUProfile(f); err != nil {
-				log.Panic().Err(err).Msg("error starting CPU profile")
+				logErr(err, "error starting CPU profile")
+				return
 			}
 			defer pprof.StopCPUProfile()
 		}
@@ -79,17 +94,31 @@ func main() {
 	// Connect to k8s
 	client, err := conn.NewKhronosConnection(kubeConfigFlag)
 	if err != nil {
-		log.Panic().Err(err).Msg("could not create khronos connection")
+		logErr(err, "could not create khronos connection")
+		return
 	}
 
 	storage := storage.NewDiskStorage("/Users/jstrohm/code/khronoscope/server-data")
 	if err != nil {
-		log.Panic().Err(err).Msg("error creating new storage manager")
+		logErr(err, "error creating new storage manager")
+		return
 	}
 
-	d, err := dao.NewStore(storage)
+	temporalMap, err := temporal.NewMapWithConfig(storage, temporal.MapConfig{
+		MaxChunkTargetSize: 8 * 1024 * 1024,
+		MaxChunkAge:        1 * time.Minute,
+		Logger:             misc.ZeroLogTemporalLoggerAdapter{},
+		Metrics:            metrics.TemporalMetricsAdapter{},
+	})
 	if err != nil {
-		log.Panic().Err(err).Msg("could not create dao")
+		logErr(err, "error creating new temporal map")
+		return
+	}
+
+	d, err := dao.NewStore(temporalMap)
+	if err != nil {
+		logErr(err, "could not create dao")
+		return
 	}
 
 	// Start the k8s resource watcher
@@ -105,116 +134,27 @@ func main() {
 	// Start watching everything
 	err = watcher.StartWatching(ctx, client, d, logCollector, *namespace)
 	if err != nil {
-		log.Panic().Err(err).Msg("watch failed")
+		logErr(err, "watch failed")
+		return
 	}
 
 	// Register the request handler.
-	http.HandleFunc("/health", handleHealth)
-	http.HandleFunc("/resources", handleResources)
-	http.HandleFunc("/query/range", handleQueryRange)
-	http.HandleFunc("/", handleRoot)
+	http.HandleFunc("/healthz", endpoints.HandleHealthz)
+	http.HandleFunc("/readiness", endpoints.HandleReadiness)
+	http.HandleFunc("/resources", func(w http.ResponseWriter, r *http.Request) {
+		endpoints.HandleResources(d, w, r)
+	})
+	http.HandleFunc("/query/range", func(w http.ResponseWriter, r *http.Request) {
+		endpoints.HandleQueryRange(d, w, r)
+	})
+	http.HandleFunc("/", endpoints.HandleRoot)
 
 	// Start the HTTP server.
 	port := 8080
 	log.Info().Int("Port", port).Msg("Server listening")
 	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
-		log.Error().Err(err).Msg("error starting server:")
-	}
-}
-
-// Data represents the structure of the JSON response.
-type Data struct {
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-// handleRequest handles incoming HTTP requests.
-func handleResources(w http.ResponseWriter, r *http.Request) {
-	// Set the Content-Type header to application/json.
-	w.Header().Set("Content-Type", "application/json")
-
-	timestampStr := r.URL.Query().Get("timestamp")
-
-	var timestamp time.Time
-	if timestampStr != "now" {
-		var err error
-		timestamp, err = time.Parse(time.RFC3339, timestampStr)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		timestamp = time.Now()
-	}
-
-	resources := d.GetResourcesAt(timestamp, "", "")
-
-	// Encode the data struct to JSON.
-	jsonData, err := json.Marshal(resources)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logErr(err, "error starting server:")
 		return
-	}
-
-	// Write the JSON response.
-	if _, err := w.Write(jsonData); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// handleHealth handles the /health endpoint.
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte("OK")); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// TimestampRange represents min and max timestamps for /query/range.
-type TimestampRange struct {
-	MinTimestamp time.Time `json:"minTimestamp"`
-	MaxTimestamp time.Time `json:"maxTimestamp"`
-}
-
-// handleQueryRange handles the /query/range endpoint.
-func handleQueryRange(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	minTimestamp, maxTimestamp := d.GetTimeRange()
-
-	timestampRange := TimestampRange{
-		MinTimestamp: minTimestamp,
-		MaxTimestamp: maxTimestamp,
-	}
-
-	jsonData, err := json.Marshal(timestampRange)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if _, err := w.Write(jsonData); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// handleRoot handles the root endpoint.
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	data := Data{
-		Message:   "Hello from Go!",
-		Timestamp: time.Now().UTC(),
-	}
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if _, err := w.Write(jsonData); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

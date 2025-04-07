@@ -4,9 +4,7 @@ import (
 	"time"
 
 	"github.com/hoyle1974/khronoscope/internal/resources"
-
-	temp "github.com/hoyle1974/temporal"
-	"github.com/hoyle1974/temporal/storage"
+	"github.com/hoyle1974/temporal"
 )
 
 type KhronoStore interface {
@@ -24,13 +22,9 @@ type KhronoStore interface {
 	Size() int
 }
 
-func NewStore(storageManager storage.System) (KhronoStore, error) {
-	m, err := temp.NewMap(storageManager)
-	if err != nil {
-		return nil, err
-	}
+func NewStore(temporalMap temporal.ReadWriteMap) (KhronoStore, error) {
 	s := &storeImpl{
-		storage: m,
+		storage: temporalMap,
 	}
 
 	return s, nil

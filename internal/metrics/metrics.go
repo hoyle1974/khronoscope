@@ -35,3 +35,13 @@ func Count(key string, value int) {
 
 	counter[key] += value
 }
+
+type TemporalMetricsAdapter struct {
+}
+
+func (n TemporalMetricsAdapter) AdjustCount(key string, value int64) {
+	Count(key, int(value))
+}
+
+func (a TemporalMetricsAdapter) SetGuage(key string, value float64) {
+}
